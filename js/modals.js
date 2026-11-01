@@ -1,42 +1,172 @@
-/* ===== VENTANAS: etiquetas, país/período, ficha, crear/editar, CSV ===== */
-
-/* ----- Etiquetas (chips) ----- */
-function allKnownTags() {
-  const s = new Set();
-  countries.forEach(c => (c.tags || []).forEach(t => s.add(t)));
-  periods.forEach(p => (p.tags || []).forEach(t => s.add(t)));
-  return [...s].sort();
-}
-
-function renderTagChips(boxId, inputId) {
-  const box = document.getElementById(boxId);
-  if (!box) return;
-  const active = parseTags(document.getElementById(inputId).value);
-  const all = [...new Set([...allKnownTags(), ...active])];
-  box.innerHTML = all.map(t => `
-    <button type="button" onclick="toggleTagInInput('${inputId}', '${boxId}', '${jsArg(t)}')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${active.includes(t) ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-300 border-slate-700'}">${esc(t)}</button>
-  `).join('');
-}
-
-function toggleTagInInput(inputId, boxId, tag) {
-  const input = document.getElementById(inputId);
-  const cur = parseTags(input.value);
-  input.value = (cur.includes(tag) ? cur.filter(t => t !== tag) : [...cur, tag]).join(' ');
-  renderTagChips(boxId, inputId);
-}
+/* ===== VENTANAS: país/período, ficha, crear/editar, CSV ===== */
 
 /* ----- Editar país ----- */
 function openEditCountryModal() {
   const country = countryById(currentCountryId);
   if (!country) return;
   document.getElementById('input-edit-country-name').value = country.name;
-  document.getElementById('input-edit-country-tags').value = (country.tags || []).join(' ');
-  renderTagChips('country-tag-chips', 'input-edit-country-tags');
   fillZoneSelect(country.continent || '');
   document.getElementById('input-edit-country-flag').value = country.flag || '';
   pendingFlagImage = undefined;
   updateFlagPreview();
+  pendingCardPhoto = undefined;
+  loadCardPhotoEditor(country.photo || '');
+  cardCoinDraft = { coinId: country.coinId || '', image: country.coinImage || '' };
+  updateCardPhotoPreview();
+  renderCardCoinPicker();
   document.getElementById('edit-country-modal').classList.remove('hidden');
+}
+
+/* ----- Tarjeta del país en Explorar: foto y moneda ----- */
+let pendingCardPhoto;                       // undefined = sin cambios, '' = quitar, 'data:…' = nueva
+let cardCoinDraft = { coinId: '', image: '' };
+
+// Lee una imagen, la reduce y la devuelve como data URL (WebP conserva la transparencia de las monedas recortadas)
+function readImageAsDataURL(file, maxDim, quality, cb) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('Elige un archivo de imagen.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+      const k = Math.min(1, maxDim / Math.max(w0, h0));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(w0 * k));
+      canvas.height = Math.max(1, Math.round(h0 * k));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      let url = canvas.toDataURL('image/webp', quality);
+      if (!url.startsWith('data:image/webp')) url = canvas.toDataURL('image/png');   // navegadores sin WebP
+      cb(url);
+    };
+    img.onerror = () => alert('No se pudo leer la imagen.');
+    img.src = e.target.result;
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsDataURL(file);
+}
+
+/* Encuadre de la foto: se arrastra y se hace zoom sobre un recuadro con las mismas proporciones que la foto de la tarjeta (212×164);
+   al guardar se recorta exactamente lo que se ve, así no depende de cómo se ajuste la imagen en la tarjeta. */
+const CARD_PHOTO_W = 636, CARD_PHOTO_H = 492;
+let cardPhotoEdit = { img: null, zoom: 1, ox: 0.5, oy: 0.5, dirty: false };
+let cardPhotoDragBound = false;
+
+function cardPhotoDraw(ctx, W, H) {
+  const e = cardPhotoEdit, img = e.img;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const sc = Math.max(W / iw, H / ih) * e.zoom;
+  const dw = iw * sc, dh = ih * sc;
+  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(img, (W - dw) * e.ox, (H - dh) * e.oy, dw, dh);
+  return { dw, dh };
+}
+
+function updateCardPhotoPreview() {
+  const box = document.getElementById('card-photo-preview');
+  const cv = document.getElementById('card-photo-canvas');
+  if (!box || !cv) return;
+  const has = !!cardPhotoEdit.img;
+  box.classList.toggle('xp-nophoto', !has);
+  const empty = document.getElementById('card-photo-empty');
+  if (empty) empty.style.display = has ? 'none' : '';
+  const zr = document.getElementById('card-photo-zoomrow');
+  if (zr) zr.style.display = has ? '' : 'none';
+  if (has) cardPhotoDraw(cv.getContext('2d'), cv.width, cv.height);
+  bindCardPhotoDrag();
+}
+
+function loadCardPhotoEditor(src) {
+  cardPhotoEdit = { img: null, zoom: 1, ox: 0.5, oy: 0.5, dirty: false };
+  const z = document.getElementById('card-photo-zoom'); if (z) z.value = 1;
+  updateCardPhotoPreview();
+  if (!src) return;
+  const img = new Image();
+  img.onload = () => { if (cardPhotoEdit.dirty || cardPhotoEdit.img) return; cardPhotoEdit.img = img; updateCardPhotoPreview(); };
+  img.src = src;
+}
+
+function onCardPhotoSelected(input) {
+  const file = input.files[0];
+  input.value = '';
+  readImageAsDataURL(file, 1600, 0.85, url => {
+    const img = new Image();
+    img.onload = () => {
+      cardPhotoEdit = { img, zoom: 1, ox: 0.5, oy: 0.5, dirty: true };
+      const z = document.getElementById('card-photo-zoom'); if (z) z.value = 1;
+      updateCardPhotoPreview();
+    };
+    img.src = url;
+  });
+}
+
+function onCardPhotoZoom(v) {
+  if (!cardPhotoEdit.img) return;
+  cardPhotoEdit.zoom = Math.max(1, parseFloat(v) || 1);
+  cardPhotoEdit.dirty = true;
+  updateCardPhotoPreview();
+}
+
+function clearCardPhoto() {
+  cardPhotoEdit = { img: null, zoom: 1, ox: 0.5, oy: 0.5, dirty: false };
+  pendingCardPhoto = '';
+  const z = document.getElementById('card-photo-zoom'); if (z) z.value = 1;
+  updateCardPhotoPreview();
+}
+
+// Al guardar: si se ha tocado el encuadre, se genera la imagen recortada
+function finalizeCardPhoto() {
+  const e = cardPhotoEdit;
+  if (!e.img || !e.dirty) return;
+  const cv = document.createElement('canvas'); cv.width = CARD_PHOTO_W; cv.height = CARD_PHOTO_H;
+  cardPhotoDraw(cv.getContext('2d'), CARD_PHOTO_W, CARD_PHOTO_H);
+  let url = cv.toDataURL('image/webp', 0.85);
+  if (!url.startsWith('data:image/webp')) url = cv.toDataURL('image/jpeg', 0.85);
+  pendingCardPhoto = url;
+  e.dirty = false;
+}
+
+function bindCardPhotoDrag() {
+  const box = document.getElementById('card-photo-preview');
+  if (!box || cardPhotoDragBound) return;
+  cardPhotoDragBound = true;
+  let last = null;
+  box.addEventListener('pointerdown', ev => { if (!cardPhotoEdit.img) return; last = { x: ev.clientX, y: ev.clientY }; box.setPointerCapture(ev.pointerId); box.style.cursor = 'grabbing'; });
+  box.addEventListener('pointermove', ev => {
+    if (!last || !cardPhotoEdit.img) return;
+    const r = box.getBoundingClientRect(), e = cardPhotoEdit, img = e.img;
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const sc = Math.max(r.width / iw, r.height / ih) * e.zoom;
+    const ovx = iw * sc - r.width, ovy = ih * sc - r.height;   // sobrante en píxeles de pantalla
+    if (ovx > 0.5) e.ox = Math.min(1, Math.max(0, e.ox - (ev.clientX - last.x) / ovx));
+    if (ovy > 0.5) e.oy = Math.min(1, Math.max(0, e.oy - (ev.clientY - last.y) / ovy));
+    last = { x: ev.clientX, y: ev.clientY };
+    e.dirty = true;
+    updateCardPhotoPreview();
+  });
+  const end = () => { last = null; box.style.cursor = ''; };
+  box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+}
+
+function renderCardCoinPicker() {
+  const box = document.getElementById('card-coin-picker');
+  const country = countryById(currentCountryId);
+  if (!box || !country) return;
+  const list = coinsOfCountry(country.id).filter(c => c.hasFront).slice(0, 60);
+  const custom = cardCoinDraft.image;
+  const chosen = !custom && cardCoinDraft.coinId && list.some(c => c.id === cardCoinDraft.coinId) ? cardCoinDraft.coinId : '';
+  const tile = (sel, onclick, inner, title) => `<button type="button" class="xp-coin-tile ${sel ? 'xp-sel' : ''}" onclick="${onclick}" title="${esc(title)}" aria-label="${esc(title)}" aria-pressed="${sel}">${inner}</button>`;
+  box.innerHTML =
+    tile(!custom && !chosen, "pickCardCoin('')", 'Auto', 'Automática') +
+    (custom ? tile(true, "pickCardCoin('')", `<img src="${esc(custom)}" alt="">`, 'Tu imagen (pulsa para quitarla)') : '') +
+    list.map(c => tile(chosen === c.id, `pickCardCoin('${jsArg(c.id)}')`, imgTag(c.id, 'front'), c.denom)).join('');
+  hydrateImages(box);
+}
+function pickCardCoin(coinId) { cardCoinDraft = { coinId, image: '' }; renderCardCoinPicker(); }
+function onCardCoinSelected(input) {
+  const file = input.files[0];
+  input.value = '';
+  readImageAsDataURL(file, 420, 0.85, url => { cardCoinDraft = { coinId: '', image: url }; renderCardCoinPicker(); });
 }
 
 function closeEditCountryModal() {
@@ -59,11 +189,45 @@ function saveEditedCountryName() {
     pendingFlagImage = undefined;
   }
 
+  finalizeCardPhoto();
+  if (pendingCardPhoto !== undefined) {
+    if (pendingCardPhoto) country.photo = pendingCardPhoto; else delete country.photo;
+    pendingCardPhoto = undefined;
+  }
+  if (cardCoinDraft.image) country.coinImage = cardCoinDraft.image; else delete country.coinImage;
+  if (cardCoinDraft.coinId && !cardCoinDraft.image) country.coinId = cardCoinDraft.coinId; else delete country.coinId;
+
   country.name = newName;
-  country.tags = parseTags(document.getElementById('input-edit-country-tags').value);
   const cont = document.getElementById('input-edit-country-continent').value;
   if (cont) country.continent = cont; else delete country.continent;
   persistMeta();
+  closeEditCountryModal();
+  render();
+}
+
+/* ----- Eliminar un país por completo (con doble confirmación) ----- */
+async function deleteCurrentCountry() {
+  const country = countryById(currentCountryId);
+  if (!country) return;
+  const ps = periodsOfCountry(country.id), cs = coinsOfCountry(country.id);
+  const nombre = prettyName(country.name);
+  const resumen = `${ps.length} ${ps.length === 1 ? 'período' : 'períodos'} y ${cs.length} ${cs.length === 1 ? 'moneda' : 'monedas'}`;
+  if (!confirm(`¿Eliminar por completo "${nombre}"?\n\nSe borrarán ${resumen} (con sus imágenes). Esta acción no se puede deshacer.\n\nSi lo necesitas, exporta antes una copia de seguridad.`)) return;
+  if (!confirm(`Segunda confirmación: "${nombre}" y todo su contenido se eliminarán definitivamente.\n\n¿Seguro que quieres continuar?`)) return;
+
+  const id = country.id;
+  const coinIds = cs.map(c => c.id);
+  coins = coins.filter(c => c.countryId !== id);
+  coinIds.forEach(cid => { forgetImageUrl(imgKey(cid, 'front')); forgetImageUrl(imgKey(cid, 'back')); });
+  await Promise.all(coinIds.map(cid => deleteCoinFromDB(cid)));
+  periods = periods.filter(p => p.countryId !== id);
+  countries = countries.filter(c => c.id !== id);
+  await persistMeta();
+  delete indiceCollapsedCountries[id];
+  currentCountryId = null;
+  albumPeriodId = ''; albumGroup = '';
+  activeCoinId = null;
+  movingCoinId = null;
   closeEditCountryModal();
   render();
 }
@@ -72,27 +236,100 @@ function saveEditedCountryName() {
 function openEditPeriodModal(periodId) {
   const p = periodById(periodId);
   if (!p) return;
+  pendingNewPeriodCountry = '';
+  document.getElementById('edit-period-title').innerText = 'Editar Período';
+  document.getElementById('edit-period-move-box').classList.remove('hidden');
+  // Solo se puede eliminar un período que no tenga monedas
+  const del = document.getElementById('btn-period-delete');
+  del.classList.toggle('hidden', coinsOfPeriod(p.id).length > 0);
+  del.classList.toggle('flex', coinsOfPeriod(p.id).length === 0);
   document.getElementById('input-edit-period-old').value = p.id;
   document.getElementById('input-edit-period-name').value = p.name;
-  document.getElementById('input-edit-period-tags').value = (p.tags || []).join(' ');
-  renderTagChips('period-tag-chips', 'input-edit-period-tags');
+  updatePeriodMoveUI(p.id);
   document.getElementById('edit-period-modal').classList.remove('hidden');
 }
 
+/* ----- Añadir período a un país (puede quedarse vacío, como marcador de posición) ----- */
+let pendingNewPeriodCountry = '';
+function openAddPeriodModal(countryId) {
+  if (!countryById(countryId)) return;
+  pendingNewPeriodCountry = countryId;
+  document.getElementById('input-edit-period-old').value = '';
+  document.getElementById('input-edit-period-name').value = '';
+  document.getElementById('edit-period-title').innerText = 'Nuevo Período';
+  document.getElementById('edit-period-move-box').classList.add('hidden');
+  const del = document.getElementById('btn-period-delete');
+  del.classList.add('hidden'); del.classList.remove('flex');
+  document.getElementById('edit-period-modal').classList.remove('hidden');
+  setTimeout(() => { const i = document.getElementById('input-edit-period-name'); if (i) i.focus(); }, 50);
+}
+
+// Elimina el período abierto en la ventana, solo si no tiene monedas
+function deleteEmptyPeriodFromModal() {
+  const id = document.getElementById('input-edit-period-old').value;
+  const p = periodById(id);
+  if (!p) return;
+  if (coinsOfPeriod(id).length > 0) { alert('Este período tiene monedas: solo se pueden eliminar períodos vacíos.'); return; }
+  if (!confirm(`¿Eliminar el período "${p.name}"? Está vacío.`)) return;
+  const owner = countryById(p.countryId);
+  periods = periods.filter(x => x.id !== id);
+  // Si era el último período del país, el país se conserva (se elimina desde su ventana de edición)
+  if (owner && periodsOfCountry(owner.id).length === 0) owner.keep = true;
+  if (albumPeriodId === id) albumPeriodId = '';
+  persistMeta();
+  closeEditPeriodModal();
+  render();
+}
+
+// Subir / bajar el período dentro de su país (desde la ventana de edición)
+function updatePeriodMoveUI(periodId) {
+  const p = periodById(periodId);
+  const list = p ? periodsOfCountry(p.countryId) : [];
+  const idx = list.findIndex(x => x.id === periodId);
+  document.getElementById('btn-period-up').disabled = idx <= 0;
+  document.getElementById('btn-period-down').disabled = idx < 0 || idx >= list.length - 1;
+  document.getElementById('edit-period-pos').innerText = idx >= 0 ? `Posición ${idx + 1} de ${list.length}` : '';
+}
+
+function movePeriodFromModal(direction) {
+  const id = document.getElementById('input-edit-period-old').value;
+  const p = periodById(id);
+  if (!p) return;
+  currentCountryId = p.countryId;
+  movePeriod(id, direction);
+  updatePeriodMoveUI(id);
+}
+
 function closeEditPeriodModal() {
+  pendingNewPeriodCountry = '';
   document.getElementById('edit-period-modal').classList.add('hidden');
 }
 
 function saveEditedPeriodName() {
-  const p = periodById(document.getElementById('input-edit-period-old').value);
+  const oldId = document.getElementById('input-edit-period-old').value;
   const newName = document.getElementById('input-edit-period-name').value.trim();
+
+  // Modo "nuevo período"
+  if (!oldId && pendingNewPeriodCountry) {
+    const countryId = pendingNewPeriodCountry;
+    if (!countryById(countryId) || !newName) { closeEditPeriodModal(); return; }
+    if (findPeriodByName(countryId, newName)) { alert('Ya existe un período con este nombre en este país.'); return; }
+    const np = getOrCreatePeriod(countryId, newName);
+    np.keep = true;   // creado a mano: se conserva aunque no tenga monedas
+    indiceCollapsedCountries[countryId] = false;   // en el Índice, el país se abre para que se vea el nuevo período
+    persistMeta();
+    closeEditPeriodModal();
+    render();
+    return;
+  }
+
+  const p = periodById(oldId);
   if (!p || !newName) { closeEditPeriodModal(); return; }
 
   const clash = periods.find(x => x.id !== p.id && x.countryId === p.countryId && normName(x.name) === normName(newName));
   if (clash) { alert('Ya existe un período con este nombre en este país.'); return; }
 
   p.name = newName;
-  p.tags = parseTags(document.getElementById('input-edit-period-tags').value);
   persistMeta();
   closeEditPeriodModal();
   render();
@@ -107,16 +344,17 @@ function setMaterialBox(coin) {
   const matValue = document.getElementById('modal-grid-material');
   if (isSilverCoin(coin)) {
     matLabel.innerText = 'VALOR ESTIMADO';
-    matValue.className = 'text-[11px] font-black text-emerald-400 leading-tight truncate';
+    matValue.className = 'xm-val xm-silverv';
     matValue.innerText = computeCoinSilverValue(coin) || '0,00 €';
   } else {
     matLabel.innerText = 'CECA/VARIANTE';
-    matValue.className = 'text-[11px] font-bold text-slate-100 leading-tight truncate';
+    matValue.className = 'xm-val';
     matValue.innerText = (coin.cecaMaterial && coin.cecaMaterial.trim() !== '') ? coin.cecaMaterial : '—';
   }
 }
 
 function openCoinModal(id) {
+  formatMenuIdx = -1;
   activeCoinId = id;
   const coin = coins.find(c => c.id === id);
   if (!coin) return;
@@ -131,16 +369,29 @@ function openCoinModal(id) {
   document.getElementById('modal-grid-km').innerText = coin.km || 'KM# -';
   setMaterialBox(coin);
 
-  const yearRange = parseYearRange(coin.range);
-  document.getElementById('modal-year-label').innerText = yearRange ? `Año exacto (${yearRange.min}-${yearRange.max})` : 'Año exacto de la pieza';
-  document.getElementById('modal-year-display').innerText = coin.year || (yearRange ? yearRange.min.toString() : '—');
+  // La rareza solo se muestra aquí; se cambia desde "Editar ficha"
+  const chip = document.getElementById('modal-rarity-chip');
+  if (coin.rarity) {
+    chip.innerText = String(coin.rarity).toUpperCase();
+    chip.style.cssText = getRarityStyle(coin.rarity);
+    chip.classList.remove('hidden');
+  } else {
+    chip.classList.add('hidden');
+  }
+
+  const typeChip = document.getElementById('modal-type-chip');
+  const type = coinType(coin);
+  typeChip.innerText = type.toUpperCase();
+  typeChip.style.cssText = coinTypeChipStyle(type);
+  typeChip.classList.remove('hidden');
+
+  setLinkBox('modal-grid-numista', coin.numistaUrl, 'xm-lk-numista');
+  setLinkBox('modal-grid-ucoin', coin.ucoinUrl, 'xm-lk-ucoin');
 
   document.getElementById('silver-weight-input').value = coin.silverWeight || '';
   document.getElementById('silver-purity-input').value = coin.silverPurity || '900';
-  const raritySelect = document.getElementById('modal-rarity-select');
-  if (raritySelect) raritySelect.value = coin.rarity || 'C';
 
-  renderGradePills(coin.grade);
+  renderCoinItems();
   toggleSilverValuation(coin.rarity);
 
   const front = document.getElementById('modal-coin-front');
@@ -152,7 +403,7 @@ function openCoinModal(id) {
 
   front.className = `coin-front ${!coin.hasFront ? baseStyleClass : 'has-img'}`;
   back.className = `coin-back ${!coin.hasBack ? baseStyleClass : 'has-img'}`;
-  const fallback = `<span class="text-xl font-black font-serif-numis">${esc(coin.denom)}</span>`;
+  const fallback = `<span class="xm-fallback">${esc(coin.denom)}</span>`;
   front.innerHTML = coin.hasFront ? imgTag(coin.id, 'front') : fallback;
   back.innerHTML = coin.hasBack ? imgTag(coin.id, 'back') : fallback;
   hydrateImages(front); hydrateImages(back);
@@ -210,70 +461,122 @@ function calculateSilverValue(persist = true) {
   }
 }
 
-function openNumistaLink() {
-  const coin = coins.find(c => c.id === activeCoinId);
-  if (coin && coin.numistaUrl && coin.numistaUrl.trim() !== '') window.open(coin.numistaUrl.trim(), '_blank');
-  else alert('Sin enlace de Numista registrado para esta moneda.');
+// Solo se abren enlaces http(s) (una copia de seguridad ajena podría traer "javascript:…")
+function openCoinLink(raw, site) {
+  const u = String(raw || '').trim();
+  if (!u) { alert(`Sin enlace de ${site} registrado para esta moneda.`); return; }
+  let parsed = null;
+  try { parsed = new URL(u); } catch (e) {}
+  if (!parsed || !/^https?:$/.test(parsed.protocol)) { alert(`El enlace de ${site} no es válido (debe empezar por https://).`); return; }
+  window.open(parsed.href, '_blank', 'noopener');
+}
+function openNumistaLink() { const c = coins.find(x => x.id === activeCoinId); openCoinLink(c && c.numistaUrl, 'Numista'); }
+function openUcoinLink() { const c = coins.find(x => x.id === activeCoinId); openCoinLink(c && c.ucoinUrl, 'Ucoin'); }
+
+/* ----- Ejemplares (año · conservación · notas) ----- */
+function newCoinItem() { return { year: '', grade: '', format: DEFAULT_ITEM_FORMAT, notes: '' }; }
+
+function coinItems(coin) {
+  if (!Array.isArray(coin.items) || coin.items.length === 0) coin.items = [newCoinItem()];
+  return coin.items;
 }
 
-function openUcoinLink() {
-  const coin = coins.find(c => c.id === activeCoinId);
-  if (coin && coin.ucoinUrl && coin.ucoinUrl.trim() !== '') window.open(coin.ucoinUrl.trim(), '_blank');
-  else alert('Sin enlace de Ucoin registrado para esta moneda.');
+function setLinkBox(id, url, colorClass) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const has = Boolean(url && url.trim() !== '');
+  el.innerHTML = has ? 'Abrir <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>' : 'Sin enlace';
+  el.className = `xm-val ${has ? colorClass : 'xm-nolink'}`;
 }
 
-function changeYearStep(step) {
-  const yearDisplay = document.getElementById('modal-year-display');
-  let current = (parseInt(yearDisplay.innerText) || 1900) + step;
-  current = Math.max(1000, Math.min(2050, current));
-
-  const coin = coins.find(c => c.id === activeCoinId);
-  if (coin) {
-    const range = parseYearRange(coin.range);
-    if (range) current = Math.max(range.min, Math.min(range.max, current));
-  }
-  yearDisplay.innerText = current;
-  updateCoinStatus();
+/* Selector de formato: muestra solo el icono actual; al pulsar se despliegan todos en vertical */
+let formatMenuIdx = -1;
+function formatPickerHtml(i, it) {
+  const cur = ITEM_FORMATS.some(f => f.id === it.format) ? it.format : DEFAULT_ITEM_FORMAT;
+  const isDefault = cur === DEFAULT_ITEM_FORMAT;
+  const btn = `<button type="button" onclick="event.stopPropagation(); toggleFormatMenu(${i})" aria-haspopup="true" aria-label="Formato" title="Formato" class="xm-fbtn ${isDefault ? '' : 'xm-on'}">${itemFormatIcon(cur, 18)}</button>`;
+  if (formatMenuIdx !== i) return `<div class="xm-fwrap">${btn}</div>`;
+  const opts = ITEM_FORMATS.map(f => { const on = f.id === cur; return `<button type="button" role="menuitemradio" aria-checked="${on}" aria-label="${f.label}" title="${f.label}" onclick="event.stopPropagation(); onItemFormat(${i}, '${f.id}')" class="xm-fopt ${on ? 'xm-on' : ''}">${itemFormatIcon(f.id, 18)}</button>`; }).join('');
+  return `<div class="xm-fwrap"><div class="xm-fmenu" role="menu">${opts}</div></div>`;
 }
+function toggleFormatMenu(i) {
+  formatMenuIdx = (formatMenuIdx === i) ? -1 : i;
+  renderCoinItems();
+}
+window.addEventListener('click', () => { if (formatMenuIdx !== -1) { formatMenuIdx = -1; renderCoinItems(); } });
 
-function renderGradePills(selectedGrade) {
-  document.getElementById('grade-pills-container').innerHTML = GRADES.map(g => `
-    <button onclick="selectGrade('${g}')" class="py-1 rounded-lg text-[10px] font-bold transition-all duration-200 border ${g === selectedGrade ? 'bg-amber-500 border-amber-400 text-slate-950 shadow scale-[1.02]' : 'bg-[#182132] border-slate-800 text-slate-300 hover:border-amber-400/50'}">
-      ${g}
-    </button>
+function renderCoinItems() {
+  const coin = coins.find(c => c.id === activeCoinId);
+  const box = document.getElementById('coin-items-container');
+  if (!coin || !box) return;
+  const items = coinItems(coin);
+  const range = parseYearRange(coin.range);
+  const ph = range ? String(range.min) : 'Año';
+  box.innerHTML = items.map((it, i) => `
+    <div class="xm-row">
+      <input type="number" inputmode="numeric" value="${esc(it.year)}" placeholder="${esc(ph)}" oninput="onItemField(${i}, 'year', this.value)" class="xm-field xm-year">
+      <select onchange="onItemGrade(${i}, this.value)" class="xm-field xm-grade ${it.grade ? 'xm-on' : ''}">
+        <option value="">—</option>
+        ${GRADES.map(g => `<option value="${g}" ${g === it.grade ? 'selected' : ''}>${g}</option>`).join('')}
+      </select>
+      ${formatPickerHtml(i, it)}
+      <input type="text" value="${esc(it.notes)}" placeholder="Notas" oninput="onItemField(${i}, 'notes', this.value)" class="xm-field xm-notes">
+      ${items.length > 1 ? `<button onclick="removeCoinItem(${i})" class="xm-trash" title="Quitar esta moneda"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+    </div>
   `).join('');
 }
 
-function selectGrade(grade) {
+let itemSaveTimer = null;
+function onItemField(i, field, value) {
   const coin = coins.find(c => c.id === activeCoinId);
   if (!coin) return;
-  if (coin.grade === grade) {
-    coin.grade = '';
-    coin.acquired = false;
-  } else {
-    coin.grade = grade;
-    coin.acquired = true;
-    const shownYear = document.getElementById('modal-year-display').innerText;
-    if (!coin.year && /^\d{4}$/.test(shownYear)) coin.year = shownYear;
+  coinItems(coin)[i][field] = value;
+  clearTimeout(itemSaveTimer);
+  itemSaveTimer = setTimeout(() => { if (coins.includes(coin)) saveCoins(coin); }, 400);
+}
+
+function onItemGrade(i, grade) {
+  const coin = coins.find(c => c.id === activeCoinId);
+  if (!coin) return;
+  const it = coinItems(coin)[i];
+  it.grade = grade;
+  if (grade && !it.year) {
+    const r = parseYearRange(coin.range);
+    if (r) it.year = String(r.min);
   }
-  renderGradePills(coin.grade);
+  clearTimeout(itemSaveTimer);
+  renderCoinItems();
   saveCoins(coin);
 }
 
-function selectRarity(rarity) {
+function onItemFormat(i, format) {
   const coin = coins.find(c => c.id === activeCoinId);
   if (!coin) return;
-  coin.rarity = rarity;
-  toggleSilverValuation(coin.rarity);
-  setMaterialBox(coin);
+  coinItems(coin)[i].format = format;
+  formatMenuIdx = -1;
+  clearTimeout(itemSaveTimer);
+  renderCoinItems();
   saveCoins(coin);
 }
 
-function updateCoinStatus() {
+function addCoinItem() {
   const coin = coins.find(c => c.id === activeCoinId);
   if (!coin) return;
-  coin.year = document.getElementById('modal-year-display').innerText;
-  coin.acquired = Boolean(coin.grade && coin.grade.trim() !== '');
+  coinItems(coin).push(newCoinItem());
+  renderCoinItems();
+  const last = document.getElementById('coin-items-container').lastElementChild;
+  if (last) last.querySelector('input').focus();
+}
+
+function removeCoinItem(i) {
+  const coin = coins.find(c => c.id === activeCoinId);
+  if (!coin) return;
+  const items = coinItems(coin);
+  const it = items[i];
+  if ((it.year || it.grade || it.notes) && !confirm('¿Quitar esta moneda?')) return;
+  items.splice(i, 1);
+  clearTimeout(itemSaveTimer);
+  renderCoinItems();
   saveCoins(coin);
 }
 
@@ -282,6 +585,7 @@ async function deleteCurrentCoin() {
   if (!confirm('¿Eliminar de la colección?')) return;
   const id = activeCoinId;
   clearTimeout(silverSaveTimer);
+  clearTimeout(itemSaveTimer);
   coins = coins.filter(c => c.id !== id);
   forgetImageUrl(imgKey(id, 'front')); forgetImageUrl(imgKey(id, 'back'));
   await deleteCoinFromDB(id);
@@ -292,7 +596,7 @@ async function deleteCurrentCoin() {
 }
 
 /* ----- Crear / editar ficha ----- */
-function openCreateModal() {
+function openCreateModal(periodId) {
   document.getElementById('edit-coin-id').value = '';
   document.getElementById('create-modal-title').innerText = 'Añadir Hueco al Álbum';
   document.getElementById('create-form').reset();
@@ -302,6 +606,12 @@ function openCreateModal() {
   document.getElementById('label-file-back').innerText = 'JPG, PNG, WEBP';
   const country = countryById(currentCountryId);
   document.getElementById('new-country').value = country ? country.name : '';
+  const preset = (typeof periodId === 'string') ? periodById(periodId) : null;   // desde el + de un período
+  if (preset) {
+    const owner = countryById(preset.countryId);
+    if (owner) document.getElementById('new-country').value = owner.name;
+    document.getElementById('new-period').value = preset.name;
+  }
   document.getElementById('create-modal').classList.remove('hidden');
 }
 
@@ -319,6 +629,7 @@ async function openAdvancedEditFromModal() {
   document.getElementById('new-km').value = coin.km || '';
   document.getElementById('new-rarity').value = coin.rarity || 'C';
   document.getElementById('new-range').value = coin.range || '';
+  document.getElementById('new-type').value = coinType(coin);
   document.getElementById('new-numista-url').value = coin.numistaUrl || '';
   document.getElementById('new-ucoin-url').value = coin.ucoinUrl || '';
 
@@ -558,6 +869,7 @@ async function handleSaveCoin(e) {
     cecaMaterial: document.getElementById('new-ceca-material').value,
     km: document.getElementById('new-km').value,
     rarity: document.getElementById('new-rarity').value,
+    type: coinType({ type: document.getElementById('new-type').value }),
     range: document.getElementById('new-range').value || 'S/F',
     numistaUrl: document.getElementById('new-numista-url').value,
     ucoinUrl: document.getElementById('new-ucoin-url').value
@@ -635,15 +947,15 @@ function processCSVImport() {
   if (!raw) return;
 
   const imported = [];
-  let skipped = 0;
+  let skipped = 0, invalid = 0;
   for (let line of raw.split(/\r?\n/)) {
     line = line.replace(/^﻿/, '').trim();
     const norm = line.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    if (!line || norm.startsWith('pais')) continue;
+    if (!line || /^pais\s*[;,]/.test(norm)) continue;   // cabecera ("país;período;…"); no confundir con "Países Bajos"
 
     const delimiter = line.includes(';') ? ';' : ',';
     const parts = line.split(delimiter).map(p => p.trim());
-    if (parts.length < 7 || !parts[0]) continue;
+    if (parts.length < 7 || !parts[0]) { invalid++; continue; }
 
     const country = getOrCreateCountry(parts[0]);
     const period = getOrCreatePeriod(country.id, parts[1] || 'General');
@@ -653,23 +965,26 @@ function processCSVImport() {
     if (dup) { skipped++; continue; }
     const coin = {
       id: newId(), countryId: country.id, periodId: period.id,
-      denom: parts[2], cecaMaterial: parts[3], rarity, range: parts[5], km: parts[6],
+      denom: parts[2], cecaMaterial: parts[3], rarity, type: DEFAULT_COIN_TYPE, range: parts[5], km: parts[6],
       numistaUrl: '', ucoinUrl: '', acquired: false, year: '', grade: '', hasFront: false, hasBack: false,
       order: nextCoinOrder(period.id), silverWeight: '', silverPurity: '900'
     };
     coins.push(coin);
     imported.push(coin);
     currentCountryId = country.id;
-    albumPeriodId = '';
+    albumPeriodId = ''; albumGroup = '';
   }
 
   if (imported.length > 0) {
     persistMeta();
     saveCoins(imported);
     closeImportModal();
-    if (skipped > 0) alert(`${imported.length} monedas añadidas. ${skipped} ya existían y se han omitido.`);
+    const notes = [];
+    if (skipped > 0) notes.push(`${skipped} ya existían y se han omitido`);
+    if (invalid > 0) notes.push(`${invalid} ${invalid === 1 ? 'línea no tenía' : 'líneas no tenían'} las 7 columnas y se ${invalid === 1 ? 'ha ignorado' : 'han ignorado'}`);
+    if (notes.length) alert(`${imported.length} monedas añadidas. ${notes.join('. ')}.`);
   } else {
     if (pruneEmpty()) persistMeta();   // quita países/períodos creados al leer filas que se han omitido
-    alert(skipped > 0 ? 'Todas las monedas del CSV ya estaban en tu colección.' : 'Formato CSV no válido.');
+    alert(skipped > 0 && invalid === 0 ? 'Todas las monedas del CSV ya estaban en tu colección.' : 'Formato CSV no válido: cada línea necesita 7 columnas (país;período;denominación;ceca;rareza;rango;KM#).');
   }
 }

@@ -2,10 +2,10 @@
    - Archivos propios: primero red (así ves siempre la última versión) y, si no hay conexión, la copia guardada.
    - Recursos externos (Tailwind, iconos, fuentes, banderas): se guardan la primera vez y se reutilizan sin conexión.
    Si cambias de versión y algo se queda antiguo, sube el número de CACHE. */
-const CACHE = 'plaza-mayor-v1';
-const LOCAL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'css/style.css',
+const CACHE = 'plaza-mayor-v27';
+const LOCAL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'img/numista.png', 'img/ucoin.png', 'css/style.css',
   'js/utils.js', 'js/db.js', 'js/data.js', 'js/flags.js', 'js/silver.js', 'js/views-index.js',
-  'js/views-album.js', 'js/views-explore.js', 'js/modals.js', 'js/backup.js', 'js/app.js'];
+  'js/views-album.js', 'js/views-explore.js', 'js/views-stats.js', 'js/modals.js', 'js/backup.js', 'js/app.js'];
 const EXTERNAL = [
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
@@ -32,7 +32,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   // Cotizaciones de la plata: siempre en directo, sin guardar
-  if (/frankfurter|goldprice/.test(url.hostname)) return;
+  if (/frankfurter|goldprice|gold-api|metals\.live|er-api/.test(url.hostname)) return;
 
   if (url.origin === location.origin) {
     e.respondWith(fetch(req).then(r => {

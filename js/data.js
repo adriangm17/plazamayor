@@ -1,6 +1,6 @@
 /* ===== ESTADO Y MODELO DE DATOS =====
-   country: { id, name, tags[], order }
-   period : { id, countryId, name, tags[], order, collapsed, sortMode }
+   country: { id, name, order }
+   period : { id, countryId, name, order, collapsed, sortMode }
    coin   : { id, countryId, periodId, denom, ... }
    Renombrar un país o período solo cambia su `name`: nada más depende del nombre. */
 let coins = [];
@@ -14,9 +14,10 @@ let activeCoinId = null;
 let movingCoinId = null;
 let indiceCollapsedCountries = {};   // por id de país; sin valor = contraído por defecto
 let indiceSearchText = '';
-let selectedTagFilter = '';
 let albumSearch = '';
 let albumOnlyMissing = false;
+let albumOnlyOwned = false;     // solo las monedas que ya se tienen
+let albumOnlySpecial = false;   // solo fichas que no son Circulantes
 
 /* ----- Búsquedas ----- */
 const countryById = id => countries.find(c => c.id === id);
@@ -32,7 +33,7 @@ function getOrCreateCountry(name) {
   name = String(name ?? '').trim() || 'Sin país';
   let c = findCountryByName(name);
   if (!c) {
-    c = { id: newId(), name, tags: [], order: countries.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1 };
+    c = { id: newId(), name, order: countries.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1 };
     countries.push(c);
   }
   return c;
@@ -43,7 +44,7 @@ function getOrCreatePeriod(countryId, name) {
   let p = findPeriodByName(countryId, name);
   if (!p) {
     const mine = periodsOfCountry(countryId);
-    p = { id: newId(), countryId, name, tags: [], order: mine.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1, collapsed: false, sortMode: 'default' };
+    p = { id: newId(), countryId, name, order: mine.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1, collapsed: false, sortMode: 'default' };
     periods.push(p);
   }
   return p;
@@ -54,13 +55,13 @@ function nextCoinOrder(periodId) {
   return list.length > 0 ? Math.max(...list.map(c => c.order ?? 0)) + 1 : 0;
 }
 
-// Elimina períodos sin monedas y países sin períodos. Devuelve true si cambió algo.
+// Elimina períodos sin monedas (salvo los creados a mano, marcados con keep) y países sin períodos. Devuelve true si cambió algo.
 function pruneEmpty() {
   const before = periods.length + countries.length;
   const used = new Set(coins.map(c => c.periodId));
-  periods = periods.filter(p => used.has(p.id));
+  periods = periods.filter(p => p.keep || used.has(p.id));
   const usedCountries = new Set(periods.map(p => p.countryId));
-  countries = countries.filter(c => usedCountries.has(c.id));
+  countries = countries.filter(c => c.keep || usedCountries.has(c.id));
   return periods.length + countries.length !== before;
 }
 
@@ -91,9 +92,22 @@ function periodDisplayName(p) {
   return /\([\d\s–-]+\)/.test(name) ? name : (date ? `${name} (${date})` : name);
 }
 
+/* ----- Ejemplares de una moneda -----
+   coin.items = [{ year, grade, format, notes }]: cada ejemplar que se tiene (puede haber varios).
+   Es la fuente de verdad; coin.grade / coin.year / coin.acquired se derivan del primer ejemplar con conservación. */
+function syncCoinItems(c) {
+  if (!Array.isArray(c.items)) {
+    c.items = (c.grade || c.year) ? [{ year: String(c.year ?? ''), grade: String(c.grade ?? ''), format: DEFAULT_ITEM_FORMAT, notes: '' }] : [];
+  }
+  const first = c.items.find(i => i && String(i.grade || '').trim() !== '');
+  c.acquired = Boolean(first);
+  c.grade = first ? first.grade : '';
+  c.year = first ? first.year : ((c.items[0] && c.items[0].year) || '');
+}
+
 /* ----- Persistencia ----- */
 async function saveCoins(changed) {
-  coins.forEach(c => { c.acquired = Boolean(c.grade && c.grade.trim() !== ''); });
+  coins.forEach(syncCoinItems);
   let list = coins;
   if (changed) list = Array.isArray(changed) ? changed : [changed];
   try { await putCoinsToDB(list); } catch (err) { console.error('Error guardando en BD:', err); }
@@ -118,9 +132,7 @@ function readLegacyPrefs() {
   return {
     periodOrders: safeParseStorage('numis_period_orders', {}),
     collapsedPeriods: safeParseStorage('numis_collapsed_periods', {}),
-    periodSortModes: safeParseStorage('numis_period_sort_modes', {}),
-    countryTags: safeParseStorage('numis_country_tags', {}),
-    periodTags: safeParseStorage('numis_period_tags', {})
+    periodSortModes: safeParseStorage('numis_period_sort_modes', {})
   };
 }
 
@@ -128,7 +140,6 @@ function readLegacyPrefs() {
 function migrateLegacy(rawCoins, prefs) {
   prefs = prefs || {};
   const orders = prefs.periodOrders || {}, collapsed = prefs.collapsedPeriods || {}, sortModes = prefs.periodSortModes || {};
-  const cTags = prefs.countryTags || {}, pTags = prefs.periodTags || {};
   const outCountries = [], outPeriods = [];
   const cMap = new Map(), pMap = new Map();
   const cName = c => String(c.country ?? '').trim() || 'Sin país';
@@ -137,7 +148,7 @@ function migrateLegacy(rawCoins, prefs) {
   rawCoins.forEach(c => {
     const cn = cName(c);
     if (!cMap.has(cn)) {
-      const o = { id: newId(), name: cn, tags: Array.isArray(cTags[cn]) ? cTags[cn].slice() : [], order: outCountries.length };
+      const o = { id: newId(), name: cn, order: outCountries.length };
       cMap.set(cn, o); outCountries.push(o);
     }
   });
@@ -147,7 +158,7 @@ function migrateLegacy(rawCoins, prefs) {
     const ordered = preferred.concat(natural.filter(p => !preferred.includes(p)));
     ordered.forEach((pn, i) => {
       const key = `${cn}_${pn}`;
-      const p = { id: newId(), countryId: country.id, name: pn, tags: Array.isArray(pTags[key]) ? pTags[key].slice() : [], order: i, collapsed: !!collapsed[key], sortMode: sortModes[key] || 'default' };
+      const p = { id: newId(), countryId: country.id, name: pn, order: i, collapsed: !!collapsed[key], sortMode: sortModes[key] || 'default' };
       pMap.set(key, p); outPeriods.push(p);
     });
   });
@@ -172,15 +183,19 @@ function repairReferences() {
     }
     if ('country' in c || 'period' in c) { delete c.country; delete c.period; changed = true; }
   });
-  countries.forEach(c => { if (!Array.isArray(c.tags)) c.tags = []; });
-  periods.forEach(p => { if (!Array.isArray(p.tags)) p.tags = []; if (!p.sortMode) p.sortMode = 'default'; });
+  // El estado "M" pasa a llamarse "TBD" (también en copias de seguridad antiguas)
+  coins.forEach(c => {
+    if (String(c.grade || '').trim() === 'M') { c.grade = 'TBD'; changed = true; }
+    (Array.isArray(c.items) ? c.items : []).forEach(i => { if (i && String(i.grade || '').trim() === 'M') { i.grade = 'TBD'; changed = true; } });
+  });
+  // Las etiquetas ya no existen: se eliminan de los datos guardados (y de copias antiguas al restaurarlas)
+  countries.forEach(c => { if ('tags' in c) { delete c.tags; changed = true; } });
+  periods.forEach(p => { if ('tags' in p) { delete p.tags; changed = true; } if (!p.sortMode) p.sortMode = 'default'; });
   return changed;
 }
 
 /* ----- Carga inicial ----- */
-const DEFAULT_LEGACY_PREFS = {
-  countryTags: { 'España': ['#EUROPA', '#EURO', '#IBARES'], 'Francia': ['#EUROPA', '#EURO'], 'Alemania': ['#EUROPA', '#EURO'] }
-};
+const DEFAULT_LEGACY_PREFS = {};
 const defaultInitialCoins = [
   { id: '1', country: 'España', period: 'Alfonso XII', denom: '25 ptas', cecaMaterial: 'Variante A', rarity: 'RR', range: '1876-1885', km: 'KM# 673', numistaUrl: '', ucoinUrl: '', acquired: true, year: '1876', grade: 'VF', hasFront: false, hasBack: false, order: 0, silverWeight: '', silverPurity: '900' },
   { id: '2', country: 'España', period: 'Alfonso XII', denom: '5 ptas', cecaMaterial: '', rarity: 'PLATA', range: '1875-1885', km: 'KM# 671', numistaUrl: '', ucoinUrl: '', acquired: true, year: '1878', grade: 'AU', hasFront: false, hasBack: false, order: 1, silverWeight: '25.0', silverPurity: '900' },
@@ -195,7 +210,13 @@ const defaultInitialCoins = [
 function normalizeCoins() {
   const counters = {};
   coins.forEach(c => {
-    c.acquired = Boolean(c.grade && c.grade.trim() !== '');
+    if (Array.isArray(c.items)) {
+      c.items = c.items.filter(i => i && typeof i === 'object')
+        .map(i => ({ year: String(i.year ?? ''), grade: String(i.grade ?? ''), format: ITEM_FORMATS.some(f => f.id === i.format) ? i.format : DEFAULT_ITEM_FORMAT, notes: String(i.notes ?? '') }));
+    }
+    syncCoinItems(c);
+    c.type = coinType(c);
+    if (typeof c.rarity === 'string') c.rarity = c.rarity.trim().toUpperCase();
     if (!c.numistaUrl) c.numistaUrl = '';
     if (!c.ucoinUrl) c.ucoinUrl = '';
     if (c.silverWeight === undefined) c.silverWeight = '';
@@ -240,10 +261,7 @@ async function loadData() {
     catch (err) { console.error('Error guardando migración:', err); alert('No se pudo guardar la migración de datos.'); }
   }
 
-  if (!countryById(currentCountryId)) {
-    const first = sortedCountries()[0];
-    currentCountryId = first ? first.id : null;
-  }
+  if (!countryById(currentCountryId)) currentCountryId = null;   // sin país elegido: el Álbum muestra la lista de países
   render();
   fetchSilverPrice();
 }

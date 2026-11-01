@@ -10,8 +10,11 @@ function closeSettingsMenu() {
 }
 
 function switchTab(tabName) {
+  if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; }   // tocar de nuevo la pestaña vuelve al resumen
+  if (tabName !== currentTab && typeof resetAlbumFilters === 'function') resetAlbumFilters();   // al cambiar de pestaña se limpian los filtros del Álbum
   currentTab = tabName;
-  ['album', 'indice', 'explorar'].forEach(t => {
+  document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album');
+  ['album', 'indice', 'explorar', 'estadisticas'].forEach(t => {
     const view = document.getElementById(`view-${t}`);
     const btn = document.getElementById(`nav-btn-${t}`);
     if (t === tabName) {
@@ -33,6 +36,8 @@ function render() {
     renderIndiceView();
   } else if (currentTab === 'explorar') {
     renderExplorar();
+  } else if (currentTab === 'estadisticas') {
+    renderEstadisticas();
   }
 }
 

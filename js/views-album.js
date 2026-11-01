@@ -2,32 +2,113 @@
 let pressTimer = null;
 let isLongPress = false;
 
+let albumGroup = '';   // grupo de períodos elegido ("1er Boliviano · …" → "1er boliviano"); '' = ninguno
+
+/* ----- Agrupar períodos por el texto anterior a " · " (solo si hay 2 o más con el mismo prefijo) ----- */
+function periodGroupParts(p) {
+  const n = periodDisplayName(p);
+  const i = n.indexOf(' · ');
+  return i > 0 ? { key: normKey(n.slice(0, i)), label: n.slice(0, i).trim(), sub: n.slice(i + 3).trim() } : null;
+}
+function periodGroupList() {
+  const ps = periodsOfCountry(currentCountryId);
+  const count = {};
+  ps.forEach(p => { const g = periodGroupParts(p); if (g) count[g.key] = (count[g.key] || 0) + 1; });
+  const items = [], seen = {};
+  ps.forEach(p => {
+    const g = periodGroupParts(p);
+    if (g && count[g.key] >= 2) {
+      if (!seen[g.key]) { seen[g.key] = { group: true, key: g.key, label: g.label, periods: [] }; items.push(seen[g.key]); }
+      seen[g.key].periods.push({ p, sub: g.sub });
+    } else items.push({ group: false, p });
+  });
+  return items;
+}
+function groupKeyOfPeriod(p) {
+  const g = p && periodGroupParts(p);
+  return g && periodGroupList().some(it => it.group && it.key === g.key) ? g.key : '';
+}
+function periodsInAlbumView() {
+  const all = periodsOfCountry(currentCountryId);
+  if (albumPeriodId) return all.filter(p => p.id === albumPeriodId);
+  if (albumGroup) return all.filter(p => { const g = periodGroupParts(p); return g && g.key === albumGroup; });
+  return all;
+}
+function periodProgressText(p) {
+  const n = coinsOfPeriod(p.id).filter(c => !isSilverCoin(c));
+  return `${n.filter(c => c.acquired).length}/${n.length}`;
+}
+
 function validAlbumPeriod() {
   if (albumPeriodId && !periodsOfCountry(currentCountryId).some(p => p.id === albumPeriodId)) albumPeriodId = '';
+  if (albumPeriodId) albumGroup = groupKeyOfPeriod(periodById(albumPeriodId));
+  if (albumGroup && !periodGroupList().some(it => it.group && it.key === albumGroup)) albumGroup = '';
   return albumPeriodId;
 }
 
 function renderTabs() {
-  const list = sortedCountries();
-  if (!countryById(currentCountryId) && list.length > 0) currentCountryId = list[0].id;
-  validAlbumPeriod();
+  if (!countryById(currentCountryId)) currentCountryId = null;
   const country = countryById(currentCountryId);
+  // Sin país elegido se muestra la lista de países y se ocultan cabecera y filtros
+  ['album-country-title', 'period-bar', 'album-filters'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = country ? '' : 'none';
+  });
+  validAlbumPeriod();
   document.getElementById('album-country-title').innerHTML = country
-    ? `<i class="fa-solid fa-chevron-left text-[10px] text-amber-400"></i>${flagChip(country, 32, 22)}<span class="text-xl font-black text-white font-serif-numis tracking-tight truncate">${esc(country.name)}</span>`
+    ? `<i class="fa-solid fa-chevron-left"></i>${flagChip(country, 34, 24)}<span>${esc(country.name)}</span>`
     : '';
   const bar = document.getElementById('period-bar');
-  if (bar && country) bar.style.background = flagTint(country);
-  const ps = periodsOfCountry(currentCountryId);
-  const pill = (active) => `px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${active ? 'bg-amber-500 text-slate-950 shadow-md' : 'bg-[#151c2c] text-gray-400 border border-slate-800'}`;
-  document.getElementById('period-tabs').innerHTML =
-    `<button onclick="selectPeriodTab('')" class="${pill(!albumPeriodId)}">Todas</button>` +
-    ps.map(p => `<button onclick="selectPeriodTab('${jsArg(p.id)}')" class="${pill(p.id === albumPeriodId)}">${esc(periodDisplayName(p))}</button>`).join('');
+  if (bar && country) bar.style.background = `linear-gradient(90deg,rgba(61,26,84,.97) 0%,rgba(61,26,84,.88) 60%,rgba(61,26,84,.7) 100%),${flagLayers(country)}`;
+  if (!country) return;
+  const tabs = document.getElementById('period-tabs');
+  const oldScroll = tabs.querySelector('.xa-scroll');
+  const keepLeft = oldScroll ? oldScroll.scrollLeft : 0;
+  const pill = (active) => `xa-pill ${active ? 'xa-on' : ''}`;
+  const pc = (txt) => `<span class="xa-pc">${esc(txt)}</span>`;
+  const items = periodGroupList();
+  const chips = items.map(it => it.group
+    ? `<button onclick="selectGroupTab('${jsArg(it.key)}')" class="${pill(albumGroup === it.key)} xa-pgroup" data-active="${albumGroup === it.key ? 1 : ''}">${esc(it.label)}${pc(it.periods.length + ' ▾')}</button>`
+    : `<button onclick="selectPeriodTab('${jsArg(it.p.id)}')" class="${pill(it.p.id === albumPeriodId)}" data-active="${it.p.id === albumPeriodId ? 1 : ''}">${esc(periodDisplayName(it.p))}${pc(periodProgressText(it.p))}</button>`
+  ).join('');
+  const grp = albumGroup ? items.find(it => it.group && it.key === albumGroup) : null;
+  const subRow = grp
+    ? `<div class="xa-subrow"><button onclick="selectGroupTab('${jsArg(grp.key)}', true)" class="${pill(!albumPeriodId)} xa-sub">Todo ${esc(grp.label)}</button>` +
+      grp.periods.map(x => `<button onclick="selectPeriodTab('${jsArg(x.p.id)}')" class="${pill(x.p.id === albumPeriodId)} xa-sub">${esc(x.sub)}${pc(periodProgressText(x.p))}</button>`).join('') + `</div>`
+    : '';
+  tabs.innerHTML =
+    `<div class="xa-tabrow">` +
+      `<button onclick="selectPeriodTab('')" class="${pill(!albumPeriodId && !albumGroup)}">Todas</button>` +
+      `<div class="xa-scroll">${chips}</div>` +
+      `<button onclick="openAddPeriodModal('${jsArg(currentCountryId)}')" class="xa-pill xa-plus" title="Añadir período" aria-label="Añadir período"><i class="fa-solid fa-plus"></i></button>` +
+    `</div>` + subRow;
+  const sc = tabs.querySelector('.xa-scroll');
+  sc.scrollLeft = keepLeft;
+  const act = sc.querySelector('[data-active="1"]');
+  if (act && (act.offsetLeft < sc.scrollLeft || act.offsetLeft + act.offsetWidth > sc.scrollLeft + sc.clientWidth))
+    sc.scrollLeft = act.offsetLeft - 8;
 }
 
 function selectPeriodTab(periodId) {
+  if (periodId !== albumPeriodId) resetAlbumFilters();
   albumPeriodId = periodId;
   const p = periodById(periodId);
+  albumGroup = p ? groupKeyOfPeriod(p) : '';
   if (p && p.collapsed) { p.collapsed = false; persistMeta(); }
+  if (p && coinsOfPeriod(p.id).length === 0) periodForceOpen[p.id] = true;   // elegido a propósito: se abre
+  movingCoinId = null;
+  renderSections();
+  renderTabs();
+}
+
+// Elegir un grupo de períodos (volver a tocarlo lo quita, salvo desde "Todo el grupo")
+function selectGroupTab(key, force) {
+  if (!force && albumGroup === key && !albumPeriodId) { selectPeriodTab(''); return; }
+  resetAlbumFilters();
+  albumGroup = key;
+  albumPeriodId = '';
+  periodsInAlbumView().forEach(p => { p.collapsed = false; });
+  persistMeta();
   movingCoinId = null;
   renderSections();
   renderTabs();
@@ -48,10 +129,10 @@ function onCountrySearchInput(value) {
   const list = countrySuggestions(value);
   const n = value.replace(/^\s+/, '').length;
   box.innerHTML = list.length === 0
-    ? `<div class="px-3 py-2 text-[11px] text-slate-500">Ningún país empieza por "${esc(value.trim())}"</div>`
+    ? `<div class="xa-none">Ningún país empieza por "${esc(value.trim())}"</div>`
     : list.map(c => `
-      <button onmousedown="event.preventDefault()" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 border-b border-slate-800/60 last:border-0 ${c.id === currentCountryId ? 'text-amber-400' : ''}">
-        <span class="flex items-center gap-2">${flagChip(c, 20, 14)}<span><b class="text-amber-400">${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span></span>
+      <button onmousedown="event.preventDefault()" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="xa-sug ${c.id === currentCountryId ? 'xa-cur' : ''}">
+        <span class="flex items-center gap-2">${flagChip(c, 20, 14)}<span><b>${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span></span>
       </button>`).join('');
   box.classList.remove('hidden');
 }
@@ -82,20 +163,22 @@ window.addEventListener('click', e => {
 });
 
 function selectCountry(countryId) {
+  resetAlbumFilters();
   currentCountryId = countryId;
   albumPeriodId = '';
+  albumGroup = '';
   movingCoinId = null;
   render();
 }
 
 function expandAllPeriods() {
-  periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = false; });
+  periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = false; periodForceOpen[p.id] = true; });
   persistMeta();
   renderSections();
 }
 
 function collapseAllPeriods() {
-  periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = true; });
+  periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = true; periodForceOpen[p.id] = false; });
   persistMeta();
   renderSections();
 }
@@ -103,16 +186,50 @@ function collapseAllPeriods() {
 function toggleCollapse(periodId) {
   const p = periodById(periodId);
   if (!p) return;
-  p.collapsed = !p.collapsed;
+  if (coinsOfPeriod(periodId).length === 0) periodForceOpen[periodId] = !periodForceOpen[periodId];
+  else p.collapsed = !p.collapsed;
+  // Con varias épocas a la vista funciona como acordeón: al abrir una se pliegan las demás
+  const opened = coinsOfPeriod(periodId).length === 0 ? !!periodForceOpen[periodId] : !p.collapsed;
+  const view = periodsInAlbumView();
+  if (opened && view.length > 1) view.forEach(q => {
+    if (q.id === periodId) return;
+    if (coinsOfPeriod(q.id).length === 0) periodForceOpen[q.id] = false; else q.collapsed = true;
+  });
   persistMeta();
+  renderSections();
+  if (opened && view.length > 1) {
+    const el = document.getElementById('period-section-' + periodId);
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+}
+
+// Gira a la vez todas las monedas visibles del período (si alguna está de cara, las pone todas del reverso; si no, todas de cara)
+function flipPeriodCoins(periodId) {
+  const inners = [...document.querySelectorAll('#period-section-' + CSS.escape(periodId) + ' .coin-inner')];
+  if (!inners.length) return;
+  const toBack = inners.some(el => !el.classList.contains('flipped'));
+  inners.forEach(el => el.classList.toggle('flipped', toBack));
+}
+
+// Filtro "solo las que me faltan" de un período concreto (solo durante la sesión, no se guarda)
+// Los períodos sin monedas salen contraídos por defecto; aquí se recuerdan (solo durante la sesión) los que se abren a propósito
+const periodForceOpen = {};
+function periodIsCollapsed(p) {
+  return coinsOfPeriod(p.id).length === 0 ? !periodForceOpen[p.id] : !!p.collapsed;
+}
+
+const periodOnlyMissing = {};
+function togglePeriodMissing(periodId) {
+  periodOnlyMissing[periodId] = !periodOnlyMissing[periodId];
+  if (periodOnlyMissing[periodId]) periodOnlyOwned[periodId] = false;   // "faltan" y "tengo" son excluyentes
   renderSections();
 }
 
-function setPeriodSortMode(periodId, mode) {
-  const p = periodById(periodId);
-  if (!p) return;
-  p.sortMode = mode;
-  persistMeta();
+// Filtro "solo las que tengo" de un período concreto (también solo durante la sesión)
+const periodOnlyOwned = {};
+function togglePeriodOwned(periodId) {
+  periodOnlyOwned[periodId] = !periodOnlyOwned[periodId];
+  if (periodOnlyOwned[periodId]) periodOnlyMissing[periodId] = false;
   renderSections();
 }
 
@@ -124,20 +241,23 @@ function movePeriod(periodId, direction) {
   list.forEach((p, i) => { p.order = i; });
   [list[idx].order, list[target].order] = [list[target].order, list[idx].order];
   persistMeta();
-  renderSections();
+  render();
 }
 
 /* ----- Filtros ----- */
 function isAlbumFilterActive() {
-  return albumSearch.trim() !== '' || albumOnlyMissing;
+  return albumSearch.trim() !== '' || albumOnlyMissing || albumOnlyOwned || albumOnlySpecial;
 }
 
 function matchesAlbumFilter(c) {
   if (albumOnlyMissing && c.acquired) return false;
+  if (albumOnlyOwned && !c.acquired) return false;
+  if (albumOnlySpecial && coinType(c) === DEFAULT_COIN_TYPE) return false;
   const q = albumSearch.trim().toLowerCase();
   if (!q) return true;
   const p = periodById(c.periodId);
-  const haystack = [c.denom, c.km, c.cecaMaterial, c.rarity, c.range, p ? p.name : '', c.year, c.grade]
+  const itemsText = (c.items || []).map(i => `${i.year} ${i.grade} ${i.notes}`).join(' ');
+  const haystack = [c.denom, c.km, c.cecaMaterial, c.rarity, c.range, p ? p.name : '', itemsText]
     .map(v => String(v ?? '').toLowerCase()).join(' ');
   return q.split(/\s+/).every(word => haystack.includes(word));
 }
@@ -147,13 +267,46 @@ function onAlbumSearchInput(value) {
   renderSections();
 }
 
+// Botones-filtro del Álbum (solo icono): activo = ámbar
+function setFilterButtonState(id, active) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.className = 'xp-btn' + (active ? ' xp-on' : '');
+}
+
+// Resetea todos los filtros del Álbum (búsqueda, faltantes, no circulantes y "faltantes" por período).
+// No repinta: quien la llama se encarga de renderizar.
+function resetAlbumFilters() {
+  albumSearch = '';
+  albumOnlyMissing = false;
+  albumOnlyOwned = false;
+  albumOnlySpecial = false;
+  Object.keys(periodOnlyMissing).forEach(k => delete periodOnlyMissing[k]);
+  Object.keys(periodOnlyOwned).forEach(k => delete periodOnlyOwned[k]);
+  const input = document.getElementById('album-search');
+  if (input) input.value = '';
+  setFilterButtonState('btn-only-missing', false);
+  setFilterButtonState('btn-only-owned', false);
+  setFilterButtonState('btn-only-special', false);
+}
+
 function toggleOnlyMissing() {
   albumOnlyMissing = !albumOnlyMissing;
-  const btn = document.getElementById('btn-only-missing');
-  if (btn) {
-    btn.className = 'shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold border transition ' +
-      (albumOnlyMissing ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-300 border-slate-800');
-  }
+  if (albumOnlyMissing) { albumOnlyOwned = false; setFilterButtonState('btn-only-owned', false); }   // excluyentes entre sí
+  setFilterButtonState('btn-only-missing', albumOnlyMissing);
+  renderSections();
+}
+
+function toggleOnlyOwned() {
+  albumOnlyOwned = !albumOnlyOwned;
+  if (albumOnlyOwned) { albumOnlyMissing = false; setFilterButtonState('btn-only-missing', false); }
+  setFilterButtonState('btn-only-owned', albumOnlyOwned);
+  renderSections();
+}
+
+function toggleOnlySpecial() {
+  albumOnlySpecial = !albumOnlySpecial;
+  setFilterButtonState('btn-only-special', albumOnlySpecial);
   renderSections();
 }
 
@@ -189,7 +342,9 @@ function setMovingCoin(coinId) {
 
 function flipGridCoin(event, coinId) {
   event.stopPropagation();
-  const inner = document.getElementById(`grid-coin-inner-${coinId}`);
+  // Se busca dentro de la propia tarjeta: el mismo id puede existir también en la página de estado de Estadísticas (oculta)
+  const host = event.currentTarget && event.currentTarget.querySelector ? event.currentTarget : null;
+  const inner = (host && host.querySelector('.coin-inner')) || document.getElementById(`grid-coin-inner-${coinId}`);
   if (inner) inner.classList.toggle('flipped');
 }
 
@@ -210,30 +365,38 @@ function moveCoin(coinId, direction) {
 }
 
 /* ----- Pintado ----- */
+// Lista de países en burbujas (bandera + nombre) para elegir uno cuando aún no hay ninguno seleccionado
+function renderCountryPicker(container) {
+  const list = alphaCountries();
+  if (!list.length) { container.innerHTML = `<div class="xp-empty-msg">Aún no hay países en la colección.</div>`; return; }
+  container.innerHTML = `
+    <span class="xs-kicker block">Álbum</span>
+    <h2 class="xs-h1" style="font-size:30px">Elige un país</h2>
+    <div class="xa-bubbles">${list.map(c => `
+      <button type="button" class="xa-bubble" onclick="selectCountry('${jsArg(c.id)}')">${flagChip(c, 24, 17)}<span>${esc(prettyName(c.name))}</span></button>`).join('')}
+    </div>`;
+}
+
 function renderSections() {
   const container = document.getElementById('album-sections');
+  if (!countryById(currentCountryId)) { renderCountryPicker(container); return; }
   const filtered = coinsOfCountry(currentCountryId);
 
-  if (filtered.length === 0) {
-    container.innerHTML = `<div class="text-center py-10 text-gray-500 text-xs">No hay monedas registradas en este país.</div>`;
+  if (periodsOfCountry(currentCountryId).length === 0) {
+    container.innerHTML = `<div class="xp-empty-msg">Este país aún no tiene períodos. Usa el botón + de arriba para añadir uno.</div>`;
     return;
   }
 
   const filterActive = isAlbumFilterActive();
 
-  const onlyPeriod = validAlbumPeriod();
-  const sectionsHtml = periodsOfCountry(currentCountryId).filter(p => !onlyPeriod || p.id === onlyPeriod).map(p => {
+  validAlbumPeriod();
+  let secNum = 0;
+  const sectionsHtml = periodsInAlbumView().map(p => {
     const allPeriodCoins = filtered.filter(c => c.periodId === p.id);
-    const periodCoins = allPeriodCoins.filter(matchesAlbumFilter).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    if (filterActive && periodCoins.length === 0) return '';
-
-    const sortMode = p.sortMode || 'default';
-    if (sortMode === 'missing_first') {
-      periodCoins.sort((a, b) => {
-        if (a.acquired === b.acquired) return (a.order ?? 0) - (b.order ?? 0);
-        return a.acquired ? 1 : -1;
-      });
-    }
+    const onlyMissingHere = !!periodOnlyMissing[p.id];
+    const onlyOwnedHere = !!periodOnlyOwned[p.id];
+    const periodCoins = allPeriodCoins.filter(c => matchesAlbumFilter(c) && !(onlyMissingHere && c.acquired) && !(onlyOwnedHere && !c.acquired)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (filterActive && periodCoins.length === 0 && !onlyMissingHere && !onlyOwnedHere) return '';
 
     const normalCoins = allPeriodCoins.filter(c => !isSilverCoin(c));
     const acquiredCount = normalCoins.filter(c => c.acquired).length;
@@ -242,65 +405,45 @@ function renderSections() {
     const silverCoins = allPeriodCoins.filter(isSilverCoin);
     const silverPct = silverCoins.length > 0 ? Math.round((silverCoins.filter(c => c.acquired).length / silverCoins.length) * 100) : 0;
 
-    const isCollapsed = !!p.collapsed;
+    const isCollapsed = periodIsCollapsed(p);
     const pid = esc(p.id);
+    const num = String(++secNum).padStart(2, '0');
 
     return `
-      <div id="period-section-${pid}" class="bg-[#151c2c]/70 border border-slate-800/80 rounded-2xl p-2.5 space-y-2">
-        <div class="border-b border-slate-800 pb-2 px-0.5 space-y-1.5">
-          <div class="flex flex-wrap justify-between items-center gap-1.5">
-            <div class="flex items-center space-x-1.5 min-w-0">
-              <div class="cursor-pointer select-none flex items-center space-x-1.5 min-w-0" onclick="toggleCollapse('${pid}')">
-                <i class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-[11px] text-amber-400 shrink-0"></i>
-                <h3 class="text-xs sm:text-sm font-black text-amber-400 uppercase tracking-wider truncate">${esc(periodDisplayName(p))}</h3>
-              </div>
-              ${(p.tags || []).map(t => `<span class="text-[8px] bg-slate-800 text-slate-400 border border-slate-700 px-1 rounded font-mono shrink-0">${esc(t)}</span>`).join('')}
-              <button onclick="openEditPeriodModal('${pid}')" class="text-slate-500 hover:text-amber-400 text-xs px-1 py-0.5 rounded transition shrink-0" title="Editar período y etiquetas">
-                <i class="fa-solid fa-pen text-[10px]"></i>
-              </button>
-            </div>
-
-            <div class="flex items-center space-x-1.5">
-              <div class="bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-lg flex items-center gap-1">
-                <span class="text-[10px] font-bold text-amber-400">${acquiredCount}/${totalCount}</span>
-                <span class="text-[10px] font-black text-amber-300">(${normalPct}%)</span>
-              </div>
-
-              <div class="flex items-center bg-[#182030] rounded-lg p-0.5 border border-slate-800">
-                <button onclick="setPeriodSortMode('${pid}', 'default')"
-                  class="px-1.5 py-0.5 text-[10px] font-bold rounded-md transition ${sortMode === 'default' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}">
-                  <i class="fa-solid fa-arrow-down-1-9"></i> Def.
-                </button>
-                <button onclick="setPeriodSortMode('${pid}', 'missing_first')"
-                  class="px-1.5 py-0.5 text-[10px] font-bold rounded-md transition ${sortMode === 'missing_first' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}">
-                  <i class="fa-solid fa-circle-exclamation"></i> Faltan
-                </button>
-              </div>
-
-              <div class="flex space-x-0.5">
-                <button onclick="movePeriod('${pid}', -1)" class="text-gray-500 hover:text-white p-1 text-[10px]"><i class="fa-solid fa-arrow-up"></i></button>
-                <button onclick="movePeriod('${pid}', 1)" class="text-gray-500 hover:text-white p-1 text-[10px]"><i class="fa-solid fa-arrow-down"></i></button>
-              </div>
-            </div>
-          </div>
-
-          ${renderDualProgressBar(normalPct, silverPct, silverCoins.length > 0)}
+      <section id="period-section-${pid}" class="xa-sec">
+        <div class="xp-head xa-head" onclick="toggleCollapse('${pid}')" role="button" aria-expanded="${!isCollapsed}">
+          <span class="xp-num">${num}</span>
+          <span class="xp-title" style="font-size:19px">${esc(periodDisplayName(p))}</span>
+          <span class="xa-tools" onclick="event.stopPropagation()">
+            <button onclick="openEditPeriodModal('${pid}')" class="xp-btn" title="Editar período" aria-label="Editar período"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="openCreateModal('${pid}')" class="xp-btn" title="Añadir una moneda a este período" aria-label="Añadir una moneda a este período"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="toggleCollapse('${pid}')" class="xp-btn" title="${isCollapsed ? 'Desplegar período' : 'Contraer período'}" aria-label="${isCollapsed ? 'Desplegar período' : 'Contraer período'}"><i class="fa-solid fa-angles-${isCollapsed ? 'down' : 'up'}"></i></button>
+            <button onclick="flipPeriodCoins('${pid}')" class="xp-btn" title="Girar todas las monedas del período" aria-label="Girar todas las monedas del período"><i class="fa-solid fa-rotate"></i></button>
+            <button onclick="togglePeriodMissing('${pid}')" class="xp-btn ${onlyMissingHere ? 'xp-on' : ''}" title="Ver solo las que me faltan de este período" aria-label="Ver solo las que me faltan de este período"><i class="fa-solid fa-circle-exclamation"></i></button>
+            <button onclick="togglePeriodOwned('${pid}')" class="xp-btn ${onlyOwnedHere ? 'xp-on' : ''}" title="Ver solo las que tengo de este período" aria-label="Ver solo las que tengo de este período"><i class="fa-solid fa-circle-check"></i></button>
+          </span>
+        </div>
+        <div class="xa-prog">
+          <span class="xa-count">${acquiredCount}/${totalCount} · <b>${normalPct}%</b></span>
+          ${indiceBars(normalPct, silverPct, silverCoins.length > 0)}
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 ${isCollapsed ? 'hidden' : ''}">
+        <div class="xa-grid ${isCollapsed ? 'hidden' : ''}">
           ${(isCollapsed ? [] : periodCoins).map(renderCoinCard).join('')}
+          ${(!isCollapsed && periodCoins.length === 0) ? `<p class="xa-msg">${allPeriodCoins.length === 0 ? 'Este período aún no tiene monedas. Usa el + para añadir la primera.' : 'No hay monedas que mostrar con este filtro.'}</p>` : ''}
         </div>
-      </div>
+      </section>
     `;
   }).join('');
 
   container.innerHTML = sectionsHtml.trim() !== ''
     ? sectionsHtml
-    : `<div class="text-center py-10 text-gray-500 text-xs">Ninguna moneda coincide con el filtro.</div>`;
+    : `<div class="xp-empty-msg">Ninguna moneda coincide con el filtro.</div>`;
   hydrateImages(container);
 }
 
-function renderCoinCard(c) {
+function renderCoinCard(c, opts) {
+  opts = (opts && typeof opts === 'object') ? opts : {};   // (.map le pasa el índice como 2.º argumento)
   let baseStyleClass = 'coin-base-style';
   const mat = (c.cecaMaterial || '').toLowerCase();
   if (mat.includes('oro')) baseStyleClass = 'coin-oro-style';
@@ -308,40 +451,56 @@ function renderCoinCard(c) {
 
   const isPlata = isSilverCoin(c);
   const hasCeca = c.cecaMaterial && c.cecaMaterial.trim() !== '';
-  const isMoving = movingCoinId === c.id;
+  const isMoving = !opts.plain && movingCoinId === c.id;
 
   const cardBorderClass = isMoving
     ? 'coin-moving-active'
     : (c.acquired
-      ? 'border-[#0d9488] shadow-[0_0_10px_rgba(13,148,136,0.25)]'
-      : (isPlata ? 'border-[#94a3b8] shadow-[0_0_12px_rgba(148,163,184,0.25)]' : 'border-slate-800'));
+      ? ({ F: 'border-[#a3b84a] shadow-[0_0_10px_rgba(163,184,74,0.28)]',      // F: verde pálido amarillento
+           TBD: 'border-[#8d8cb3] shadow-[0_0_10px_rgba(141,140,179,0.22)] ' }[bestGrade(c)]   // TBD: morado pálido grisáceo
+         || 'border-[#0d9488] shadow-[0_0_10px_rgba(13,148,136,0.25)]')
+      : (isPlata ? 'border-[#7f8aa3]/60' : 'border-[#e8d5ac]/20'));
 
   const cecaOrValue = isPlata
-    ? `<span class="text-emerald-400 font-black">${computeCoinSilverValue(c) || '0,00 €'}</span>`
+    ? `<span class="xc-price">${computeCoinSilverValue(c) || '0,00 €'}</span>`
     : (hasCeca ? esc(c.cecaMaterial) : '—');
 
   const id = esc(c.id);
   const denom = esc(c.denom);
+  // Círculo del tipo en la esquina superior derecha (los circulantes no llevan marca)
+  const type = coinType(c), typeColor = COIN_TYPE_COLORS[type];
+  const typeDot = type === DEFAULT_COIN_TYPE ? '' :
+    `<span class="absolute top-2 right-2 z-10 w-3.5 h-3.5 rounded-full pointer-events-none" style="background:${typeColor};border:2px solid ${typeColor}" title="${esc(type)}"></span>`;
+
+  // Iconos de formato en la esquina superior izquierda (solo los distintos del formato por defecto, de los ejemplares que se tienen)
+  const ownedFormats = [...new Set((c.items || []).filter(i => i && String(i.grade || '').trim() !== '').map(i => i.format).filter(f => f && f !== DEFAULT_ITEM_FORMAT && ITEM_FORMATS.some(x => x.id === f)))];
+  const formatMark = ownedFormats.length === 0 ? '' :
+    `<span class="absolute top-2 left-2 z-10 flex gap-0.5 pointer-events-none" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`;
 
   return `
     <div
       id="coin-card-${id}"
-      onmousedown="handleCoinTouchStart(event, '${id}')"
+      ${opts.plain ? `onclick="openCoinModal('${id}')"` : `onmousedown="handleCoinTouchStart(event, '${id}')"
       onmouseup="handleCoinTouchEnd(event, '${id}')"
       onmouseleave="handleCoinTouchEnd(event, '${id}')"
       ontouchstart="handleCoinTouchStart(event, '${id}')"
       ontouchend="handleCoinTouchEnd(event, '${id}')"
       ontouchmove="handleCoinTouchMove(event)"
-      onclick="handleCoinClick(event, '${id}')"
-      class="bg-[#151c2c] border ${cardBorderClass} rounded-2xl p-1.5 flex flex-col items-center justify-between hover:border-amber-500/50 transition shadow-lg relative group cursor-pointer w-full select-none">
+      onclick="handleCoinClick(event, '${id}')"`}
+      class="xc ${cardBorderClass}">
+
+      ${typeDot}
+      ${formatMark}
+
+      ${opts.extra || ''}
 
       ${isMoving ? `
-        <div class="w-full bg-amber-500/20 border border-amber-500/50 rounded-xl p-1 mb-1 flex items-center justify-between text-amber-400 z-20">
-          <button onclick="event.stopPropagation(); moveCoin('${id}', -1)" class="w-5 h-5 bg-amber-500 text-slate-950 font-bold rounded-lg flex items-center justify-center hover:bg-amber-400 transition">
+        <div class="xc-move">
+          <button onclick="event.stopPropagation(); moveCoin('${id}', -1)">
             <i class="fa-solid fa-arrow-left text-[9px]"></i>
           </button>
-          <span class="text-[8px] font-bold uppercase tracking-widest text-amber-300">Mover</span>
-          <button onclick="event.stopPropagation(); moveCoin('${id}', 1)" class="w-5 h-5 bg-amber-500 text-slate-950 font-bold rounded-lg flex items-center justify-center hover:bg-amber-400 transition">
+          <span class="text-[8px] font-bold uppercase tracking-widest">Mover</span>
+          <button onclick="event.stopPropagation(); moveCoin('${id}', 1)">
             <i class="fa-solid fa-arrow-right text-[9px]"></i>
           </button>
         </div>
@@ -358,31 +517,31 @@ function renderCoinCard(c) {
         </div>
       </div>
 
-      <div class="w-full mt-1 space-y-1">
-        <div class="w-full bg-[#1e293b] text-white font-black text-sm sm:text-base py-0.5 px-1 rounded border border-slate-700/80 truncate shadow-inner text-center leading-tight">
+      <div class="w-full mt-2 space-y-1.5">
+        <div class="xc-denom">
           ${denom}
         </div>
 
         <div class="flex gap-1 w-full">
-          <div class="w-[55%] bg-[#1e293b] text-white font-black text-xs sm:text-sm py-0.5 px-0.5 rounded border border-slate-700/80 tracking-wider truncate flex items-center justify-center leading-tight">
+          <div class="xc-cell xc-soft w-[55%] tracking-wider">
             ${esc(formatYearRange(c.range))}
           </div>
-          <div class="w-[45%] font-black text-xs sm:text-sm py-0.5 px-0.5 rounded border border-slate-700/80 truncate text-center flex items-center justify-center shadow-inner leading-tight" style="${getRarityStyle(c.rarity)}">
+          <div class="xc-cell w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(232,213,172,.16);color:#E8D5AC;'}">
             ${esc(c.rarity || '-')}
           </div>
         </div>
 
         <div class="flex gap-1 w-full">
-          <div class="w-[45%] bg-[#334155] text-white font-black text-xs sm:text-sm py-0.5 px-0.5 rounded border border-slate-600/80 truncate text-center flex items-center justify-center leading-tight">
+          <div class="xc-cell xc-km w-[45%]">
             ${esc(c.km || 'KM#-')}
           </div>
-          <div class="w-[55%] bg-[#182030] text-white font-normal text-[11px] sm:text-xs py-0.5 px-0.5 rounded border border-slate-700/80 truncate text-center flex items-center justify-center leading-tight">
+          <div class="xc-cell xc-soft w-[55%]" style="font-weight:600;font-size:11px">
             ${cecaOrValue}
           </div>
         </div>
 
         ${isMoving ? `
-          <button onclick="event.stopPropagation(); setMovingCoin('${id}')" class="w-full mt-1 bg-slate-800 text-amber-400 hover:bg-slate-700 text-xs font-bold py-1 px-2 rounded-lg border border-slate-700 transition">
+          <button onclick="event.stopPropagation(); setMovingCoin('${id}')" class="xc-ok">
             Listo
           </button>
         ` : ''}

@@ -15,9 +15,9 @@ const FLAG_CODES_RAW = [
   // Asia
   'china:cn,japon:jp,corea del sur:kr,corea del norte:kp,corea:kr,india:in,pakistan:pk,banglades:bd,sri lanka:lk,nepal:np,butan:bt,birmania:mm,myanmar:mm,tailandia:th,vietnam:vn,laos:la,camboya:kh,malasia:my,singapur:sg,indonesia:id,filipinas:ph,brunei:bn,taiwan:tw,hong kong:hk,macao:mo,mongolia:mn,kazajistan:kz,uzbekistan:uz,turkmenistan:tm,kirguistan:kg,tayikistan:tj,afganistan:af,iran:ir,irak:iq,siria:sy,libano:lb,israel:il,jordania:jo,arabia saudi:sa,arabia saudita:sa,yemen:ye,oman:om,emiratos arabes:ae,catar:qa,qatar:qa,bahrein:bh,kuwait:kw,turquia:tr,georgia:ge,armenia:am,azerbaiyan:az,maldivas:mv,palestina:ps',
   // África
-  'egipto:eg,libia:ly,tunez:tn,argelia:dz,marruecos:ma,sudan del sur:ss,sudan:sd,etiopia:et,eritrea:er,somalia:so,yibuti:dj,kenia:ke,uganda:ug,tanzania:tz,ruanda:rw,burundi:bi,republica democratica del congo:cd,congo:cg,angola:ao,zambia:zm,zimbabue:zw,mozambique:mz,malaui:mw,madagascar:mg,mauricio:mu,seychelles:sc,namibia:na,botsuana:bw,sudafrica:za,suazilandia:sz,esuatini:sz,lesoto:ls,nigeria:ng,ghana:gh,costa de marfil:ci,senegal:sn,mali:ml,niger:ne,chad:td,camerun:cm,gabon:ga,guinea ecuatorial:gq,guinea bisau:gw,guinea:gn,sierra leona:sl,liberia:lr,togo:tg,benin:bj,burkina faso:bf,mauritania:mr,gambia:gm,cabo verde:cv,santo tome:st,comoras:km,centroafricana:cf,sahara:eh',
+  'egipto:eg,libia:ly,tunez:tn,argelia:dz,marruecos:ma,sudan del sur:ss,sudan:sd,etiopia:et,eritrea:er,somalia:so,yibuti:dj,kenia:ke,uganda:ug,tanzania:tz,ruanda:rw,burundi:bi,republica democratica del congo:cd,congo:cg,angola:ao,zambia:zm,zimbabue:zw,mozambique:mz,malaui:mw,madagascar:mg,mauricio:mu,seychelles:sc,namibia:na,botsuana:bw,sudafrica:za,suazilandia:sz,esuatini:sz,lesoto:ls,nigeria:ng,ghana:gh,costa de marfil:ci,senegal:sn,mali:ml,niger:ne,chad:td,camerun:cm,gabon:ga,guinea ecuatorial:gq,guinea bisau:gw,guinea bissau:gw,guinea:gn,sierra leona:sl,liberia:lr,togo:tg,benin:bj,burkina faso:bf,mauritania:mr,gambia:gm,cabo verde:cv,santo tome:st,comoras:km,centroafricana:cf,sahara:eh',
   // Oceanía
-  'australia:au,nueva zelanda:nz,papua:pg,fiyi:fj,samoa:ws,tonga:to,vanuatu:vu,islas salomon:sb,kiribati:ki,tuvalu:tv,nauru:nr,palaos:pw'
+  'australia:au,nueva zelanda:nz,papua nueva guinea:pg,papua:pg,fiyi:fj,samoa:ws,tonga:to,vanuatu:vu,islas salomon:sb,kiribati:ki,tuvalu:tv,nauru:nr,palaos:pw'
 ].join(',');
 
 // Estados históricos sin bandera actual: se pintan con los colores de la suya
@@ -36,7 +36,7 @@ const FLAG_HISTORIC = {
   'imperio ruso': ['#ffffff', '#0039a6', '#d52b1e']
 };
 
-function flagNorm(s) { return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+function flagNorm(s) { return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-–—_]+/g, ' ').replace(/\s+/g, ' ').trim(); }   // "Austria-Hungría" = "austria hungria"
 
 // Claves ordenadas de más larga a más corta: "alemania oriental" gana a "alemania"
 const FLAG_KEYS = (() => {

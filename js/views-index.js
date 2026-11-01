@@ -4,15 +4,10 @@ function onIndiceSearchInput(val) {
   renderIndiceView();
 }
 
-function filterByTag(tag) {
-  selectedTagFilter = (selectedTagFilter === tag) ? '' : tag;
-  renderIndiceView();
-}
-
-// Por defecto los períodos salen contraídos; si hay búsqueda o etiqueta activa se muestran para ver las coincidencias
+// Por defecto los períodos salen contraídos; si hay búsqueda se muestran para ver las coincidencias
 function isIndiceCollapsed(countryId) {
   const v = indiceCollapsedCountries[countryId];
-  if (v === undefined) return !(indiceSearchText || selectedTagFilter);
+  if (v === undefined) return !indiceSearchText;
   return v;
 }
 
@@ -33,7 +28,7 @@ function toggleIndiceCountry(countryId) {
 
 function jumpToCountry(countryId) {
   currentCountryId = countryId;
-  albumPeriodId = '';
+  albumPeriodId = ''; albumGroup = '';
   switchTab('album');
 }
 
@@ -43,6 +38,7 @@ function jumpToPeriod(periodId) {
   currentCountryId = p.countryId;
   albumPeriodId = periodId;
   p.collapsed = false;
+  if (coinsOfPeriod(periodId).length === 0) periodForceOpen[periodId] = true;   // se pidió ese período: se abre aunque esté vacío
   persistMeta();
   switchTab('album');
   setTimeout(() => {
@@ -51,6 +47,7 @@ function jumpToPeriod(periodId) {
   }, 100);
 }
 
+function addPeriodFromIndice(countryId) { currentCountryId = countryId; openAddPeriodModal(countryId); }
 function editCountryFromIndice(countryId) { currentCountryId = countryId; openEditCountryModal(); }
 function editPeriodFromIndice(periodId) {
   const p = periodById(periodId);
@@ -59,42 +56,28 @@ function editPeriodFromIndice(periodId) {
   openEditPeriodModal(periodId);
 }
 
+// Barra de progreso (normal + plata) con los colores del estilo póster
+function indiceBars(normalPct, silverPct, hasSilver) {
+  const tr = (cls, pct, w, title) => `<div class="xs-track" style="width:${w}"${title ? ` title="${title}"` : ''}><i class="${cls}" style="width:${pct}%"></i></div>`;
+  return `<div class="xi-bars">${tr('', normalPct, hasSilver ? '75%' : '100%')}${hasSilver ? tr('silver-gradient-fill', silverPct, '25%', 'Monedas de Plata') : ''}</div>`;
+}
+
 function renderIndiceView() {
   const container = document.getElementById('indice-countries-container');
-  const tagsBar = document.getElementById('indice-tags-bar');
   const list = [...countries].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="text-center py-10 text-gray-500 text-xs">No hay datos en el índice.</div>`;
-    tagsBar.innerHTML = '';
+    container.innerHTML = `<div class="xp-empty-msg">No hay datos en el índice.</div>`;
     return;
   }
-
-  const allTags = new Set();
-  countries.forEach(c => (c.tags || []).forEach(t => allTags.add(t)));
-  periods.forEach(p => (p.tags || []).forEach(t => allTags.add(t)));
-  if (selectedTagFilter && !allTags.has(selectedTagFilter)) selectedTagFilter = '';
-  const tagList = Array.from(allTags).sort();
-  tagsBar.innerHTML = tagList.map(tag => `
-    <button onclick="filterByTag('${jsArg(tag)}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold border whitespace-nowrap transition ${selectedTagFilter === tag ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'}">
-      ${esc(tag)}
-    </button>
-  `).join('');
 
   const search = indiceSearchText.toLowerCase();
 
   const html = list.map(country => {
-    const cTags = country.tags || [];
-    let ps = periodsOfCountry(country.id);
+    const ps = periodsOfCountry(country.id);
 
-    // Etiqueta activa: si la tiene el país salen todas sus épocas; si no, solo las que la llevan.
-    if (selectedTagFilter && !cTags.includes(selectedTagFilter)) {
-      ps = ps.filter(p => (p.tags || []).includes(selectedTagFilter));
-      if (ps.length === 0) return '';
-    }
-
-    const matchesCountry = country.name.toLowerCase().includes(search) || cTags.some(t => t.toLowerCase().includes(search));
-    const matching = ps.filter(p => matchesCountry || p.name.toLowerCase().includes(search) || (p.tags || []).some(t => t.toLowerCase().includes(search)));
+    const matchesCountry = country.name.toLowerCase().includes(search);
+    const matching = ps.filter(p => matchesCountry || p.name.toLowerCase().includes(search));
     if (search && !matchesCountry && matching.length === 0) return '';
 
     const shown = new Set(ps.map(p => p.id));
@@ -103,35 +86,23 @@ function renderIndiceView() {
     const cTotal = normal.length;
     const cPct = cTotal > 0 ? Math.round((cAcquired / cTotal) * 100) : 0;
     const isCollapsed = isIndiceCollapsed(country.id);
+    const banner = `linear-gradient(90deg,rgba(61,26,84,.96) 0%,rgba(61,26,84,.80) 45%,rgba(61,26,84,.25) 100%),${flagLayers(country)}`;
 
     return `
-      <div class="bg-[#141b2a] border border-slate-800/80 rounded-2xl p-3.5 shadow-lg space-y-2.5">
-        <div class="flex items-center justify-between rounded-xl p-2" style="background:${flagBanner(country)}">
-          <div class="flex items-center gap-3 cursor-pointer flex-1 min-w-0" onclick="jumpToCountry('${esc(country.id)}')">
-            <div class="relative w-11 h-11 shrink-0 flex items-center justify-center">
-              <div class="w-full h-full progress-donut p-1.5 flex items-center justify-center" style="--progress: ${cPct}%;">
-                <div class="w-full h-full bg-[#141b2a] rounded-full flex items-center justify-center">
-                  <span class="text-[10px] font-black text-white font-serif-numis">${cPct}%</span>
-                </div>
-              </div>
-            </div>
+      <div class="xi-card">
+        <div class="xi-head" style="background:${banner.replace(/"/g, '&quot;')}">
+          <div class="xi-main" onclick="jumpToCountry('${esc(country.id)}')">
+            <div class="xi-donut" style="--progress: ${cPct}%;"><div>${cPct}%</div></div>
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold text-white font-serif-numis tracking-tight hover:text-amber-400 transition truncate">${esc(country.name)}</h3>
-                <div class="flex flex-wrap gap-1">
-                  ${cTags.map(t => `<span class="text-[8px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1 rounded font-mono">${esc(t)}</span>`).join('')}
-                </div>
-              </div>
-              <p class="text-[11px] text-slate-400 font-medium">${cAcquired} de ${cTotal} monedas</p>
+              <h3 class="xi-name truncate">${esc(country.name)}</h3>
+              <p class="xi-sub">${cAcquired} de ${cTotal} monedas</p>
             </div>
           </div>
-          <button onclick="editCountryFromIndice('${esc(country.id)}')" class="w-8 h-8 rounded-xl bg-slate-800/60 text-slate-400 hover:text-amber-400 flex items-center justify-center transition ml-2" title="Editar país y etiquetas"><i class="fa-solid fa-pen text-[10px]"></i></button>
-          <button onclick="toggleIndiceCountry('${esc(country.id)}')" class="w-8 h-8 rounded-xl bg-slate-800/60 text-amber-400 hover:bg-slate-700 flex items-center justify-center transition ml-2">
-            <i class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-xs"></i>
-          </button>
+          <button onclick="editCountryFromIndice('${esc(country.id)}')" class="xi-btn" title="Editar país" aria-label="Editar país"><i class="fa-solid fa-pen"></i></button>
+          <button onclick="toggleIndiceCountry('${esc(country.id)}')" class="xi-btn xi-go" aria-label="${isCollapsed ? 'Desplegar' : 'Contraer'}"><i class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'}"></i></button>
         </div>
 
-        <div class="space-y-2 pt-2 border-t border-slate-800/80 ${isCollapsed ? 'hidden' : ''}">
+        <div class="xi-periods ${isCollapsed ? 'hidden' : ''}">
           ${matching.map(p => {
             const periodCoins = coinsOfPeriod(p.id);
             const normalCoins = periodCoins.filter(c => !isSilverCoin(c));
@@ -141,27 +112,24 @@ function renderIndiceView() {
             const silverCoins = periodCoins.filter(isSilverCoin);
             const pSilverPct = silverCoins.length > 0 ? Math.round((silverCoins.filter(c => c.acquired).length / silverCoins.length) * 100) : 0;
             return `
-              <div onclick="jumpToPeriod('${esc(p.id)}')" class="bg-[#182132] hover:bg-slate-800 border border-slate-800 rounded-xl p-2.5 flex flex-col gap-1 cursor-pointer transition group">
-                <div class="flex items-center justify-between w-full">
-                  <div class="flex items-center space-x-2 min-w-0">
-                    <i class="fa-solid fa-circle text-[6px] text-amber-400"></i>
-                    <span class="text-xs font-bold text-slate-200 group-hover:text-amber-400 transition truncate">${esc(periodDisplayName(p))}</span>
-                    ${(p.tags || []).map(t => `<span class="text-[8px] bg-slate-800 text-slate-400 border border-slate-700 px-1 rounded font-mono">${esc(t)}</span>`).join('')}
-                  </div>
-                  <div class="flex items-center space-x-2.5 shrink-0">
-                    <button onclick="event.stopPropagation(); editPeriodFromIndice('${esc(p.id)}')" class="text-slate-500 hover:text-amber-400 px-1" title="Editar período y etiquetas"><i class="fa-solid fa-pen text-[10px]"></i></button>
-                    <span class="text-[10px] text-slate-400 font-medium">${pAcquired}/${pTotal} (${pPct}%)</span>
-                    <i class="fa-solid fa-arrow-right text-[10px] text-slate-600 group-hover:text-amber-400 transition"></i>
+              <div onclick="jumpToPeriod('${esc(p.id)}')" class="xi-period">
+                <div class="xi-prow">
+                  <div class="xi-pname"><i></i><span>${esc(periodDisplayName(p))}</span></div>
+                  <div class="xi-pmeta">
+                    <button onclick="event.stopPropagation(); editPeriodFromIndice('${esc(p.id)}')" class="xi-pedit" title="Editar período" aria-label="Editar período"><i class="fa-solid fa-pen"></i></button>
+                    <span>${pAcquired}/${pTotal} · <b>${pPct}%</b></span>
+                    <i class="fa-solid fa-arrow-right" style="font-size:10px"></i>
                   </div>
                 </div>
-                ${renderDualProgressBar(pPct, pSilverPct, silverCoins.length > 0)}
+                ${indiceBars(pPct, pSilverPct, silverCoins.length > 0)}
               </div>
             `;
           }).join('')}
+          ${search ? '' : `<button type="button" onclick="addPeriodFromIndice('${esc(country.id)}')" class="xi-addperiod"><i class="fa-solid fa-plus"></i> Añadir período</button>`}
         </div>
       </div>
     `;
   }).filter(Boolean).join('');
 
-  container.innerHTML = html !== '' ? html : `<div class="text-center py-10 text-gray-500 text-xs">No se encontraron datos coincidentes.</div>`;
+  container.innerHTML = html !== '' ? html : `<div class="xp-empty-msg">No se encontraron datos coincidentes.</div>`;
 }

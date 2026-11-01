@@ -1,4 +1,4 @@
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;0,900;1,600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;0,900;1,600&family=Poppins:ital,wght@0,700;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap');
     
     body {
       background-color: #0b0f19;
@@ -123,3 +123,472 @@
   
 
 input, textarea, select { user-select: text; -webkit-user-select: text; }
+
+
+/* ===== PESTAÑA EXPLORAR: estilo "póster" (arena · berenjena · naranja) ===== */
+body.theme-explorar { background-color: #E8D5AC; }
+.xp { --xs:1.3; --xp-sand:#E8D5AC; --xp-sand-l:#F3E4C4; --xp-plum:#3D1A54; --xp-plum-d:#2A0F42; --xp-orange:#E8702F; --xp-muted:#B98D70;
+  font-family:'Inter',system-ui,sans-serif; color:var(--xp-plum); user-select:none; -webkit-user-select:none; }
+.xp input { user-select:text; -webkit-user-select:text; }
+.xp-italic { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; }
+
+/* Barra de búsqueda */
+.xp-search { display:flex; align-items:center; gap:10px; height:44px; padding:0 14px; background:var(--xp-plum);
+  border:2.5px solid var(--xp-orange); border-radius:13px; box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18); }
+.xp-search svg { flex:none; color:var(--xp-orange); }
+.xp-search input { flex:1; min-width:0; background:transparent; border:0; outline:0; color:var(--xp-sand); font-size:14px; font-family:'Inter',sans-serif; }
+.xp-search input::placeholder { color:rgba(232,213,172,.78); }
+.xp-search input::-webkit-search-cancel-button { filter:invert(85%) sepia(20%) saturate(500%); }
+
+/* Botones (añadir zona · desplegar · contraer) */
+.xp-top { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.xp-top .xp-search { flex:1 1 280px; min-width:0; }
+.xp-tools { display:flex; gap:8px; margin-left:auto; }
+.xp-btn { width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:var(--xp-plum); color:var(--xp-sand);
+  border:2px solid var(--xp-orange); border-radius:12px; font-size:14px; transition:transform .12s; }
+.xp-btn:active { transform:scale(.94); }
+.xp-btn.xp-on { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xp-addzone { display:none; align-items:center; gap:8px; margin-top:10px; }
+.xp-addzone.xp-open { display:flex; }
+.xp-addzone input { flex:1; min-width:0; height:40px; padding:0 12px; font-size:13px; background:var(--xp-sand-l); color:var(--xp-plum);
+  border:2px solid var(--xp-plum); border-radius:12px; outline:0; }
+.xp-addzone button { height:40px; padding:0 14px; background:var(--xp-orange); color:var(--xp-plum-d); border:0; border-radius:12px; font-weight:800; font-size:12px; }
+
+/* Zona */
+.xp-zone { margin-top:22px; padding-bottom:2px; border-radius:20px; }
+.xp-zone.xp-dragging { background:var(--xp-sand); }
+.xp-head { display:flex; align-items:baseline; gap:10px; cursor:pointer; -webkit-touch-callout:none; }
+.xp-num { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:19px; color:var(--xp-orange); line-height:1; }
+.xp-title { flex:1; min-width:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:22px; line-height:1.08; letter-spacing:-.005em;
+  text-transform:uppercase; color:var(--xp-plum); overflow-wrap:anywhere; }
+.xp-count { flex:none; font-family:'Poppins',sans-serif; font-weight:700; font-size:16px; color:var(--xp-muted); }
+.xp-mini { flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; color:var(--xp-muted); border-radius:50%; align-self:center; }
+.xp-mini:hover { color:var(--xp-plum); }
+.xp-bar { height:4px; margin-top:9px; background:#CDBBA6; border-radius:2px; overflow:hidden; }
+.xp-bar > i { display:block; height:100%; background:var(--xp-orange); }
+.xp-note { margin:8px 0 0 0; font-size:12px; color:var(--xp-muted); font-weight:600; }
+
+/* Fila de tarjetas con desplazamiento lateral */
+.xp-row { display:flex; gap:14px; overflow-x:auto; overflow-y:hidden; margin:0 -8px; padding:14px 8px 8px 8px;
+  scroll-snap-type:x proximity; scroll-padding-left:8px; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+.xp-row::-webkit-scrollbar { display:none; }
+@media (min-width:640px) { .xp-row { margin:0 -16px; padding-left:16px; padding-right:16px; scroll-padding-left:16px; } }
+
+/* Tarjeta de país */
+.xp-card { position:relative; flex:none; width:calc(224px*var(--xs)); height:calc(346px*var(--xs)); border-radius:calc(22px*var(--xs)); background:var(--xp-plum); overflow:hidden;
+  scroll-snap-align:start; cursor:pointer; box-shadow:0 8px 18px rgba(61,26,84,.22); -webkit-tap-highlight-color:transparent; }
+.xp-photo { position:absolute; left:6px; right:6px; top:6px; height:164px; border-radius:17px 17px 0 0; overflow:hidden;
+  background:#5a2f78 center/cover no-repeat; }
+.xp-photo.xp-empty { background:repeating-linear-gradient(135deg,#4c2368 0 10px,#53286f 10px 20px); }
+.xp-photo.xp-empty::after { content:"\f03e"; font-family:"Font Awesome 6 Free"; font-weight:900; position:absolute; left:50%; top:46%;
+  transform:translate(-50%,-50%); font-size:30px; color:rgba(232,213,172,.28); }
+.xp-flag { position:absolute; left:10px; top:8px; width:68px; height:42px; border-radius:13px; box-shadow:0 0 0 2px rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.28); }
+.xp-edit { position:absolute; left:6px; bottom:6px; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  background:rgba(243,228,196,.94); color:var(--xp-plum); border:0; border-radius:50%; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.xp-dots { position:absolute; left:12px; top:181px; display:flex; gap:3.5px; }
+.xp-dots i { width:11px; height:11px; border-radius:50%; background:var(--xp-sand); }
+.xp-dots i.xp-f { background:var(--xp-orange); }
+.xp-circle { position:absolute; left:-10px; top:202px; width:138px; height:138px; border-radius:50%; background:var(--xp-orange); }
+.xp-coin { position:absolute; right:-20px; top:150px; width:142px; height:142px; display:flex; align-items:center; justify-content:center; }
+.xp-coin img { width:100%; height:100%; object-fit:contain;
+  /* borde fino crema que sigue la silueta de la moneda (como la etiqueta del nombre) + sombra suave */
+  filter:drop-shadow(1.5px 0 0 var(--xp-sand-l)) drop-shadow(-1.5px 0 0 var(--xp-sand-l)) drop-shadow(0 1.5px 0 var(--xp-sand-l)) drop-shadow(0 -1.5px 0 var(--xp-sand-l)) drop-shadow(0 8px 10px rgba(0,0,0,.42)); }
+.xp-coin.xp-nocoin { border:2.5px dashed rgba(232,213,172,.45); border-radius:50%; color:rgba(232,213,172,.55); font-size:30px; }
+.xp-name { position:absolute; left:16px; bottom:26px; max-width:calc(100% - 32px); min-height:48px; padding:0 16px; display:flex; align-items:center;
+  background:var(--xp-sand-l); color:var(--xp-plum); border-radius:12px; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:26px; line-height:1.1; }
+.xp-name.xp-mid { font-size:21px; }
+.xp-name.xp-long { font-size:16px; padding-top:5px; padding-bottom:5px; }
+.xp-in { position:absolute; left:0; top:0; width:224px; height:346px; transform:scale(var(--xs)); transform-origin:0 0; }
+.xp-add { flex:none; width:calc(224px*var(--xs)); height:calc(346px*var(--xs)); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  border:3px dashed rgba(61,26,84,.36); border-radius:22px; background:transparent; color:var(--xp-plum); scroll-snap-align:start; cursor:pointer;
+  font-family:'Poppins',sans-serif; font-weight:700; font-size:19px; }
+.xp-add.xp-on { background:rgba(61,26,84,.08); border-color:var(--xp-orange); }
+
+/* Selector de país para añadir a una zona */
+.xp-picker { margin-top:12px; background:var(--xp-sand-l); border:2px solid var(--xp-plum); border-radius:16px; overflow:hidden; }
+.xp-picker p { margin:0; padding:8px 14px; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--xp-sand); background:var(--xp-plum); }
+.xp-picker .xp-list { max-height:210px; overflow-y:auto; }
+.xp-picker button { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left; padding:10px 14px; font-size:13px;
+  font-weight:600; color:var(--xp-plum); background:transparent; border:0; border-bottom:1px solid rgba(61,26,84,.12); }
+.xp-picker button:last-child { border-bottom:0; }
+.xp-picker button small { font-size:10px; color:var(--xp-muted); }
+.xp-empty-msg { text-align:center; padding:36px 0; font-size:13px; color:var(--xp-muted); font-weight:600; }
+
+/* Ventana "Editar país": foto y moneda de la tarjeta */
+.xp-modal-photo { position:relative; overflow:hidden; width:100%; max-width:300px; margin:0 auto; aspect-ratio:212/164; touch-action:none; cursor:grab; border-radius:12px; background:#0f172a; border:1px solid #1e293b; display:flex; align-items:center; justify-content:center; font-size:11px; color:#64748b; }
+.xp-coin-tile { flex:none; width:56px; height:56px; border-radius:12px; border:2px solid #1e293b; background:#0f172a; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; font-size:10px; color:#94a3b8; font-weight:700; }
+.xp-coin-tile img { width:100%; height:100%; object-fit:contain; }
+.xp-coin-tile.xp-sel { border-color:#f59e0b; box-shadow:0 0 0 2px rgba(245,158,11,.25); }
+
+
+/* ===== PESTAÑA ESTADÍSTICAS: mismo estilo póster ===== */
+.xs-head { margin-bottom:4px; }
+.xs-kicker { font-size:10px; letter-spacing:.2em; text-transform:uppercase; font-weight:700; color:var(--xp-orange); }
+.xs-h1 { margin:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:34px; line-height:1.05; letter-spacing:-.01em; color:var(--xp-plum); }
+.xs-h2 { margin:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:24px; line-height:1.1; color:var(--xp-plum); }
+.xs-dim { font-family:'Inter',sans-serif; font-style:normal; font-weight:600; font-size:12px; color:var(--xp-muted); }
+#estadisticas-content { margin-top:2px; }
+.xs-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.xs-stat { position:relative; overflow:hidden; min-height:132px; padding:16px; border-radius:22px; background:var(--xp-plum); color:var(--xp-sand);
+  box-shadow:0 8px 18px rgba(61,26,84,.22); }
+.xs-stat::after { content:""; position:absolute; right:-28px; bottom:-34px; width:92px; height:92px; border-radius:50%; background:var(--xp-orange); }
+.xs-stat:nth-child(2), .xs-stat:nth-child(3) { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xs-stat:nth-child(2)::after, .xs-stat:nth-child(3)::after { background:var(--xp-plum); }
+.xs-stat-label { position:relative; z-index:1; display:flex; align-items:center; gap:6px; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+.xs-stat-value { position:relative; z-index:1; margin-top:10px; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:30px; line-height:1.05; letter-spacing:-.02em; }
+.xs-stat-sub { position:relative; z-index:1; margin-top:5px; max-width:82%; font-size:11px; line-height:1.3; opacity:.88; }
+.xs-warn { margin:12px 0 0 0; padding:0; background:none; border:0; font-size:12px; font-weight:600; color:#B8501A; }
+.xs-sec { margin-top:28px; }
+.xs-hint { margin:6px 0 0 0; font-size:12px; color:var(--xp-muted); font-weight:600; }
+.xs-panel { margin-top:12px; padding:16px; border-radius:22px; background:var(--xp-sand-l); box-shadow:0 6px 14px rgba(61,26,84,.10); }
+.xs-barlabel { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:6px; font-family:'Poppins',sans-serif; font-weight:700; font-size:14px; color:var(--xp-plum); }
+.xs-barlabel span:last-child { font-family:'Inter',sans-serif; font-weight:500; font-size:12px; color:var(--xp-muted); }
+.xs-barlabel b { color:var(--xp-orange); font-weight:800; }
+.xs-track { height:10px; border-radius:5px; background:#D9C6AC; overflow:hidden; }
+.xs-track > i { display:block; height:100%; border-radius:5px; background:var(--xp-orange); }
+.xs-track > i.silver-gradient-fill { background:linear-gradient(90deg,#8794a8,#dfe5ee,#aab4c4); }
+.xs-tile { padding:12px 0; border:0; border-radius:16px; background:var(--xp-plum); text-align:center; transition:transform .12s; }
+.xs-tile:active { transform:scale(.96); }
+.xs-tile-n { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:26px; line-height:1; color:var(--xp-sand); }
+.xs-tile-l { margin-top:6px; font-size:11px; font-weight:800; letter-spacing:.08em; color:var(--xp-orange); }
+.xs-tile.xs-on { background:var(--xp-orange); }
+.xs-tile.xs-on .xs-tile-n, .xs-tile.xs-on .xs-tile-l { color:var(--xp-plum-d); }
+.xs-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:14px; background:#FBF3DF; border:1.5px solid rgba(61,26,84,.12); }
+.xs-count { min-width:44px; height:36px; padding:0 12px; border:0; border-radius:11px; background:var(--xp-plum); color:var(--xp-sand); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:15px; }
+.xs-count:disabled { background:#CDBBA6; color:#8a7766; }
+.xs-name { font-size:13px; font-weight:700; color:var(--xp-plum); }
+.xs-num2 { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:13px; color:var(--xp-orange); }
+.xs-rank { width:20px; text-align:right; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:12px; color:var(--xp-muted); }
+.xs-btn2 { padding:9px 14px; border:0; border-radius:12px; background:var(--xp-plum); color:var(--xp-sand); font-size:12px; font-weight:700; }
+.xs-btn2:disabled { background:#CDBBA6; color:#8a7766; }
+.xs-pager { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:14px; }
+.xs-pager-mid { text-align:center; font-size:12px; color:var(--xp-plum); }
+.xs-pager-mid span { font-size:11px; color:var(--xp-muted); }
+.xs-cards { margin-top:14px; }
+#estadisticas-content > .flex.items-center.gap-3 { margin-top:2px; }
+
+
+/* ===== PESTAÑA ÍNDICE: mismo estilo póster ===== */
+.xi-list { margin-top:16px; display:flex; flex-direction:column; gap:14px; }
+.xi-card { padding:12px; border-radius:22px; background:var(--xp-plum); color:var(--xp-sand); box-shadow:0 8px 18px rgba(61,26,84,.22); }
+.xi-head { display:flex; align-items:center; gap:8px; padding:8px; border-radius:16px; }
+.xi-main { display:flex; align-items:center; gap:12px; flex:1; min-width:0; cursor:pointer; }
+.xi-donut { flex:none; width:46px; height:46px; padding:5px; border-radius:50%; background:conic-gradient(var(--xp-orange) var(--progress,0%), rgba(232,213,172,.22) 0); }
+.xi-donut > div { width:100%; height:100%; border-radius:50%; background:var(--xp-plum); display:flex; align-items:center; justify-content:center;
+  font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:10px; color:var(--xp-sand); }
+.xi-name { margin:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:19px; line-height:1.1; text-transform:uppercase; color:var(--xp-sand-l); }
+.xi-sub { margin:2px 0 0 0; font-size:11px; font-weight:600; color:var(--xp-sand); opacity:.8; }
+.xi-btn { flex:none; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%;
+  background:rgba(243,228,196,.94); color:var(--xp-plum); font-size:11px; transition:transform .12s; }
+.xi-btn:active { transform:scale(.92); }
+.xi-btn.xi-go { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xi-periods { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.xi-period { padding:10px 12px; border-radius:14px; background:#FBF3DF; border:1.5px solid rgba(61,26,84,.12); color:var(--xp-plum); cursor:pointer; transition:transform .12s; }
+.xi-period:active { transform:scale(.985); }
+.xi-prow { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.xi-pname { display:flex; align-items:center; gap:8px; min-width:0; font-size:16px; font-weight:700; color:var(--xp-plum); }
+.xi-pname i { flex:none; width:7px; height:7px; border-radius:50%; background:var(--xp-orange); }
+.xi-pname span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xi-pmeta { flex:none; display:flex; align-items:center; gap:10px; font-size:13px; font-weight:600; color:var(--xp-muted); }
+.xi-pmeta b { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; color:var(--xp-orange); }
+.xi-pedit { border:0; background:none; padding:2px 4px; color:var(--xp-muted); font-size:11px; }
+.xi-pedit:hover { color:var(--xp-plum); }
+.xi-bars { display:flex; align-items:center; gap:6px; margin-top:8px; }
+.xi-bars .xs-track { height:6px; border-radius:3px; }
+.xi-bars .xs-track > i { border-radius:3px; }
+
+
+/* ===== PESTAÑA ÁLBUM: mismo estilo póster ===== */
+#view-album { display:block; }
+#view-album.hidden { display:none; }
+.xa-title { display:flex; align-items:center; gap:10px; max-width:100%; text-align:left; background:none; border:0; padding:0; color:var(--xp-plum); }
+.xa-title > i { color:var(--xp-orange); font-size:12px; }
+.xa-title span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:30px; line-height:1.1; text-transform:uppercase; letter-spacing:-.01em; }
+.xa-bar { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-top:12px; padding:10px; border-radius:20px; background:var(--xp-plum); box-shadow:0 8px 18px rgba(61,26,84,.22); }
+.xa-tabs { display:flex; flex-wrap:wrap; gap:8px; flex:1; min-width:0; }
+.xa-pill { padding:9px 14px; border:0; border-radius:12px; background:rgba(232,213,172,.14); color:var(--xp-sand); font-size:13px; font-weight:700; white-space:nowrap; transition:transform .12s; }
+.xa-pill:active { transform:scale(.95); }
+.xa-pill.xa-on { background:var(--xp-orange); color:var(--xp-plum-d); font-weight:800; }
+.xa-bar .xi-btn { width:38px; height:38px; }
+.xa-filters { display:flex; align-items:center; gap:6px; margin-top:12px; }
+.xa-input { width:100%; height:44px; padding:0 12px; background:var(--xp-plum); color:var(--xp-sand); border:2px solid var(--xp-orange); border-radius:12px; font-size:13px; outline:0; box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18); }
+.xa-input::placeholder { color:rgba(232,213,172,.7); }
+.xa-input::-webkit-search-cancel-button { filter:invert(85%) sepia(20%) saturate(500%); }
+.xa-suggest { position:absolute; left:0; top:100%; margin-top:6px; z-index:30; width:100%; min-width:200px; max-height:240px; overflow-y:auto; background:var(--xp-sand-l); border:2px solid var(--xp-plum); border-radius:14px; box-shadow:0 10px 24px rgba(61,26,84,.3); }
+.xa-suggest.hidden { display:none; }
+.xa-sug { display:block; width:100%; text-align:left; padding:10px 14px; font-size:13px; font-weight:600; color:var(--xp-plum); background:transparent; border:0; border-bottom:1px solid rgba(61,26,84,.12); }
+.xa-sug:last-child { border-bottom:0; }
+.xa-sug b { color:var(--xp-orange); }
+.xa-sug.xa-cur { background:rgba(232,112,47,.14); }
+.xa-none { padding:10px 14px; font-size:12px; color:var(--xp-muted); font-weight:600; }
+#album-sections { margin-top:6px; }
+.xa-sec { margin-top:24px; scroll-margin-top:12px; }
+.xa-head { align-items:center; gap:8px; }
+.xa-head .xp-num { align-self:center; }
+.xa-tools { flex:none; display:flex; align-items:center; gap:5px; }
+.xa-tools .xp-btn { width:32px; height:32px; font-size:12px; border-radius:10px; border-width:1.8px; }
+.xa-prog { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.xa-prog .xi-bars { flex:1; min-width:0; margin-top:0; }
+.xa-count { flex:none; font-family:'Poppins',sans-serif; font-weight:700; font-size:13px; color:var(--xp-muted); }
+.xa-count b { color:var(--xp-orange); font-style:italic; font-weight:800; }
+.xa-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:12px; }
+@media (min-width:640px) { .xa-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (min-width:768px) { .xa-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.xa-msg { grid-column:1/-1; text-align:center; padding:14px 0; font-size:12px; color:var(--xp-muted); font-weight:600; }
+
+/* Ficha de moneda (Álbum y listas de Estadísticas) */
+.xc { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:space-between; width:100%; padding:10px 9px 11px; border-radius:20px;
+  background:var(--xp-plum); border-width:3px; border-style:solid; box-shadow:0 6px 14px rgba(61,26,84,.22); cursor:pointer; user-select:none; transition:transform .12s; }
+.xc:hover { border-color:var(--xp-orange); }
+.xc-denom { width:100%; padding:6px 6px; border-radius:10px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:center; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:15px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xc-cell { display:flex; align-items:center; justify-content:center; min-height:28px; padding:5px 4px; border-radius:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:800; line-height:1.2; }
+.xc-soft { background:rgba(232,213,172,.16); color:var(--xp-sand); }
+.xc-km { background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; }
+.xc-price { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; color:#6ee7b7; }
+.xc-ok { width:100%; margin-top:4px; padding:5px 8px; border:0; border-radius:10px; background:var(--xp-orange); color:var(--xp-plum-d); font-size:12px; font-weight:800; }
+.xc-move { width:100%; margin-bottom:4px; padding:4px; display:flex; align-items:center; justify-content:space-between; border-radius:12px; background:rgba(232,112,47,.22); border:1px solid var(--xp-orange); color:var(--xp-orange); z-index:20; }
+.xc-move button { width:22px; height:22px; display:flex; align-items:center; justify-content:center; border:0; border-radius:8px; background:var(--xp-orange); color:var(--xp-plum-d); }
+.xa-grid.hidden, .xi-periods.hidden, .xa-suggest.hidden { display:none; }
+
+/* Álbum sin país elegido: lista de burbujas */
+.xa-bubbles { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.xa-bubble { display:inline-flex; align-items:center; gap:8px; max-width:100%; height:40px; padding:0 14px 0 10px; border:2px solid var(--xp-orange); border-radius:999px;
+  background:var(--xp-plum); color:var(--xp-sand); font-size:14px; font-weight:700; transition:transform .12s; }
+.xa-bubble:active { transform:scale(.95); }
+.xa-bubble span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xp-modal-photo canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.xp-modal-photo.xp-nophoto canvas { display:none; }
+.xp-modal-photo.xp-nophoto { cursor:default; }
+.xp-zoom { display:flex; align-items:center; gap:8px; max-width:300px; margin:8px auto 0; color:#94a3b8; font-size:11px; }
+.xp-zoom input { flex:1; accent-color:#f59e0b; }
+
+/* ===== v4.07: períodos vacíos, filtro "las que tengo", + por período ===== */
+.xa-pill.xa-plus { background:transparent; border:1.5px dashed rgba(232,213,172,.55); padding:8px 14px; }
+.xi-addperiod { display:flex; align-items:center; justify-content:center; gap:8px; padding:9px 12px; border:2px dashed rgba(232,213,172,.45); border-radius:14px;
+  background:transparent; color:var(--xp-sand); font-size:13px; font-weight:700; }
+.xi-addperiod:active { transform:scale(.985); }
+/* Con 6 botones la cabecera de cada período puede no caber en pantallas estrechas: los botones bajan a su propia línea */
+.xa-head { flex-wrap:wrap; }
+.xa-head .xp-title { flex:1 1 120px; }
+.xa-tools { margin-left:auto; }
+/* Barra de filtros del Álbum: en pantallas estrechas los botones pasan a una segunda línea */
+@media (max-width:520px) {
+  .xa-filters { flex-wrap:wrap; }
+  .xa-filters > div:last-child { width:100%; justify-content:flex-end; }
+}
+
+/* ===== v4.07: filas de tarjetas de Explorar (desplazamiento lateral) ===== */
+.xp-row { touch-action:pan-x pan-y; cursor:grab; }
+.xp-row.xp-grabbing { cursor:grabbing; scroll-snap-type:none; }
+/* Con ratón no hay gesto táctil: se muestra una barra fina para poder desplazar */
+@media (hover:hover) and (pointer:fine) {
+  .xp-row { scrollbar-width:thin; scrollbar-color:var(--xp-plum) rgba(61,26,84,.15); padding-bottom:14px; }
+  .xp-row::-webkit-scrollbar { display:block; height:8px; }
+  .xp-row::-webkit-scrollbar-track { background:rgba(61,26,84,.12); border-radius:4px; }
+  .xp-row::-webkit-scrollbar-thumb { background:var(--xp-plum); border-radius:4px; }
+}
+
+/* ===== v4.08: tarjetas del Álbum sin sombra proyectada por las monedas ===== */
+.xc .coin-front, .xc .coin-back { filter:none; }
+.xc .coin-front.coin-missing, .xc .coin-back.coin-missing { filter:grayscale(40%); }
+.xc .coin-front.has-img img, .xc .coin-back.has-img img { filter:none; }
+.xc .coin-front:not(.has-img), .xc .coin-back:not(.has-img) { box-shadow:inset 0 2px 4px rgba(255,255,255,.8), inset 0 -3px 6px rgba(0,0,0,.5) !important; }
+
+/* ===== v4.08: ficha desplegada de la moneda (estilo póster) ===== */
+#coin-modal { --xp-sand:#E8D5AC; --xp-sand-l:#F3E4C4; --xp-plum:#3D1A54; --xp-plum-d:#2A0F42; --xp-orange:#E8702F; --xp-muted:#B98D70;
+  --xm-ink-soft:rgba(61,26,84,.62); --xm-coin:min(66vw,280px); font-family:'Inter',system-ui,sans-serif; color:var(--xp-plum); }
+.xm-overlay { position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; background:rgba(42,15,66,.80); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+.xm-overlay.hidden { display:none; }
+@media (min-width:640px) { .xm-overlay { align-items:center; padding:16px; } }
+.xm-sheet { position:relative; width:100%; max-width:30rem; max-height:94vh; overflow-y:auto; padding:10px 14px 16px; text-align:left; scrollbar-width:none;
+  background:var(--xp-sand); border-radius:28px 28px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.4); }
+.xm-sheet::-webkit-scrollbar { display:none; }
+@media (min-width:640px) { .xm-sheet { border-radius:28px; } }
+.xm-grab { width:40px; height:4px; margin:0 auto 6px; border-radius:2px; background:rgba(61,26,84,.28); }
+.xm-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.xm-edit { display:flex; align-items:center; gap:6px; padding:6px 10px; border:0; border-radius:10px; background:rgba(61,26,84,.10); color:var(--xp-plum); font-size:11px; font-weight:800; }
+.xm-close { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--xp-plum); color:var(--xp-sand); font-size:13px; }
+
+/* Moneda grande sobre disco naranja, dentro de un panel berenjena */
+.xm-hero { position:relative; display:flex; flex-direction:column; align-items:center; padding:44px 12px 46px; border-radius:24px; background:var(--xp-plum); box-shadow:0 8px 18px rgba(61,26,84,.25); overflow:hidden; }
+.xm-side { position:absolute; top:14px; left:0; right:0; margin:0; text-align:center; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(232,213,172,.78); }
+.xm-disc { display:flex; align-items:center; justify-content:center; width:calc(var(--xm-coin) + 30px); height:calc(var(--xm-coin) + 30px); border-radius:50%; background:var(--xp-orange); }
+.xm-coin { width:var(--xm-coin); height:var(--xm-coin); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.xm-fallback { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:clamp(32px,11vw,58px); line-height:1.05; padding:0 8px; text-align:center; }
+
+/* Título como etiqueta crema que monta sobre el borde del panel */
+.xm-titlebox { position:relative; z-index:2; display:flex; justify-content:center; margin:-27px 8px 0; }
+.xm-title { margin:0; max-width:100%; padding:7px 22px; border-radius:14px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:center;
+  font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:28px; line-height:1.15; box-shadow:0 4px 10px rgba(61,26,84,.25); overflow-wrap:anywhere; }
+.xm-sub { margin:10px 0 0; text-align:center; font-size:12px; font-weight:700; color:var(--xm-ink-soft); }
+.xm-chips { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px; margin-top:8px; }
+.xm-chip { display:inline-block; padding:4px 11px; border-radius:9px; font-size:11px; font-weight:800; letter-spacing:.03em; }
+.xm-chip.hidden { display:none; }
+
+/* Datos de la moneda */
+.xm-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:14px; }
+.xm-tile { display:flex; flex-direction:column; justify-content:space-between; gap:3px; min-width:0; padding:9px 12px; border-radius:14px; background:var(--xp-sand-l); border:1.5px solid rgba(61,26,84,.12); text-align:left; color:var(--xp-plum); }
+.xm-tile-btn { flex-direction:row; align-items:center; justify-content:flex-start; gap:9px; transition:transform .12s; }
+.xm-tile-btn:active { transform:scale(.97); }
+.xm-tile-btn img { flex:none; width:30px; height:30px; border-radius:8px; }
+.xm-tile-txt { display:flex; flex-direction:column; min-width:0; }
+.xm-lab { display:block; font-size:9px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--xm-ink-soft); }
+.xm-val { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:800; line-height:1.25; color:var(--xp-plum); }
+.xm-val.xm-silverv { font-family:'Poppins',sans-serif; font-style:italic; color:#4B5C7A; }
+.xm-val.xm-lk-numista { color:#C2561A; }
+.xm-val.xm-lk-ucoin { color:#2F6FA8; }
+.xm-val.xm-nolink { color:rgba(61,26,84,.4); font-weight:700; }
+
+/* Mis monedas */
+.xm-mine { margin-top:12px; padding:13px; border-radius:20px; background:var(--xp-plum); color:var(--xp-sand); }
+.xm-mine > * + * { margin-top:12px; }
+.xm-mine-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.xm-mine-title { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:15px; letter-spacing:.02em; color:var(--xp-sand-l); }
+.xm-mine-hint { font-size:9px; font-weight:700; letter-spacing:.04em; color:rgba(232,213,172,.65); text-align:right; }
+.xm-items { display:flex; flex-direction:column; gap:7px; }
+.xm-row { display:flex; align-items:center; gap:5px; }
+.xm-field { height:38px; background:var(--xp-sand-l); color:var(--xp-plum); border:2px solid transparent; border-radius:11px; font-size:13px; font-weight:700; outline:0; }
+.xm-field:focus { border-color:var(--xp-orange); }
+.xm-field::placeholder { color:rgba(61,26,84,.42); font-weight:600; }
+.xm-year { width:60px; padding:0 4px; text-align:center; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; }
+.xm-grade { width:62px; padding:0 4px; }
+.xm-grade.xm-on { color:#B8480F; font-weight:800; }
+.xm-notes { flex:1; min-width:0; padding:0 10px; }
+.xm-fwrap { position:relative; flex:none; width:38px; height:38px; }
+.xm-fbtn { width:38px; height:38px; display:flex; align-items:center; justify-content:center; border:2px solid transparent; border-radius:11px; background:var(--xp-sand-l); color:rgba(61,26,84,.55); }
+.xm-fbtn.xm-on { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xm-fmenu { position:absolute; top:0; left:0; z-index:30; display:flex; flex-direction:column; overflow:hidden; border:2px solid var(--xp-orange); border-radius:11px; background:var(--xp-sand-l); box-shadow:0 8px 18px rgba(0,0,0,.35); }
+.xm-fopt { width:38px; height:38px; display:flex; align-items:center; justify-content:center; border:0; background:transparent; color:rgba(61,26,84,.6); }
+.xm-fopt.xm-on { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xm-trash { flex:none; width:26px; height:38px; border:0; background:none; color:#FF9D8A; font-size:12px; }
+.xm-add { width:100%; margin-top:9px; padding:8px; border:2px dashed rgba(232,213,172,.5); border-radius:12px; background:transparent; color:var(--xp-sand); font-size:12px; font-weight:800; }
+.xm-add i { margin-right:5px; }
+
+/* Valoración de plata */
+.xm-silver { padding:10px; border-radius:14px; background:rgba(0,0,0,.2); border:1.5px solid rgba(232,213,172,.22); }
+.xm-silver.hidden { display:none; }
+.xm-silver-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.xm-silver-title { display:flex; align-items:center; gap:6px; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--xp-sand-l); }
+.xm-rate { padding:3px 9px; border-radius:999px; background:rgba(232,213,172,.16); color:var(--xp-sand-l); font-size:10px; font-weight:700; cursor:pointer; text-align:right; }
+.xm-silver-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; align-items:stretch; }
+.xm-sbox { display:flex; flex-direction:column; justify-content:space-between; gap:3px; padding:6px 8px; border-radius:10px; background:var(--xp-sand-l); color:var(--xp-plum); }
+.xm-sbox label { font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--xm-ink-soft); }
+.xm-sbox input { width:100%; min-width:0; padding:2px 0; background:transparent; border:0; border-bottom:2px solid rgba(61,26,84,.25); outline:0; color:var(--xp-plum); font-size:14px; font-weight:800; }
+.xm-sbox input:focus { border-bottom-color:var(--xp-orange); }
+.xm-sbox-est { align-items:center; text-align:center; background:var(--xp-sand); }
+.xm-sbox-est span { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:15px; color:#4B5C7A; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+
+/* Pie */
+.xm-foot { display:flex; align-items:center; justify-content:space-between; margin-top:14px; }
+.xm-del { display:flex; align-items:center; gap:6px; padding:8px 10px; border:0; border-radius:10px; background:none; color:#B3261E; font-size:12px; font-weight:800; }
+.xm-ok { padding:11px 30px; border:0; border-radius:13px; background:var(--xp-orange); color:var(--xp-plum-d); font-size:14px; font-weight:800; box-shadow:0 4px 10px rgba(232,112,47,.35); }
+.xm-ok:active { transform:scale(.96); }
+
+/* ===== v4.10: ficha desplegada armonizada (una sola paleta violeta, tipografía y radios coherentes) ===== */
+#coin-modal {
+  --xm-bg:#3A1853; --xm-deep:#2B1040; --xm-tile:#573A70; --xm-tile-hi:#694B84; --xm-line:rgba(240,223,184,.14);
+  --xm-pastel:#F0DFB8; --xm-soft:rgba(240,223,184,.66); --xm-ink-soft:var(--xm-soft);
+  --xm-r:12px; --xm-gap:6px; --xm-coin:clamp(100px,20dvh,180px); color:var(--xm-pastel); }
+#coin-modal .xm-sheet { display:flex; flex-direction:column; max-height:100vh; max-height:100dvh; padding:8px 12px 0; background:var(--xm-bg); }
+@media (min-width:640px) { #coin-modal .xm-sheet { max-height:96dvh; } }
+#coin-modal .xm-grab { margin-bottom:4px; background:rgba(240,223,184,.3); }
+#coin-modal .xm-top { margin-bottom:6px; }
+#coin-modal .xm-edit { padding:7px 12px; border-radius:var(--xm-r); background:var(--xm-tile); color:var(--xm-pastel); font-family:'Inter',sans-serif; font-size:11px; font-weight:700; letter-spacing:.02em; }
+#coin-modal .xm-close { background:var(--xm-tile); color:var(--xm-pastel); }
+
+/* Moneda sobre un foco suave del mismo violeta (sin naranja) */
+#coin-modal .xm-hero { padding:24px 10px 32px; border-radius:18px; box-shadow:none;
+  background:radial-gradient(circle at 50% 48%, #4F2A6E 0%, var(--xm-deep) 72%); border:1px solid var(--xm-line); }
+#coin-modal .xm-side { top:8px; font-size:9.5px; font-weight:700; letter-spacing:.14em; color:var(--xm-soft); }
+#coin-modal .xm-disc { width:var(--xm-coin); height:var(--xm-coin); background:transparent; box-shadow:none; }
+#coin-modal .xm-fallback { color:#3D1A54; }
+
+/* Título: la misma etiqueta crema que las tarjetas del Álbum */
+#coin-modal .xm-titlebox { margin:-20px 14px 0; }
+#coin-modal .xm-title { padding:5px 22px; border-radius:var(--xm-r); background:var(--xp-sand-l); color:var(--xp-plum); font-size:22px; box-shadow:0 4px 10px rgba(0,0,0,.28); }
+#coin-modal .xm-sub { margin:7px 0 0; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; color:var(--xm-soft); }
+#coin-modal .xm-chips { margin-top:6px; gap:6px; }
+#coin-modal .xm-chips:not(:has(.xm-chip:not(.hidden))) { display:none; }
+#coin-modal .xm-chip { padding:3px 11px; border-radius:8px; font-size:10.5px; }
+
+/* Datos: etiqueta pequeña en Inter, valor en Poppins cursiva (igual que las tarjetas) */
+#coin-modal .xm-grid { gap:var(--xm-gap); margin-top:9px; }
+#coin-modal .xm-tile { min-height:42px; justify-content:center; gap:1px; padding:6px 11px; border-radius:var(--xm-r); background:var(--xm-tile); border:1px solid var(--xm-line); color:var(--xm-pastel); }
+#coin-modal .xm-tile-btn { gap:9px; }
+#coin-modal .xm-tile-btn img { width:26px; height:26px; border-radius:7px; }
+#coin-modal .xm-lab { font-family:'Inter',sans-serif; font-size:8.5px; font-weight:700; letter-spacing:.12em; color:var(--xm-soft); }
+#coin-modal .xm-val { font-family:'Poppins',sans-serif; font-style:italic; font-weight:700; font-size:13px; line-height:1.25; color:var(--xm-pastel); }
+#coin-modal .xm-val.xm-silverv { color:#CFDDF7; }
+#coin-modal .xm-val.xm-lk-numista, #coin-modal .xm-val.xm-lk-ucoin { font-family:'Inter',sans-serif; font-style:normal; font-weight:700; }
+#coin-modal .xm-val.xm-lk-numista { color:#FFBF94; }
+#coin-modal .xm-val.xm-lk-ucoin { color:#A9D2F7; }
+#coin-modal .xm-val.xm-nolink { font-family:'Inter',sans-serif; font-style:normal; color:rgba(240,223,184,.45); font-weight:600; }
+
+#coin-modal .xm-mine { margin-top:9px; padding:10px; border-radius:18px; background:var(--xm-deep); border:1px solid var(--xm-line); color:var(--xm-pastel); }
+#coin-modal .xm-mine > * + * { margin-top:9px; }
+#coin-modal .xm-mine-head { margin-bottom:6px; }
+#coin-modal .xm-mine-title { font-size:13px; letter-spacing:.06em; color:var(--xm-pastel); }
+#coin-modal .xm-mine-hint { font-family:'Inter',sans-serif; font-size:8.5px; font-weight:600; color:var(--xm-soft); }
+#coin-modal .xm-items { gap:var(--xm-gap); }
+#coin-modal .xm-row { gap:var(--xm-gap); }
+#coin-modal .xm-field { height:36px; background:var(--xm-tile); color:var(--xm-pastel); border:1.5px solid transparent; border-radius:var(--xm-r); font-family:'Inter',sans-serif; font-size:13px; font-weight:600; }
+#coin-modal .xm-field:focus { border-color:var(--xp-orange); }
+#coin-modal .xm-field::placeholder { color:rgba(240,223,184,.45); }
+#coin-modal .xm-field option { background:var(--xm-bg); color:var(--xm-pastel); }
+#coin-modal .xm-year { font-family:'Poppins',sans-serif; font-style:italic; font-weight:700; }
+#coin-modal .xm-grade.xm-on { color:#FFC9A0; font-weight:700; }
+#coin-modal .xm-fwrap, #coin-modal .xm-fbtn, #coin-modal .xm-fopt { width:36px; height:36px; }
+#coin-modal .xm-fbtn { background:var(--xm-tile); color:var(--xm-pastel); border-radius:var(--xm-r); }
+#coin-modal .xm-fbtn.xm-on, #coin-modal .xm-fopt.xm-on { background:var(--xp-orange); color:var(--xp-plum-d); }
+#coin-modal .xm-fmenu { background:var(--xm-tile); border-radius:var(--xm-r); }
+#coin-modal .xm-fopt { color:var(--xm-pastel); }
+#coin-modal .xm-trash { height:36px; }
+#coin-modal .xm-add { margin-top:var(--xm-gap); padding:7px; border-radius:var(--xm-r); color:var(--xm-soft); border:1.5px dashed rgba(240,223,184,.32); font-family:'Inter',sans-serif; font-weight:700; }
+
+#coin-modal .xm-silver { padding:8px; border-radius:var(--xm-r); background:rgba(255,255,255,.04); border:1px solid var(--xm-line); }
+#coin-modal .xm-silver-head { margin-bottom:6px; }
+#coin-modal .xm-silver-title { font-size:9.5px; letter-spacing:.12em; color:var(--xm-pastel); }
+#coin-modal .xm-rate { background:var(--xm-tile); color:var(--xm-pastel); }
+#coin-modal .xm-silver-grid { gap:var(--xm-gap); }
+#coin-modal .xm-sbox { padding:5px 9px; border-radius:var(--xm-r); background:var(--xm-tile); color:var(--xm-pastel); }
+#coin-modal .xm-sbox label { font-size:8.5px; letter-spacing:.12em; color:var(--xm-soft); }
+#coin-modal .xm-sbox input { font-family:'Poppins',sans-serif; font-style:italic; font-size:13px; font-weight:700; color:var(--xm-pastel); border-bottom-color:rgba(240,223,184,.3); }
+#coin-modal .xm-sbox-est { background:var(--xm-tile-hi); }
+#coin-modal .xm-sbox-est span { font-size:14px; color:var(--xm-pastel); }
+
+/* Pie siempre visible */
+#coin-modal .xm-foot { position:sticky; bottom:0; z-index:5; margin:6px -12px 0; padding:9px 12px calc(9px + env(safe-area-inset-bottom)); background:var(--xm-bg); border-top:1px solid var(--xm-line); }
+#coin-modal .xm-del { color:#FF9D8A; padding:6px 8px; font-family:'Inter',sans-serif; }
+#coin-modal .xm-ok { padding:10px 32px; border-radius:var(--xm-r); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; }
+/* Pantallas bajas: un poco más apretado para que no haga falta desplazarse */
+@media (max-height:690px) {
+  #coin-modal { --xm-coin:clamp(90px,18dvh,150px); }
+  #coin-modal .xm-grab { display:none; }
+  #coin-modal .xm-top { margin-bottom:4px; }
+  #coin-modal .xm-tile { min-height:38px; padding:4px 11px; }
+  #coin-modal .xm-grid { margin-top:7px; }
+  #coin-modal .xm-mine { margin-top:7px; padding:8px; }
+  #coin-modal .xm-foot { padding-top:6px; padding-bottom:calc(6px + env(safe-area-inset-bottom)); }
+}
+
+/* ===== v4.11: épocas en una fila deslizable (con grupos) y botones de época en 2 filas de 3 ===== */
+.xa-tabs { display:block; }
+.xa-tabrow { display:flex; align-items:center; gap:6px; }
+.xa-tabrow > .xa-pill { flex:none; }
+.xa-scroll { position:relative; flex:1; min-width:0; display:flex; gap:6px; overflow-x:auto; padding:2px 14px 2px 2px; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%); mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%); }
+.xa-scroll::-webkit-scrollbar { display:none; }
+.xa-scroll .xa-pill { flex:none; display:inline-flex; align-items:center; gap:7px; }
+.xa-pc { padding:1px 7px; border-radius:999px; background:rgba(0,0,0,.28); font-size:10.5px; font-weight:800; color:var(--xp-sand-l); }
+.xa-pill.xa-on .xa-pc { background:rgba(42,15,66,.22); color:var(--xp-plum-d); }
+.xa-pgroup { border:1.5px solid rgba(232,213,172,.4); }
+.xa-subrow { display:flex; gap:6px; margin-top:8px; padding:8px 0 0; border-top:1px solid rgba(232,213,172,.2); overflow-x:auto; scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%); mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%); }
+.xa-subrow::-webkit-scrollbar { display:none; }
+.xa-subrow .xa-sub { flex:none; display:inline-flex; align-items:center; gap:7px; padding:7px 12px; font-size:12px; }
+.xa-sec { scroll-margin-top:64px; }
+.xa-head { flex-wrap:nowrap; align-items:center; }
+.xa-head .xp-title { flex:1 1 0; min-width:0; overflow-wrap:anywhere; white-space:normal; line-height:1.15; }
+.xa-tools { display:grid; grid-template-columns:repeat(3,32px); gap:5px; margin-left:auto; align-items:center; }
+@media (hover:hover) and (pointer:fine) { .xa-scroll { scrollbar-width:thin; } }

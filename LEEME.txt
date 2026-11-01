@@ -1,17 +1,19 @@
-PLAZA MAYOR 1.22 - estructura
+PLAZA MAYOR - estructura
 index.html          pantalla y ventanas (solo marcado)
 manifest.json       datos de la app instalable (nombre, icono, colores)
 sw.js               funcionamiento sin conexión (si cambias versión, sube el número CACHE)
 icon-192.png / icon-512.png  iconos de la app
 css/style.css       estilos
-js/utils.js         utilidades sin estado (formatos, rarezas, etiquetas)
+js/utils.js         utilidades sin estado (formatos, rarezas)
 js/db.js            IndexedDB: monedas, imágenes (Blob), países, períodos
 js/flags.js         banderas por país (banner, chips y tintes)
 js/data.js          estado, modelo con ids, migración desde formato antiguo, carga
+                    (los períodos creados a mano llevan keep:true y se conservan aunque no tengan monedas)
 js/silver.js        precio y valor de la plata
-js/views-index.js   vista Índice y filtro por etiquetas
+js/views-index.js   vista Índice
 js/views-album.js   vista Álbum y tarjetas de moneda
-js/views-explore.js vista Explorar: zonas geográficas (predefinidas + propias) y nube de etiquetas
+js/views-explore.js vista Explorar: zonas geográficas (predefinidas + propias)
+js/views-stats.js   vista Estadísticas: totales, plata y línea de tiempo por año
 js/modals.js        ventanas: país, período, ficha, crear/editar, CSV
 js/backup.js        exportar / importar copias (formato v2; acepta v1)
 js/app.js           arranque y navegación
