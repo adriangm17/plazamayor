@@ -87,8 +87,29 @@ function addZone() {
   }
 }
 
-function renameZone(oldName) {
-  const name = cleanZoneName(prompt('Nuevo nombre de la zona:', oldName), oldName);
+/* ----- Menú de la zona: renombrar o eliminar ----- */
+function openEditZoneModal(name) {
+  document.getElementById('input-edit-zone-old').value = name;
+  document.getElementById('input-edit-zone-name').value = name;
+  document.getElementById('edit-zone-modal').classList.remove('hidden');
+  setTimeout(() => { const i = document.getElementById('input-edit-zone-name'); if (i) { i.focus(); i.select(); } }, 50);
+}
+function closeEditZoneModal() {
+  document.getElementById('edit-zone-modal').classList.add('hidden');
+}
+function saveEditedZone() {
+  const oldName = document.getElementById('input-edit-zone-old').value;
+  const name = cleanZoneName(document.getElementById('input-edit-zone-name').value, oldName);
+  if (!name) return;
+  closeEditZoneModal();
+  renameZone(oldName, name);
+}
+function deleteZoneFromModal() {
+  const name = document.getElementById('input-edit-zone-old').value;
+  if (deleteZone(name)) closeEditZoneModal();
+}
+
+function renameZone(oldName, name) {
   if (!name || name === oldName) return;
   const i = customZones.indexOf(oldName);
   if (i >= 0) customZones[i] = name; else customZones.push(name);
@@ -100,12 +121,13 @@ function renameZone(oldName) {
 
 function deleteZone(name) {
   const n = countries.filter(c => c.continent === name).length;
-  if (!confirm(`¿Eliminar la zona "${name}"?` + (n ? ` Sus ${n} ${n === 1 ? 'país volverá' : 'países volverán'} a la clasificación automática.` : ''))) return;
+  if (!confirm(`¿Eliminar la zona "${name}"?` + (n ? ` Sus ${n} ${n === 1 ? 'país volverá' : 'países volverán'} a la clasificación automática.` : ''))) return false;
   customZones = customZones.filter(z => z !== name);
   countries.forEach(c => { if (c.continent === name) delete c.continent; });
   saveCustomZones();
   persistMeta();
   renderExplorar();
+  return true;
 }
 
 function setCountryContinent(countryId, value) {
@@ -126,7 +148,7 @@ function fillZoneSelect(selected) {
 let exploreAddZone = '';   // zona cuyo selector de países está abierto
 let exploreSearch = '';
 const exploreClosed = {};
-const CARD_DOTS = 5;       // bolitas de progreso de cada tarjeta (cada una = 20 %)
+const DOTS_PER_TIER = 10;  // bolitas de cada tarjeta: una por época; pasadas 10 se vuelven a colorear en un naranja más oscuro (hasta 3 vueltas)
 
 function expandAllZones() { Object.keys(exploreClosed).forEach(k => delete exploreClosed[k]); renderExplorar(); }
 function collapseAllZones() { [...allZones(), UNCLASSIFIED].forEach(k => { exploreClosed[k] = true; }); renderExplorar(); }
@@ -165,43 +187,26 @@ function prettyName(s) {
   return s.toLowerCase().split(' ').map((w, i) => (i && small.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-// Moneda de la tarjeta: imagen propia > moneda elegida > una del país con foto (mejor si ya la tienes)
-function cardCoinSource(c) {
-  if (typeof c.coinImage === 'string' && c.coinImage.startsWith('data:image/')) return { src: c.coinImage };
-  const list = coinsOfCountry(c.id).filter(x => x.hasFront);
-  const chosen = c.coinId && list.find(x => x.id === c.coinId);
-  const pick = chosen || list.find(x => x.acquired) || list[0];
-  return pick ? { coinId: pick.id } : null;
-}
-
-function cardCoinHtml(c) {
-  const src = cardCoinSource(c);
-  if (!src) return `<div class="xp-coin xp-nocoin" title="Sin imagen de moneda"><i class="fa-solid fa-coins"></i></div>`;
-  return `<div class="xp-coin">${src.src ? `<img src="${esc(src.src)}" alt="">` : imgTag(src.coinId, 'front')}</div>`;
-}
-
 function editCountryCard(countryId) { currentCountryId = countryId; openEditCountryModal(); }
 
 function countryCardHtml(c) {
   const s = countryStats(c);
-  // Cada bolita vale 20 %: se redondea, con al menos una si hay algo y las cinco solo al 100 %
-  const filled = s.pct <= 0 ? 0 : (s.pct >= 100 ? CARD_DOTS : Math.min(CARD_DOTS - 1, Math.max(1, Math.round(s.pct / 100 * CARD_DOTS))));
-  const dots = Array.from({ length: CARD_DOTS }, (_, i) => `<i class="${i < filled ? 'xp-f' : ''}"></i>`).join('');
+  // Una bolita por época; con más de 10, se recorre otra vez desde la primera con un naranja más oscuro (máx. 3 vueltas)
+  const eras = periodsOfCountry(c.id).length;
+  const dots = Array.from({ length: DOTS_PER_TIER }, (_, i) => {
+    const lvl = Math.min(3, Math.max(0, Math.ceil((eras - i) / DOTS_PER_TIER)));
+    return `<i class="${lvl ? 'xp-l' + lvl : ''}"></i>`;
+  }).join('');
   const name = prettyName(c.name);
   const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
   const id = jsArg(c.id);
   return `
-    <div class="xp-card" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${s.a} de ${s.t} monedas"><div class="xp-in">
-      <div class="xp-photo ${photo ? '' : 'xp-empty'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}>
-        <span class="xp-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span>
-        <button type="button" class="xp-edit" onclick="event.stopPropagation(); editCountryCard('${id}')" title="Editar foto, moneda y bandera" aria-label="Editar tarjeta de ${esc(name)}">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-        </button>
-      </div>
-      <div class="xp-dots" title="${s.pct}% completado" aria-hidden="true">${dots}</div>
-      <div class="xp-circle"></div>
-      ${cardCoinHtml(c)}
-      <div class="xp-name ${name.length > 15 ? 'xp-long' : (name.length > 10 ? 'xp-mid' : '')}">${esc(name)}</div>
+    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras} ${eras === 1 ? 'época' : 'épocas'}, ${s.pct}% completado. Mantén pulsado para editar"><div class="xp-in">
+      <div class="xp-photo ${photo ? '' : 'xp-empty'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
+      <span class="xp-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span>
+      <div class="xp-dots" title="${eras} ${eras === 1 ? 'época' : 'épocas'}" aria-hidden="true">${dots}</div>
+      <div class="xp-pct ${s.pct >= 100 ? 'xp-p100' : ''}" title="${s.a} de ${s.t} monedas">${s.pct}%</div>
+      <div class="xp-name ${name.length > 14 ? 'xp-long' : (name.length > 9 ? 'xp-mid' : '')}">${esc(name)}</div>
     </div></div>`;
 }
 
@@ -245,8 +250,7 @@ function renderContinents() {
           <span class="xp-num">${num}</span>
           <span class="xp-title">${esc(cont)}</span>
           ${(!isBuiltin && !isUncl) ? `
-            <button type="button" class="xp-mini" onclick="event.stopPropagation(); renameZone('${zid}')" title="Renombrar zona" aria-label="Renombrar zona"><i class="fa-solid fa-pen text-[11px]"></i></button>
-            <button type="button" class="xp-mini" onclick="event.stopPropagation(); deleteZone('${zid}')" title="Eliminar zona" aria-label="Eliminar zona"><i class="fa-solid fa-trash text-[11px]"></i></button>` : ''}
+            <button type="button" class="xp-mini" onclick="event.stopPropagation(); openEditZoneModal('${zid}')" title="Editar zona" aria-label="Editar zona"><i class="fa-solid fa-pen text-[11px]"></i></button>` : ''}
           <span class="xp-count">${n} ${n === 1 ? 'País' : 'Países'}</span>
         </div>
         <div class="xp-bar" title="${a} de ${t} monedas (${pct}%)"><i style="width:${pct}%"></i></div>
@@ -451,3 +455,71 @@ window.addEventListener('click', e => {
 }, true);
 // Evita que arrastrar la imagen de una moneda inicie el arrastre nativo del navegador
 window.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.xp-row')) e.preventDefault(); });
+
+
+/* ----- Pulsación larga en una tarjeta de país: abre el menú de edición ----- */
+const CARD_HOLD_MS = 500;
+let cardHold = null;
+let cardHoldSuppressClick = false;
+
+window.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const card = e.target.closest && e.target.closest('.xp-card[data-cid]');
+  if (!card) return;
+  cardHoldCancel();
+  cardHold = { card, id: card.dataset.cid, x: e.clientX, y: e.clientY };
+  cardHold.press = setTimeout(() => card.classList.add('xp-pressing'), 130);
+  cardHold.timer = setTimeout(() => {
+    const h = cardHold; if (!h) return;
+    cardHoldCancel();
+    cardHoldSuppressClick = true;
+    setTimeout(() => { cardHoldSuppressClick = false; }, 600);
+    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) {} }
+    editCountryCard(h.id);
+  }, CARD_HOLD_MS);
+});
+window.addEventListener('pointermove', e => {
+  if (cardHold && (Math.abs(e.clientX - cardHold.x) > 8 || Math.abs(e.clientY - cardHold.y) > 8)) cardHoldCancel();
+});
+window.addEventListener('pointerup', () => cardHoldCancel());
+window.addEventListener('pointercancel', () => cardHoldCancel());
+function cardHoldCancel() {
+  if (!cardHold) return;
+  clearTimeout(cardHold.timer); clearTimeout(cardHold.press);
+  cardHold.card.classList.remove('xp-pressing');
+  cardHold = null;
+}
+window.addEventListener('click', e => {
+  if (cardHoldSuppressClick) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+// En móvil, mantener pulsado no debe abrir el menú contextual del navegador sobre la tarjeta
+window.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.xp-card[data-cid]')) e.preventDefault(); });
+
+/* ----- Ordenar los países dentro de su zona geográfica (desde el menú de edición) ----- */
+function countriesInZoneOf(countryId) {
+  const c = countryById(countryId);
+  if (!c) return [];
+  const z = continentOf(c);
+  return sortedCountries().filter(x => continentOf(x) === z);
+}
+function updateCountryMoveUI() {
+  const list = countriesInZoneOf(currentCountryId);
+  const i = list.findIndex(x => x.id === currentCountryId);
+  const l = document.getElementById('btn-country-left'), r = document.getElementById('btn-country-right');
+  if (l) l.disabled = i <= 0;
+  if (r) r.disabled = i < 0 || i >= list.length - 1;
+  const t = document.getElementById('edit-country-pos');
+  if (t) t.textContent = i >= 0 ? `Posición ${i + 1} de ${list.length} en ${list.length ? continentOf(list[i]) : ''}` : '';
+}
+function moveCountryInZone(direction) {
+  const zone = countriesInZoneOf(currentCountryId);
+  const i = zone.findIndex(x => x.id === currentCountryId), t = i + direction;
+  if (i < 0 || t < 0 || t >= zone.length) return;
+  const all = sortedCountries();
+  const ia = all.findIndex(x => x.id === currentCountryId), ib = all.findIndex(x => x.id === zone[t].id);
+  [all[ia], all[ib]] = [all[ib], all[ia]];
+  all.forEach((c, n) => { c.order = n; });
+  persistMeta();
+  renderExplorar();
+  updateCountryMoveUI();
+}

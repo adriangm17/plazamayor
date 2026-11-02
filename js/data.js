@@ -86,6 +86,14 @@ function getPeriodWithDate(periodId) {
   return explicit[0] || '';
 }
 
+// Nombre y fecha por separado (para mostrar la fecha en una línea propia debajo del nombre)
+function periodTitleParts(p) {
+  const raw = p.name.trim();
+  const m = raw.match(/^(.*?)\s*\(([\d\s–-]+)\)\s*$/);
+  if (m && m[1]) return { name: m[1], date: m[2].trim() };
+  return { name: raw, date: getPeriodWithDate(p.id) || '' };
+}
+
 function periodDisplayName(p) {
   const name = p.name.trim();
   const date = getPeriodWithDate(p.id);

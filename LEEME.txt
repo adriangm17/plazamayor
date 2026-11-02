@@ -16,6 +16,7 @@ js/views-explore.js vista Explorar: zonas geográficas (predefinidas + propias)
 js/views-stats.js   vista Estadísticas: totales, plata y línea de tiempo por año
 js/modals.js        ventanas: país, período, ficha, crear/editar, CSV
 js/backup.js        exportar / importar copias (formato v2; acepta v1)
+js/nav.js            botón "atrás" del móvil: historial de fichas, filtros, país/período y pestañas
 js/app.js           arranque y navegación
 
 Abre index.html desde un servidor (p. ej. GitHub Pages). Mantén la carpeta tal cual.

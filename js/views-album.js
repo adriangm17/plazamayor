@@ -2,116 +2,91 @@
 let pressTimer = null;
 let isLongPress = false;
 
-let albumGroup = '';   // grupo de períodos elegido ("1er Boliviano · …" → "1er boliviano"); '' = ninguno
+let albumGroup = '';   // (sin uso desde 4.10: ya no hay pestañas ni grupos de períodos; se mantiene vacío por compatibilidad)
 
-/* ----- Agrupar períodos por el texto anterior a " · " (solo si hay 2 o más con el mismo prefijo) ----- */
-function periodGroupParts(p) {
-  const n = periodDisplayName(p);
-  const i = n.indexOf(' · ');
-  return i > 0 ? { key: normKey(n.slice(0, i)), label: n.slice(0, i).trim(), sub: n.slice(i + 3).trim() } : null;
-}
-function periodGroupList() {
-  const ps = periodsOfCountry(currentCountryId);
-  const count = {};
-  ps.forEach(p => { const g = periodGroupParts(p); if (g) count[g.key] = (count[g.key] || 0) + 1; });
-  const items = [], seen = {};
-  ps.forEach(p => {
-    const g = periodGroupParts(p);
-    if (g && count[g.key] >= 2) {
-      if (!seen[g.key]) { seen[g.key] = { group: true, key: g.key, label: g.label, periods: [] }; items.push(seen[g.key]); }
-      seen[g.key].periods.push({ p, sub: g.sub });
-    } else items.push({ group: false, p });
-  });
-  return items;
-}
-function groupKeyOfPeriod(p) {
-  const g = p && periodGroupParts(p);
-  return g && periodGroupList().some(it => it.group && it.key === g.key) ? g.key : '';
-}
-function periodsInAlbumView() {
-  const all = periodsOfCountry(currentCountryId);
-  if (albumPeriodId) return all.filter(p => p.id === albumPeriodId);
-  if (albumGroup) return all.filter(p => { const g = periodGroupParts(p); return g && g.key === albumGroup; });
-  return all;
-}
+// Todos los períodos del país se ven siempre; el desplegable "Épocas" solo lleva a la posición de cada uno
+function periodsInAlbumView() { return periodsOfCountry(currentCountryId); }
 function periodProgressText(p) {
   const n = coinsOfPeriod(p.id).filter(c => !isSilverCoin(c));
   return `${n.filter(c => c.acquired).length}/${n.length}`;
 }
+function validAlbumPeriod() { albumPeriodId = ''; albumGroup = ''; return ''; }
 
-function validAlbumPeriod() {
-  if (albumPeriodId && !periodsOfCountry(currentCountryId).some(p => p.id === albumPeriodId)) albumPeriodId = '';
-  if (albumPeriodId) albumGroup = groupKeyOfPeriod(periodById(albumPeriodId));
-  if (albumGroup && !periodGroupList().some(it => it.group && it.key === albumGroup)) albumGroup = '';
-  return albumPeriodId;
+// Años (mín–máx) que cubren las monedas de un período; null si no tiene fechas
+function periodYearSpan(p) {
+  let min = Infinity, max = -Infinity;
+  coinsOfPeriod(p.id).forEach(c => { const r = parseYearRange(c.range); if (r) { min = Math.min(min, r.min); max = Math.max(max, r.max); } });
+  return min === Infinity ? null : { min, max };
+}
+// Períodos del país de la fecha más reciente a la más antigua; los que no tienen fechas, al final y en el orden de la página
+function periodsByDate() {
+  const all = periodsOfCountry(currentCountryId).map((p, i) => ({ p, i, span: periodYearSpan(p) }));
+  const dated = all.filter(x => x.span).sort((a, b) => (b.span.min - a.span.min) || (b.span.max - a.span.max) || (a.i - b.i));
+  return dated.concat(all.filter(x => !x.span));
 }
 
 function renderTabs() {
   if (!countryById(currentCountryId)) currentCountryId = null;
   const country = countryById(currentCountryId);
   // Sin país elegido se muestra la lista de países y se ocultan cabecera y filtros
-  ['album-country-title', 'period-bar', 'album-filters'].forEach(id => {
+  ['period-bar', 'album-filters'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = country ? '' : 'none';
   });
   validAlbumPeriod();
+  if (typeof navSync === 'function') navSync();
   document.getElementById('album-country-title').innerHTML = country
-    ? `<i class="fa-solid fa-chevron-left"></i>${flagChip(country, 34, 24)}<span>${esc(country.name)}</span>`
+    ? `<i class="fa-solid fa-chevron-left"></i>${flagChip(country, 66, 46)}<span>${esc(country.name)}</span>`
     : '';
   const bar = document.getElementById('period-bar');
   if (bar && country) bar.style.background = `linear-gradient(90deg,rgba(61,26,84,.97) 0%,rgba(61,26,84,.88) 60%,rgba(61,26,84,.7) 100%),${flagLayers(country)}`;
+  if (!country) { closePeriodsOverlay(); return; }
+  document.getElementById('btn-periods-open').innerHTML = `<span>ÉPOCAS</span><i class="fa-solid fa-chevron-down"></i>`;
+  if (!document.getElementById('periods-overlay').classList.contains('hidden')) renderPeriodsOverlay();
+}
+
+/* ----- Desplegable "Épocas": pantalla completa con los períodos por fecha ----- */
+function renderPeriodsOverlay() {
+  const country = countryById(currentCountryId);
   if (!country) return;
-  const tabs = document.getElementById('period-tabs');
-  const oldScroll = tabs.querySelector('.xa-scroll');
-  const keepLeft = oldScroll ? oldScroll.scrollLeft : 0;
-  const pill = (active) => `xa-pill ${active ? 'xa-on' : ''}`;
-  const pc = (txt) => `<span class="xa-pc">${esc(txt)}</span>`;
-  const items = periodGroupList();
-  const chips = items.map(it => it.group
-    ? `<button onclick="selectGroupTab('${jsArg(it.key)}')" class="${pill(albumGroup === it.key)} xa-pgroup" data-active="${albumGroup === it.key ? 1 : ''}">${esc(it.label)}${pc(it.periods.length + ' ▾')}</button>`
-    : `<button onclick="selectPeriodTab('${jsArg(it.p.id)}')" class="${pill(it.p.id === albumPeriodId)}" data-active="${it.p.id === albumPeriodId ? 1 : ''}">${esc(periodDisplayName(it.p))}${pc(periodProgressText(it.p))}</button>`
-  ).join('');
-  const grp = albumGroup ? items.find(it => it.group && it.key === albumGroup) : null;
-  const subRow = grp
-    ? `<div class="xa-subrow"><button onclick="selectGroupTab('${jsArg(grp.key)}', true)" class="${pill(!albumPeriodId)} xa-sub">Todo ${esc(grp.label)}</button>` +
-      grp.periods.map(x => `<button onclick="selectPeriodTab('${jsArg(x.p.id)}')" class="${pill(x.p.id === albumPeriodId)} xa-sub">${esc(x.sub)}${pc(periodProgressText(x.p))}</button>`).join('') + `</div>`
-    : '';
-  tabs.innerHTML =
-    `<div class="xa-tabrow">` +
-      `<button onclick="selectPeriodTab('')" class="${pill(!albumPeriodId && !albumGroup)}">Todas</button>` +
-      `<div class="xa-scroll">${chips}</div>` +
-      `<button onclick="openAddPeriodModal('${jsArg(currentCountryId)}')" class="xa-pill xa-plus" title="Añadir período" aria-label="Añadir período"><i class="fa-solid fa-plus"></i></button>` +
-    `</div>` + subRow;
-  const sc = tabs.querySelector('.xa-scroll');
-  sc.scrollLeft = keepLeft;
-  const act = sc.querySelector('[data-active="1"]');
-  if (act && (act.offsetLeft < sc.scrollLeft || act.offsetLeft + act.offsetWidth > sc.scrollLeft + sc.clientWidth))
-    sc.scrollLeft = act.offsetLeft - 8;
+  const list = periodsByDate();
+  document.getElementById('periods-ov-list').innerHTML = list.length === 0
+    ? `<p class="xa-msg">Este país aún no tiene períodos.</p>`
+    : list.map((x, i) => `
+      <button type="button" class="xa-ovrow" onclick="goToPeriod('${jsArg(x.p.id)}')">
+        <span class="xp-num">${String(i + 1).padStart(2, '0')}</span>
+        <span class="xa-ovname">${esc(periodDisplayName(x.p))}${/\d{4}/.test(periodDisplayName(x.p)) ? '' : `<small>${x.span ? (x.span.min === x.span.max ? x.span.min : x.span.min + ' – ' + x.span.max) : 'Sin fechas'}</small>`}</span>
+        <span class="xa-pc">${periodProgressText(x.p)}</span>
+      </button>`).join('');
 }
-
-function selectPeriodTab(periodId) {
-  if (periodId !== albumPeriodId) resetAlbumFilters();
-  albumPeriodId = periodId;
+function togglePeriodsOverlay() {
+  const el = document.getElementById('periods-overlay');
+  if (el && !el.classList.contains('hidden')) { closePeriodsOverlay(); return; }
+  if (!countryById(currentCountryId)) return;
+  renderPeriodsOverlay();
+  el.classList.remove('hidden');
+  document.getElementById('periods-ov-list').scrollTop = 0;
+  document.getElementById('btn-periods-open').classList.add('xa-open');
+}
+function closePeriodsOverlay() {
+  const el = document.getElementById('periods-overlay');
+  if (el) el.classList.add('hidden');
+  const b = document.getElementById('btn-periods-open');
+  if (b) b.classList.remove('xa-open');
+}
+// Elegir una época: se cierra el desplegable, se abre su sección y se baja hasta ella
+function goToPeriod(periodId) {
   const p = periodById(periodId);
-  albumGroup = p ? groupKeyOfPeriod(p) : '';
-  if (p && p.collapsed) { p.collapsed = false; persistMeta(); }
-  if (p && coinsOfPeriod(p.id).length === 0) periodForceOpen[p.id] = true;   // elegido a propósito: se abre
+  closePeriodsOverlay();
+  if (!p) return;
+  if (p.collapsed) { p.collapsed = false; persistMeta(); }
+  if (coinsOfPeriod(p.id).length === 0) periodForceOpen[p.id] = true;
   movingCoinId = null;
   renderSections();
-  renderTabs();
-}
-
-// Elegir un grupo de períodos (volver a tocarlo lo quita, salvo desde "Todo el grupo")
-function selectGroupTab(key, force) {
-  if (!force && albumGroup === key && !albumPeriodId) { selectPeriodTab(''); return; }
-  resetAlbumFilters();
-  albumGroup = key;
-  albumPeriodId = '';
-  periodsInAlbumView().forEach(p => { p.collapsed = false; });
-  persistMeta();
-  movingCoinId = null;
-  renderSections();
-  renderTabs();
+  setTimeout(() => {
+    const el = document.getElementById('period-section-' + periodId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
 }
 
 /* ----- Buscador de país con texto predictivo (por inicial del nombre) ----- */
@@ -171,6 +146,21 @@ function selectCountry(countryId) {
   render();
 }
 
+// Un solo botón: si hay algún período abierto los contrae todos; si están todos contraídos, los despliega
+function updateTogglePeriodsButton() {
+  const btn = document.getElementById('btn-toggle-periods');
+  if (!btn) return;
+  const list = periodsOfCountry(currentCountryId);
+  const anyOpen = list.some(p => !periodIsCollapsed(p));
+  btn.title = btn.ariaLabel = anyOpen ? 'Contraer períodos' : 'Desplegar períodos';
+  btn.setAttribute('aria-label', btn.title);
+  btn.innerHTML = `<i class="fa-solid fa-angles-${anyOpen ? 'up' : 'down'}"></i>`;
+}
+function toggleAllPeriods() {
+  const list = periodsOfCountry(currentCountryId);
+  if (list.some(p => !periodIsCollapsed(p))) collapseAllPeriods(); else expandAllPeriods();
+}
+
 function expandAllPeriods() {
   periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = false; periodForceOpen[p.id] = true; });
   persistMeta();
@@ -191,13 +181,14 @@ function toggleCollapse(periodId) {
   // Con varias épocas a la vista funciona como acordeón: al abrir una se pliegan las demás
   const opened = coinsOfPeriod(periodId).length === 0 ? !!periodForceOpen[periodId] : !p.collapsed;
   const view = periodsInAlbumView();
-  if (opened && view.length > 1) view.forEach(q => {
+  const accordion = opened && view.length > 1 && coinsOfPeriod(periodId).length > 0;   // una época vacía no pliega las demás
+  if (accordion) view.forEach(q => {
     if (q.id === periodId) return;
     if (coinsOfPeriod(q.id).length === 0) periodForceOpen[q.id] = false; else q.collapsed = true;
   });
   persistMeta();
   renderSections();
-  if (opened && view.length > 1) {
+  if (accordion) {
     const el = document.getElementById('period-section-' + periodId);
     if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
@@ -221,15 +212,6 @@ function periodIsCollapsed(p) {
 const periodOnlyMissing = {};
 function togglePeriodMissing(periodId) {
   periodOnlyMissing[periodId] = !periodOnlyMissing[periodId];
-  if (periodOnlyMissing[periodId]) periodOnlyOwned[periodId] = false;   // "faltan" y "tengo" son excluyentes
-  renderSections();
-}
-
-// Filtro "solo las que tengo" de un período concreto (también solo durante la sesión)
-const periodOnlyOwned = {};
-function togglePeriodOwned(periodId) {
-  periodOnlyOwned[periodId] = !periodOnlyOwned[periodId];
-  if (periodOnlyOwned[periodId]) periodOnlyMissing[periodId] = false;
   renderSections();
 }
 
@@ -262,11 +244,6 @@ function matchesAlbumFilter(c) {
   return q.split(/\s+/).every(word => haystack.includes(word));
 }
 
-function onAlbumSearchInput(value) {
-  albumSearch = value;
-  renderSections();
-}
-
 // Botones-filtro del Álbum (solo icono): activo = ámbar
 function setFilterButtonState(id, active) {
   const btn = document.getElementById(id);
@@ -282,9 +259,6 @@ function resetAlbumFilters() {
   albumOnlyOwned = false;
   albumOnlySpecial = false;
   Object.keys(periodOnlyMissing).forEach(k => delete periodOnlyMissing[k]);
-  Object.keys(periodOnlyOwned).forEach(k => delete periodOnlyOwned[k]);
-  const input = document.getElementById('album-search');
-  if (input) input.value = '';
   setFilterButtonState('btn-only-missing', false);
   setFilterButtonState('btn-only-owned', false);
   setFilterButtonState('btn-only-special', false);
@@ -394,9 +368,8 @@ function renderSections() {
   const sectionsHtml = periodsInAlbumView().map(p => {
     const allPeriodCoins = filtered.filter(c => c.periodId === p.id);
     const onlyMissingHere = !!periodOnlyMissing[p.id];
-    const onlyOwnedHere = !!periodOnlyOwned[p.id];
-    const periodCoins = allPeriodCoins.filter(c => matchesAlbumFilter(c) && !(onlyMissingHere && c.acquired) && !(onlyOwnedHere && !c.acquired)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    if (filterActive && periodCoins.length === 0 && !onlyMissingHere && !onlyOwnedHere) return '';
+    const periodCoins = allPeriodCoins.filter(c => matchesAlbumFilter(c) && !(onlyMissingHere && c.acquired)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (filterActive && periodCoins.length === 0 && !onlyMissingHere) return '';
 
     const normalCoins = allPeriodCoins.filter(c => !isSilverCoin(c));
     const acquiredCount = normalCoins.filter(c => c.acquired).length;
@@ -408,19 +381,20 @@ function renderSections() {
     const isCollapsed = periodIsCollapsed(p);
     const pid = esc(p.id);
     const num = String(++secNum).padStart(2, '0');
+    const ptp = periodTitleParts(p);
 
     return `
       <section id="period-section-${pid}" class="xa-sec">
         <div class="xp-head xa-head" onclick="toggleCollapse('${pid}')" role="button" aria-expanded="${!isCollapsed}">
           <span class="xp-num">${num}</span>
-          <span class="xp-title" style="font-size:19px">${esc(periodDisplayName(p))}</span>
+          <span class="xa-ptitle">
+            <span class="xp-title xa-pname" title="${esc(periodDisplayName(p))}">${esc(ptp.name)}</span>
+            ${ptp.date ? `<span class="xa-pdate">${esc(ptp.date)}</span>` : ''}
+          </span>
           <span class="xa-tools" onclick="event.stopPropagation()">
             <button onclick="openEditPeriodModal('${pid}')" class="xp-btn" title="Editar período" aria-label="Editar período"><i class="fa-solid fa-pen"></i></button>
-            <button onclick="openCreateModal('${pid}')" class="xp-btn" title="Añadir una moneda a este período" aria-label="Añadir una moneda a este período"><i class="fa-solid fa-plus"></i></button>
-            <button onclick="toggleCollapse('${pid}')" class="xp-btn" title="${isCollapsed ? 'Desplegar período' : 'Contraer período'}" aria-label="${isCollapsed ? 'Desplegar período' : 'Contraer período'}"><i class="fa-solid fa-angles-${isCollapsed ? 'down' : 'up'}"></i></button>
             <button onclick="flipPeriodCoins('${pid}')" class="xp-btn" title="Girar todas las monedas del período" aria-label="Girar todas las monedas del período"><i class="fa-solid fa-rotate"></i></button>
             <button onclick="togglePeriodMissing('${pid}')" class="xp-btn ${onlyMissingHere ? 'xp-on' : ''}" title="Ver solo las que me faltan de este período" aria-label="Ver solo las que me faltan de este período"><i class="fa-solid fa-circle-exclamation"></i></button>
-            <button onclick="togglePeriodOwned('${pid}')" class="xp-btn ${onlyOwnedHere ? 'xp-on' : ''}" title="Ver solo las que tengo de este período" aria-label="Ver solo las que tengo de este período"><i class="fa-solid fa-circle-check"></i></button>
           </span>
         </div>
         <div class="xa-prog">
@@ -440,6 +414,8 @@ function renderSections() {
     ? sectionsHtml
     : `<div class="xp-empty-msg">Ninguna moneda coincide con el filtro.</div>`;
   hydrateImages(container);
+  updateTogglePeriodsButton();
+  if (typeof navSync === 'function') navSync();
 }
 
 function renderCoinCard(c, opts) {

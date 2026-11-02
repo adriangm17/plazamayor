@@ -36,7 +36,7 @@ function jumpToPeriod(periodId) {
   const p = periodById(periodId);
   if (!p) return;
   currentCountryId = p.countryId;
-  albumPeriodId = periodId;
+  albumPeriodId = '';   // el Álbum muestra todos los períodos; solo se baja hasta el elegido
   p.collapsed = false;
   if (coinsOfPeriod(periodId).length === 0) periodForceOpen[periodId] = true;   // se pidió ese período: se abre aunque esté vacío
   persistMeta();

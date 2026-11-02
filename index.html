@@ -100,10 +100,16 @@
 
     <!-- VISTA ÁLBUM -->
     <div id="view-album" class="xp hidden">
-      <button onclick="switchTab('indice')" id="album-country-title" class="xa-title" title="Volver al índice para cambiar de país"></button>
+      <div class="xa-barwrap">
       <div id="period-bar" class="xa-bar">
-        <div class="xa-tabs" id="period-tabs"></div>
+        <button onclick="switchTab('indice')" id="album-country-title" class="xa-title" title="Volver al índice para cambiar de país"></button>
+        <button type="button" id="btn-periods-open" onclick="togglePeriodsOverlay()" class="xa-epo" aria-label="Ver épocas" aria-haspopup="true"></button>
         <button onclick="openEditCountryModal()" class="xi-btn" title="Editar país" aria-label="Editar país"><i class="fa-solid fa-pen"></i></button>
+      </div>
+      <div id="periods-overlay" class="xa-ov hidden" role="menu" aria-label="Épocas">
+        <div class="xa-ovback" onclick="closePeriodsOverlay()"></div>
+        <div id="periods-ov-list" class="xa-ovpanel"></div>
+      </div>
       </div>
 
       <div class="xa-filters" id="album-filters">
@@ -111,15 +117,11 @@
           <input type="text" id="album-country-search" autocomplete="off" oninput="onCountrySearchInput(this.value)" onfocus="onCountrySearchInput(this.value)" onkeydown="onCountrySearchKey(event)" placeholder="País…" title="Ir a otro país" class="xa-input">
           <div id="country-suggest" class="xa-suggest hidden"></div>
         </div>
-        <div class="relative flex-1 min-w-0">
-          <input type="search" id="album-search" oninput="onAlbumSearchInput(this.value)" placeholder="Moneda…" title="Buscar por denominación, KM#, año, ceca, rareza…" class="xa-input">
-        </div>
         <div class="flex items-center gap-1.5 shrink-0">
         <button id="btn-only-missing" onclick="toggleOnlyMissing()" title="Solo las que me faltan" aria-label="Solo las que me faltan" class="xp-btn"><i class="fa-solid fa-circle-exclamation"></i></button>
         <button id="btn-only-owned" onclick="toggleOnlyOwned()" title="Solo las que tengo" aria-label="Solo las que tengo" class="xp-btn"><i class="fa-solid fa-circle-check"></i></button>
         <button id="btn-only-special" onclick="toggleOnlySpecial()" title="Solo no circulantes (conmemorativas, colección, falsas de época…)" aria-label="Solo no circulantes" class="xp-btn"><i class="fa-solid fa-star"></i></button>
-        <button onclick="expandAllPeriods()" title="Expandir épocas" aria-label="Expandir épocas" class="xp-btn"><i class="fa-solid fa-angles-down"></i></button>
-        <button onclick="collapseAllPeriods()" title="Contraer épocas" aria-label="Contraer épocas" class="xp-btn"><i class="fa-solid fa-angles-up"></i></button>
+        <button id="btn-toggle-periods" onclick="toggleAllPeriods()" title="Contraer períodos" aria-label="Contraer períodos" class="xp-btn"><i class="fa-solid fa-angles-up"></i></button>
         </div>
       </div>
 
@@ -163,6 +165,14 @@
         <select id="input-edit-country-continent" class="w-full bg-slate-900 text-white text-xs p-3 rounded-xl border border-slate-800 outline-none focus:border-amber-500"><option value="">Automático</option></select>
       </div>
       <div>
+        <label class="text-xs text-slate-400 block mb-1 font-semibold">Posición dentro de la zona (orden en Explorar):</label>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-country-left" onclick="moveCountryInZone(-1)" class="w-10 h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl flex items-center justify-center transition hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Mover antes" aria-label="Mover antes"><i class="fa-solid fa-arrow-left"></i></button>
+          <button type="button" id="btn-country-right" onclick="moveCountryInZone(1)" class="w-10 h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl flex items-center justify-center transition hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Mover después" aria-label="Mover después"><i class="fa-solid fa-arrow-right"></i></button>
+          <span id="edit-country-pos" class="text-[11px] text-slate-400"></span>
+        </div>
+      </div>
+      <div>
         <label class="text-xs text-slate-400 block mb-1 font-semibold">Bandera (código ISO, opcional):</label>
         <div class="flex items-center gap-3">
           <input type="text" id="input-edit-country-flag" maxlength="6" placeholder="Automática · ej: es, fr, gb-sct" oninput="updateFlagPreview()" class="flex-1 bg-slate-900 text-white text-xs p-3 rounded-xl border border-slate-800 outline-none focus:border-amber-500">
@@ -190,18 +200,27 @@
           <button type="button" onclick="clearCardPhoto()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] text-slate-300 font-bold transition">Quitar</button>
         </div>
       </div>
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Moneda de la tarjeta:</label>
-        <div id="card-coin-picker" class="flex gap-2 overflow-x-auto pb-1"></div>
-        <label class="inline-block cursor-pointer mt-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] text-slate-200 font-bold transition">
-          <i class="fa-solid fa-coins text-amber-400 mr-1"></i> Subir imagen de moneda
-          <input type="file" accept="image/*" class="hidden" onchange="onCardCoinSelected(this)">
-        </label>
-      </div>
       <button type="button" onclick="deleteCurrentCountry()" class="w-full border border-red-900/70 text-red-400 hover:bg-red-950/40 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Eliminar país por completo</button>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeEditCountryModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
         <button onclick="saveEditedCountryName()" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-xl text-xs font-bold">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR ZONA (Explorar) -->
+  <div id="edit-zone-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#151c2c] border border-gray-800 w-full max-w-sm rounded-2xl p-5 text-left space-y-4">
+      <h2 class="text-lg font-bold text-white">Editar zona</h2>
+      <input type="hidden" id="input-edit-zone-old">
+      <div>
+        <label class="text-xs text-slate-400 block mb-1 font-semibold">Nombre de la zona:</label>
+        <input type="text" id="input-edit-zone-name" maxlength="40" onkeydown="if(event.key==='Enter')saveEditedZone()" class="w-full bg-slate-900 text-white text-sm p-3 rounded-xl border border-slate-800 font-bold outline-none focus:border-amber-500">
+      </div>
+      <button type="button" onclick="deleteZoneFromModal()" class="w-full border border-red-900/70 text-red-400 hover:bg-red-950/40 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Eliminar zona</button>
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeEditZoneModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
+        <button onclick="saveEditedZone()" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-xl text-xs font-bold">Guardar</button>
       </div>
     </div>
   </div>
@@ -223,6 +242,7 @@
           <span id="edit-period-pos" class="text-[11px] text-slate-400"></span>
         </div>
       </div>
+      <button type="button" id="btn-period-addcoin" onclick="addCoinFromPeriodModal()" class="hidden w-full bg-slate-800 border border-slate-700 text-slate-100 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-semibold items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> Añadir moneda a este período</button>
       <button type="button" id="btn-period-delete" onclick="deleteEmptyPeriodFromModal()" class="hidden w-full border border-red-900/70 text-red-400 hover:bg-red-950/40 py-2 rounded-xl text-xs font-semibold items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Eliminar período vacío</button>
       <div class="flex space-x-2 pt-2">
         <button onclick="closeEditPeriodModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
@@ -472,6 +492,7 @@
   <script src="js/views-stats.js"></script>
   <script src="js/modals.js"></script>
   <script src="js/backup.js"></script>
+  <script src="js/nav.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

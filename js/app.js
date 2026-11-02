@@ -9,9 +9,24 @@ function closeSettingsMenu() {
   if (menu) menu.classList.add('hidden');
 }
 
+// Limpia los filtros de TODAS las pestañas (así, al volver, no parece que falten monedas)
+function resetAllFilters() {
+  if (typeof resetAlbumFilters === 'function') resetAlbumFilters();
+  if (typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsGradePage = 1; statsNoYearOpen = false; statsRange = null; }
+  indiceSearchText = '';
+  const is = document.getElementById('indice-search'); if (is) is.value = '';
+  if (typeof exploreSearch !== 'undefined') exploreSearch = '';
+  const es = document.getElementById('explorar-search'); if (es) es.value = '';
+}
+
 function switchTab(tabName) {
   if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; }   // tocar de nuevo la pestaña vuelve al resumen
-  if (tabName !== currentTab && typeof resetAlbumFilters === 'function') resetAlbumFilters();   // al cambiar de pestaña se limpian los filtros del Álbum
+  if (tabName !== currentTab) resetAllFilters();   // al cambiar de pestaña no se mantiene ningún filtro
+  showTab(tabName);
+  render();
+}
+
+function showTab(tabName) {
   currentTab = tabName;
   document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album');
   ['album', 'indice', 'explorar', 'estadisticas'].forEach(t => {
@@ -25,7 +40,6 @@ function switchTab(tabName) {
       btn.className = "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-slate-400 hover:text-white";
     }
   });
-  render();
 }
 
 function render() {
@@ -39,6 +53,7 @@ function render() {
   } else if (currentTab === 'estadisticas') {
     renderEstadisticas();
   }
+  if (typeof navSync === 'function') navSync();
 }
 
 function setupPWA() {
@@ -52,6 +67,6 @@ window.addEventListener('DOMContentLoaded', () => {
   updateBackupStatus();
   setupImageDropzones();
   switchTab('indice');
-  loadData();
+  Promise.resolve(loadData()).catch(() => {}).then(() => navInit());
   setupPWA();
 });

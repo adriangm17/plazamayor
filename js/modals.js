@@ -14,6 +14,7 @@ function openEditCountryModal() {
   cardCoinDraft = { coinId: country.coinId || '', image: country.coinImage || '' };
   updateCardPhotoPreview();
   renderCardCoinPicker();
+  updateCountryMoveUI();
   document.getElementById('edit-country-modal').classList.remove('hidden');
 }
 
@@ -246,6 +247,8 @@ function openEditPeriodModal(periodId) {
   document.getElementById('input-edit-period-old').value = p.id;
   document.getElementById('input-edit-period-name').value = p.name;
   updatePeriodMoveUI(p.id);
+  const add = document.getElementById('btn-period-addcoin');
+  add.classList.remove('hidden'); add.classList.add('flex');
   document.getElementById('edit-period-modal').classList.remove('hidden');
 }
 
@@ -260,8 +263,18 @@ function openAddPeriodModal(countryId) {
   document.getElementById('edit-period-move-box').classList.add('hidden');
   const del = document.getElementById('btn-period-delete');
   del.classList.add('hidden'); del.classList.remove('flex');
+  const add = document.getElementById('btn-period-addcoin');
+  add.classList.add('hidden'); add.classList.remove('flex');
   document.getElementById('edit-period-modal').classList.remove('hidden');
   setTimeout(() => { const i = document.getElementById('input-edit-period-name'); if (i) i.focus(); }, 50);
+}
+
+// Opción "Añadir moneda" dentro del menú Editar período
+function addCoinFromPeriodModal() {
+  const id = document.getElementById('input-edit-period-old').value;
+  if (!periodById(id)) return;
+  closeEditPeriodModal();
+  openCreateModal(id);
 }
 
 // Elimina el período abierto en la ventana, solo si no tiene monedas

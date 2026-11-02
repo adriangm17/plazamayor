@@ -161,6 +161,7 @@ function toggleStatsRank() { statsRankAll = !statsRankAll; renderEstadisticas();
 function resetStatsZoom() { statsRange = null; renderEstadisticas(); }
 
 function renderEstadisticas() {
+  if (typeof navSync === 'function') navSync();
   const box = document.getElementById('estadisticas-content'); if (!box) return;
   if (statsGrade) { renderGradePage(box); return; }
   if (statsType) { renderTypePage(box); return; }
