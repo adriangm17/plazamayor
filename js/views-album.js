@@ -178,20 +178,8 @@ function toggleCollapse(periodId) {
   if (!p) return;
   if (coinsOfPeriod(periodId).length === 0) periodForceOpen[periodId] = !periodForceOpen[periodId];
   else p.collapsed = !p.collapsed;
-  // Con varias épocas a la vista funciona como acordeón: al abrir una se pliegan las demás
-  const opened = coinsOfPeriod(periodId).length === 0 ? !!periodForceOpen[periodId] : !p.collapsed;
-  const view = periodsInAlbumView();
-  const accordion = opened && view.length > 1 && coinsOfPeriod(periodId).length > 0;   // una época vacía no pliega las demás
-  if (accordion) view.forEach(q => {
-    if (q.id === periodId) return;
-    if (coinsOfPeriod(q.id).length === 0) periodForceOpen[q.id] = false; else q.collapsed = true;
-  });
   persistMeta();
   renderSections();
-  if (accordion) {
-    const el = document.getElementById('period-section-' + periodId);
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }
 }
 
 // Gira a la vez todas las monedas visibles del período (si alguna está de cara, las pone todas del reverso; si no, todas de cara)
@@ -418,6 +406,48 @@ function renderSections() {
   if (typeof navSync === 'function') navSync();
 }
 
+/* ----- Variantes de una misma moneda (KM# 12, 12a, 12.1, 12.2…) -----
+   Se agrupan por país + número base del catálogo. Una ficha con 2 o más del mismo grupo lleva un círculo
+   dividido en tantas porciones como variantes (la original también cuenta); cada una conseguida se pinta de verde. */
+let variantCache = null;   // se reconstruye en cada pintado (se vacía al terminar la tarea actual)
+function kmKey(km) {
+  const m = String(km ?? '').match(/^\s*([A-Za-zÀ-ÿ]*)\s*[#.]?\s*(\d+)(.*)$/);
+  if (!m) return null;
+  return { base: (m[1] || 'KM').toUpperCase() + '#' + m[2], suffix: m[3].trim().toLowerCase().replace(/^[\s.\-_/]+/, '') };
+}
+function variantGroupOf(c) {
+  const k = kmKey(c && c.km);
+  if (!k) return null;
+  if (!variantCache) {
+    variantCache = new Map();
+    coins.forEach(x => {
+      const kx = kmKey(x.km); if (!kx) return;
+      const key = x.countryId + '|' + kx.base;
+      if (!variantCache.has(key)) variantCache.set(key, []);
+      variantCache.get(key).push({ coin: x, suffix: kx.suffix });
+    });
+    variantCache.forEach(g => g.sort((a, b) => a.suffix.localeCompare(b.suffix, undefined, { numeric: true })));   // la original (sin sufijo) primero
+    Promise.resolve().then(() => { variantCache = null; });
+  }
+  const g = variantCache.get(c.countryId + '|' + k.base);
+  return g && g.length > 1 ? g.map(e => e.coin) : null;
+}
+function variantMarkHtml(c) {
+  const g = variantGroupOf(c);
+  if (!g) return '';
+  const n = g.length, f = v => v.toFixed(2);
+  const pt = i => { const a = -Math.PI / 2 + 2 * Math.PI * i / n; return [12 + 10 * Math.cos(a), 12 + 10 * Math.sin(a)]; };
+  let fills = '', lines = '', got = 0;
+  g.forEach((x, i) => {
+    const [x1, y1] = pt(i), [x2, y2] = pt(i + 1);
+    if (x.acquired) { got++; fills += `<path d="M12 12L${f(x1)} ${f(y1)}A10 10 0 0 1 ${f(x2)} ${f(y2)}Z" fill="#0d9488" stroke="none"/>`; }
+    lines += `M12 12L${f(x1)} ${f(y1)}`;
+  });
+  return `<span class="xc-var" title="Variantes: ${got} de ${n} conseguidas">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+    `${fills}<path d="${lines}" stroke-width="1.2"/><circle cx="12" cy="12" r="10"/></svg></span>`;
+}
+
 function renderCoinCard(c, opts) {
   opts = (opts && typeof opts === 'object') ? opts : {};   // (.map le pasa el índice como 2.º argumento)
   let baseStyleClass = 'coin-base-style';
@@ -453,6 +483,11 @@ function renderCoinCard(c, opts) {
   const formatMark = ownedFormats.length === 0 ? '' :
     `<span class="absolute top-2 left-2 z-10 flex gap-0.5 pointer-events-none" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`;
 
+  // Estado de conservación en la esquina inferior izquierda, justo encima de la denominación (mejor grado de los ejemplares)
+  const grade = bestGrade(c);
+  const gradeMark = !grade ? '' :
+    `<span class="xc-grade xc-g-${grade}" title="Conservación: ${esc(grade)}">${esc(grade)}</span>`;
+
   return `
     <div
       id="coin-card-${id}"
@@ -482,6 +517,9 @@ function renderCoinCard(c, opts) {
         </div>
       ` : ''}
 
+      <div class="relative w-full flex justify-center">
+      ${gradeMark}
+      ${variantMarkHtml(c)}
       <div class="w-28 h-28 sm:w-32 sm:h-32 my-0.5 coin-perspective" onclick="flipGridCoin(event, '${id}')">
         <div id="grid-coin-inner-${id}" class="coin-inner">
           <div class="coin-front ${!c.hasFront ? baseStyleClass : 'has-img'} ${!c.acquired ? 'coin-missing' : ''} ${!c.hasFront ? 'shadow-md' : ''}">
@@ -491,6 +529,7 @@ function renderCoinCard(c, opts) {
             ${c.hasBack ? imgTag(c.id, 'back') : `<span class="text-2xl font-black font-serif-numis tracking-tight">${denom}</span>`}
           </div>
         </div>
+      </div>
       </div>
 
       <div class="w-full mt-2 space-y-1.5">

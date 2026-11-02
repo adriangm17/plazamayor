@@ -638,3 +638,12 @@ body.theme-explorar { background-color: #E8D5AC; }
 .xa-ptitle { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:1px; align-self:center; }
 .xa-head .xa-pname { flex:none; font-size:19px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; overflow-wrap:normal; }
 .xa-pdate { font-family:'Poppins',sans-serif; font-style:italic; font-weight:700; font-size:14px; line-height:1.1; letter-spacing:.01em; color:var(--xp-plum); opacity:.62; white-space:nowrap; }
+
+/* v4.20: icono de conservación (esquina inferior izquierda de la ficha, sobre la denominación).
+   Plano, sin sombra y sin colores por estado: mismo tono arena que los iconos de formato. */
+.xc-grade { position:absolute; left:0; bottom:-2px; z-index:10; pointer-events:none; display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:20px; padding:0 6px;
+  border-radius:10px; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:11px; letter-spacing:.04em; line-height:1; color:var(--xp-sand);
+  background:transparent; border:1.5px solid var(--xp-sand); box-shadow:none; text-shadow:none; }
+
+/* v4.21: marca de variantes (esquina inferior derecha de la ficha, sobre la denominación). Círculo sin relleno, mismo tono arena que los iconos de formato. */
+.xc-var { position:absolute; right:0; bottom:-2px; z-index:10; pointer-events:none; display:inline-flex; line-height:0; color:var(--xp-sand); }
