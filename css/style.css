@@ -344,9 +344,6 @@ body.theme-explorar { background-color: #E8D5AC; }
 .xc-soft { background:rgba(232,213,172,.16); color:var(--xp-sand); }
 .xc-km { background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; }
 .xc-price { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; color:#6ee7b7; }
-.xc-ok { width:100%; margin-top:4px; padding:5px 8px; border:0; border-radius:10px; background:var(--xp-orange); color:var(--xp-plum-d); font-size:12px; font-weight:800; }
-.xc-move { width:100%; margin-bottom:4px; padding:4px; display:flex; align-items:center; justify-content:space-between; border-radius:12px; background:rgba(232,112,47,.22); border:1px solid var(--xp-orange); color:var(--xp-orange); z-index:20; }
-.xc-move button { width:22px; height:22px; display:flex; align-items:center; justify-content:center; border:0; border-radius:8px; background:var(--xp-orange); color:var(--xp-plum-d); }
 .xa-grid.hidden, .xi-periods.hidden, .xa-suggest.hidden { display:none; }
 
 /* Álbum sin país elegido: lista de burbujas */
@@ -616,9 +613,12 @@ body.theme-explorar { background-color: #E8D5AC; }
 .xa-ovpanel { scrollbar-width:none; -ms-overflow-style:none; }
 .xa-ovpanel::-webkit-scrollbar { display:none; }
 
-/* v4.13: pulsación larga en la tarjeta de país (abre su menú de edición) */
-.xp-card { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; transition:transform .18s; }
-.xp-card.xp-pressing { transform:scale(.97); }
+/* v4.24: la tarjeta de país ya no se edita con pulsación larga: icono de edición en la esquina inferior izquierda de la foto */
+.xp-card { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+.xp-edit { position:absolute; left:13px; top:133px; width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center;
+  border:0; border-radius:50%; background:rgba(61,26,84,.78); color:var(--xp-sand-l); font-size:12px; cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.28); -webkit-tap-highlight-color:transparent; z-index:3; }
+.xp-edit:active { background:var(--xp-orange); color:var(--xp-plum-d); }
 
 /* ===== v4.19: cabecera del Álbum más proporcionada, botón ÉPOCAS rediseñado, título de época en dos líneas ===== */
 .xa-bar { padding:11px 11px 11px 12px; gap:10px; border-radius:22px; min-height:72px; }
@@ -646,4 +646,304 @@ body.theme-explorar { background-color: #E8D5AC; }
   background:transparent; border:1.5px solid var(--xp-sand); box-shadow:none; text-shadow:none; }
 
 /* v4.21: marca de variantes (esquina inferior derecha de la ficha, sobre la denominación). Círculo sin relleno, mismo tono arena que los iconos de formato. */
-.xc-var { position:absolute; right:0; bottom:-2px; z-index:10; pointer-events:none; display:inline-flex; line-height:0; color:var(--xp-sand); }
+.xc-var { position:absolute; right:0; bottom:-2px; z-index:10; pointer-events:none; display:inline-flex; line-height:0; }
+/* v4.37: esquina superior izquierda (tipo primero, formatos a su derecha) y botón esquinero BASE / variante (arriba a la derecha) */
+.xc-tl { position:absolute; top:8px; left:8px; z-index:10; display:flex; align-items:center; gap:2px; pointer-events:none; }
+.xc-tdot { position:absolute; top:8px; right:8px; z-index:10; width:14px; height:14px; border-radius:50%; pointer-events:none; box-sizing:border-box; }
+/* v4.34: ficha base del grupo de variantes: rareza partida en tantos trozos como monedas (solo color) y botón "Variantes" */
+.xc-rar-split { padding:0; gap:0; }
+.xc-rar-split > span { flex:1 1 0; align-self:stretch; min-width:0; display:flex; align-items:center; justify-content:center; overflow:hidden; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; }
+.xc-vcell { padding:0; }
+
+/* v4.32: etiqueta FAO (esquina superior derecha de la ficha). Mismo estilo gráfico que .xc-grade. */
+.xc-fao { position:absolute; right:8px; top:6px; z-index:10; pointer-events:none; display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:20px; padding:0 6px;
+  border-radius:10px; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:11px; letter-spacing:.04em; line-height:1; color:var(--xp-sand);
+  background:transparent; border:1.5px solid var(--xp-sand); box-shadow:none; text-shadow:none; }
+
+/* ===== v4.25: menús de edición con el diseño nuevo (arena · berenjena · naranja), compactos y pensados para PC ===== */
+.xe-overlay { --xp-sand:#E8D5AC; --xp-sand-l:#F3E4C4; --xp-plum:#3D1A54; --xp-plum-d:#2A0F42; --xp-orange:#E8702F; --xp-muted:#B98D70;
+  position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:12px; background:rgba(42,15,66,.80);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); font-family:'Inter',system-ui,sans-serif; color:var(--xp-plum); }
+.xe-overlay.hidden { display:none; }
+.xe-sheet { width:100%; max-height:calc(100vh - 24px); overflow-y:auto; scrollbar-width:none; padding:12px 16px 14px; text-align:left;
+  background:var(--xp-sand); border-radius:22px; box-shadow:0 14px 40px rgba(0,0,0,.45); }
+.xe-sheet::-webkit-scrollbar { display:none; }
+.xe-sheet .hidden { display:none !important; }
+.xe-narrow { max-width:24rem; } .xe-mid { max-width:32rem; } .xe-wide { max-width:46rem; }
+.xe-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.xe-title { margin:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:21px; line-height:1.15; color:var(--xp-plum); }
+.xe-x { flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:0; border-radius:50%; background:var(--xp-plum); color:var(--xp-sand); font-size:12px; cursor:pointer; }
+.xe-cols { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px 18px; align-items:start; }
+.xe-col { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.xe-grid { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:8px 10px; }
+.xe-c4 { grid-column:span 4; } .xe-c6 { grid-column:span 6; }
+.xe-f { display:block; min-width:0; margin-bottom:0; }
+.xe-f > label { display:block; margin:0 0 3px; font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(61,26,84,.62); }
+.xe-in { width:100%; height:34px; padding:0 10px; background:var(--xp-sand-l); color:var(--xp-plum); border:2px solid transparent; border-radius:11px; font-size:13px; font-weight:700; outline:0; font-family:inherit; }
+.xe-in:focus { border-color:var(--xp-orange); }
+.xe-in::placeholder { color:rgba(61,26,84,.42); font-weight:600; }
+.xe-strong { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; }
+textarea.xe-in { height:auto; padding:8px 10px; resize:vertical; line-height:1.35; }
+.xe-mono { font-family:ui-monospace,Menlo,Consolas,monospace; font-weight:600; font-size:12px; }
+select.xe-in { cursor:pointer; }
+.xe-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.xe-note { font-size:11px; font-weight:600; color:rgba(61,26,84,.6); }
+.xe-or { color:#B8480F; }
+.xe-code { display:inline-block; margin-top:3px; padding:2px 6px; border-radius:7px; background:var(--xp-plum); color:var(--xp-sand); font-size:10px; }
+.xe-ico { width:34px; height:34px; display:flex; align-items:center; justify-content:center; border:0; border-radius:11px; background:var(--xp-plum); color:var(--xp-sand); font-size:12px; cursor:pointer; }
+.xe-ico:disabled { opacity:.3; cursor:not-allowed; }
+.xe-btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; padding:0 14px; border:0; border-radius:11px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; font-family:inherit; }
+.xe-btn.hidden { display:none; }
+.xe-main { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xe-soft { background:rgba(61,26,84,.12); color:var(--xp-plum); }
+.xe-danger { background:transparent; color:#B3261E; box-shadow:inset 0 0 0 2px rgba(179,38,30,.4); }
+.xe-full { width:100%; margin-top:8px; }
+.xe-foot { display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:1.5px solid rgba(61,26,84,.15); }
+.xe-sp { flex:1; }
+.xe-drop { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-height:64px; padding:6px; text-align:center;
+  border:2px dashed rgba(61,26,84,.35); border-radius:13px; background:rgba(243,228,196,.6); cursor:pointer; transition:border-color .15s; }
+.xe-drop:hover, .xe-drop.border-amber-500 { border-color:var(--xp-orange); }
+.xe-drop i { color:var(--xp-orange); font-size:15px; }
+.xe-d1 { font-size:11px; font-weight:700; color:var(--xp-plum); }
+.xe-d2 { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:9px; font-weight:600; color:rgba(61,26,84,.55); }
+.xe-link { margin-top:3px; padding:0; border:0; background:none; color:#B3261E; font-size:10px; font-weight:800; cursor:pointer; }
+.xe-link i { margin-right:4px; }
+.xe-file { width:100%; font-size:12px; color:var(--xp-plum); }
+.xe-file::file-selector-button { margin-right:8px; padding:6px 12px; border:0; border-radius:10px; background:var(--xp-plum); color:var(--xp-sand); font-weight:800; font-size:11px; cursor:pointer; }
+/* Foto de la tarjeta de país dentro del menú: más pequeña y con los colores nuevos */
+.xe-sheet .xp-modal-photo { max-width:250px; background:var(--xp-plum); border:2px solid var(--xp-plum); color:rgba(232,213,172,.6); }
+.xe-sheet .xp-zoom { max-width:250px; margin-top:6px; color:var(--xp-plum); }
+.xe-sheet .xp-zoom input { accent-color:var(--xp-orange); }
+@media (max-width:600px) {
+  .xe-overlay { align-items:flex-end; padding:0; }
+  .xe-sheet { border-radius:22px 22px 0 0; max-height:94vh; }
+  .xe-cols { grid-template-columns:1fr; }
+  .xe-c4 { grid-column:span 6; } .xe-c6 { grid-column:span 12; }
+}
+
+/* ===== Barra de scroll del buscador de países (Álbum) y del selector de países de Explorar: fina, con los colores del proyecto ===== */
+.xa-suggest, .xp-picker .xp-list { scrollbar-width:thin; scrollbar-color:var(--xp-orange) transparent; overscroll-behavior:contain; }
+.xa-suggest::-webkit-scrollbar, .xp-picker .xp-list::-webkit-scrollbar { width:6px; }
+.xa-suggest::-webkit-scrollbar-track, .xp-picker .xp-list::-webkit-scrollbar-track { background:transparent; margin:8px 0; }
+.xa-suggest::-webkit-scrollbar-thumb, .xp-picker .xp-list::-webkit-scrollbar-thumb { background:var(--xp-orange); border-radius:6px; border:1px solid var(--xp-sand-l); }
+@media (hover:none) { .xa-suggest, .xp-picker .xp-list { scrollbar-width:none; } .xa-suggest::-webkit-scrollbar, .xp-picker .xp-list::-webkit-scrollbar { display:none; } }
+
+/* KM# largo: la fuente se ajusta sola al hueco (ver fitText en utils.js) */
+.xc-km, #modal-grid-km { text-overflow:clip; }
+.xc-km { display:block; text-align:center; line-height:18px; }
+.xe-sheet, .xe-sheet * { box-sizing:border-box; }
+.xe-drop input[type=file] { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.xe-btn input[type=file] { display:none; }
+
+/* ===== v4.26: cabecera y barra de pestañas con el diseño nuevo (arena · berenjena · naranja) ===== */
+:root { --xp-sand:#E8D5AC; --xp-sand-l:#F3E4C4; --xp-plum:#3D1A54; --xp-plum-d:#2A0F42; --xp-orange:#E8702F; }
+.xh-bar { position:sticky; top:0; z-index:40; background:var(--xp-plum-d); border-radius:0; border-bottom:2px solid rgba(232,112,47,.55); box-shadow:0 4px 12px rgba(42,15,66,.3); padding:9px 12px; }
+.xh-in { max-width:56rem; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.xh-brand { display:flex; align-items:center; gap:9px; flex:none; }
+.xh-logo { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--xp-orange); color:var(--xp-plum-d); font-size:14px; }
+.xh-name { margin:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:17px; line-height:1; color:var(--xp-sand-l); white-space:nowrap; }
+.xh-status { flex:1; min-width:0; text-align:center; font-size:10px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(232,213,172,.75); }
+.xh-status.xh-bad { color:#FF9D8A; } .xh-status.xh-warn { color:#F5C26B; } .xh-status.xh-ok { color:#9BE3B4; }
+.xh-actions { display:flex; align-items:center; gap:7px; flex:none; }
+.xh-add, .xh-set { height:34px; display:flex; align-items:center; gap:6px; padding:0 13px; border:0; border-radius:12px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Inter',system-ui,sans-serif; }
+.xh-add { background:var(--xp-orange); color:var(--xp-plum-d); text-transform:uppercase; letter-spacing:.03em; }
+.xh-set { background:rgba(232,213,172,.16); color:var(--xp-sand-l); }
+.xh-set i:first-child { color:var(--xp-orange); }
+.xh-chev { font-size:9px; opacity:.75; }
+.xh-menu { position:absolute; right:0; top:calc(100% + 8px); width:170px; padding:5px; z-index:50; background:var(--xp-sand-l); border:2px solid var(--xp-plum); border-radius:14px; box-shadow:0 10px 24px rgba(61,26,84,.35); }
+.xh-menu.hidden { display:none; }
+.xh-menu button, .xh-menu label { width:100%; display:flex; align-items:center; gap:9px; padding:9px 10px; border:0; border-radius:10px; background:transparent; text-align:left; font-size:12px; font-weight:800; color:var(--xp-plum); cursor:pointer; font-family:'Inter',system-ui,sans-serif; }
+.xh-menu button:hover, .xh-menu label:hover { background:rgba(232,112,47,.16); }
+.xh-menu i { width:16px; text-align:center; color:var(--xp-orange); }
+.xh-menu input { display:none; }
+@media (max-width:480px) { .xh-brand .xh-name { font-size:15px; } .xh-add, .xh-set { padding:0 10px; } .xh-status { display:none; } }
+
+.xn-bar { position:fixed; left:0; right:0; bottom:0; z-index:40; background:var(--xp-plum-d); border-radius:0; border-top:2px solid rgba(232,112,47,.55); box-shadow:0 -4px 12px rgba(42,15,66,.3); padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px)); }
+.xn-in { max-width:30rem; margin:0 auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.xn-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:7px 4px; border:0; border-radius:15px; background:transparent; color:rgba(232,213,172,.72); font-family:'Inter',system-ui,sans-serif; cursor:pointer; transition:background .15s,color .15s; -webkit-tap-highlight-color:transparent; }
+.xn-btn i { font-size:16px; }
+.xn-btn span { font-size:11px; font-weight:700; }
+.xn-btn:hover { color:var(--xp-sand-l); }
+.xn-btn.xn-on { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xn-btn.xn-on span { font-weight:800; }
+
+/* v4.31: etiqueta con el valor de la plata en la ficha desplegada: mismo color que PLATA y la fuente/verde del valor */
+#coin-modal .xm-chip.xm-silverchip { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; color:#6ee7b7 !important; letter-spacing:0; font-size:12px; }
+
+
+/* ===== v4.38: ficha de variantes ===== */
+
+/* v4.39: la rareza siempre en negrita (mismo estilo en todas las fichas) */
+.xc-rar, .xc-rar > span { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; }
+
+/* v4.41: variantes más grandes, con enlaces a Numista y Ucoin */
+
+/* v4.42: fila de variante: moneda grande a la izquierda, datos a su derecha y número romano en la esquina (como el botón de las fichas) */
+
+/* v4.43: fila de variante compacta y por secciones: moneda | datos (KM#, años, ceca) | banda inferior (chips + enlaces agrupados) */
+
+/* v4.44: KM# y años en la misma línea; sombreado solo para rareza · precio · conservación; enlaces grandes y separados a la derecha */
+
+/* v4.45: KM# · años y ceca sobre el mismo sombreado suave que la banda de rareza, para separar las partes */
+
+/* v4.46: KM# y años en dos burbujas sombreadas distintas; la banda de rareza · precio · conservación sin sombreado */
+
+/* v4.47: casilla "N VARIANTES" de la ficha base: naranja del proyecto con icono de capas, para que se note que hay más */
+.xc-multi { gap:6px; background:var(--xp-orange); color:var(--xp-plum-d); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:12px; letter-spacing:.04em; box-shadow:0 2px 6px rgba(232,112,47,.35); }
+.xc-multi i { font-size:12px; }
+.xc-multi { font-size:11px; letter-spacing:.02em; gap:5px; padding:5px 3px; } .xc-multi i { font-size:11px; }
+
+/* ===== v4.49: ficha de variantes (nuevo diseño) ===== */
+.xv-sheet { display:flex; flex-direction:column; padding:14px 12px 14px; overflow:hidden; }
+.xv-head { flex:none; padding:14px 10px 15px; border-radius:24px; background:var(--xp-plum); text-align:center; }
+.xv-title { display:inline-block; max-width:100%; margin:0; padding:7px 22px; border-radius:999px; background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:20px; line-height:1.15; }
+.xv-sub { margin:10px 0 0; font-size:12px; font-weight:700; letter-spacing:.03em; color:var(--xp-sand); }
+.xv-list { flex:1 1 auto; min-height:0; overflow-y:auto; scrollbar-width:none; display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+.xv-list::-webkit-scrollbar { display:none; }
+.xv-row { position:relative; box-sizing:border-box; display:flex; align-items:center; gap:8px; padding:14px 10px 12px 13px; border-radius:20px; border:3px solid; background:var(--xp-sand-l); color:var(--xp-plum); cursor:pointer; flex:none; -webkit-tap-highlight-color:transparent; }
+.xv-row:active { transform:scale(.99); }
+.xv-row.xv-own { border-color:#0d9488; }
+.xv-row.xv-miss { border-color:#ff6f6f; }
+.xv-row.xv-off { opacity:.45; }
+.xv-tab { position:absolute; top:-3px; left:-3px; z-index:2; min-width:28px; height:23px; padding:0 8px 0 7px; border-radius:18px 0 12px 0; display:flex; align-items:center; justify-content:center; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:12px; letter-spacing:.03em; line-height:1; }
+.xv-own .xv-tab { background:#0d9488; color:#fff; }
+.xv-miss .xv-tab { background:#ff6f6f; color:var(--xp-plum-d); }
+.xv-thumb { flex:none; width:74px; height:74px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--xp-plum); color:var(--xp-sand); }
+.xv-thumb img { width:100%; height:100%; object-fit:cover; }
+.xv-thumb em { font-style:italic; font-weight:800; font-size:11px; font-family:'Poppins',sans-serif; text-align:center; padding:0 4px; line-height:1.1; }
+.xv-miss .xv-thumb { filter:grayscale(45%); opacity:.75; }
+.xv-rule { flex:none; align-self:stretch; width:2px; margin:2px 1px; border-radius:2px; background:var(--xp-plum); }
+.xv-mid { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.xv-r1 { display:flex; gap:4px; min-width:0; }
+.xv-km, .xv-yr { display:flex; align-items:center; justify-content:center; height:26px; padding:0 7px; border-radius:9px; font-family:'Poppins',sans-serif; font-weight:800; font-size:14px; white-space:nowrap; line-height:1; }
+.xv-km { flex:none; background:var(--xp-plum); color:var(--xp-sand); font-style:italic; }
+.xv-yr { flex:1 1 auto; min-width:0; overflow:hidden; background:rgba(61,26,84,.14); color:var(--xp-plum); }
+.xv-ceca { height:24px; display:flex; align-items:center; justify-content:center; padding:0 8px; border-radius:9px; border:2px solid var(--xp-plum); font-size:12px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.xv-r3 { display:flex; align-items:center; gap:5px; min-width:0; }
+.xv-rar { flex:none; display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:26px; padding:0 8px; border-radius:13px; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:13px; }
+.xv-price { flex:none; display:inline-flex; align-items:center; height:26px; padding:0 8px; border-radius:13px; border:2px solid #0d9488; color:#0d9488; font-family:'Poppins',sans-serif; font-weight:800; font-size:12px; white-space:nowrap; box-sizing:border-box; }
+.xv-grade { flex:none; display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:26px; padding:0 7px; border-radius:13px; border:2px solid var(--xp-plum); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:12px; box-sizing:border-box; }
+.xv-links { flex:none; display:flex; flex-direction:column; gap:8px; }
+.xv-foot { flex:none; display:flex; gap:10px; margin-top:12px; }
+.xv-add { flex:1 1 auto; height:46px; border-radius:14px; border:2.5px solid var(--xp-plum); background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:14px; letter-spacing:.03em; cursor:pointer; }
+.xv-close { flex:none; width:58px; height:46px; border-radius:14px; border:0; background:var(--xp-plum); color:var(--xp-sand); font-family:'Poppins',sans-serif; font-weight:800; font-size:16px; cursor:pointer; }
+.xv-add:active, .xv-close:active { filter:brightness(.92); }
+
+/* Estilo de los botones que enlazan con webs externas (Numista = N, Ucoin = U) */
+.xp-lk { display:flex; align-items:center; justify-content:center; width:38px; height:38px; padding:0; border:0; border-radius:12px; background:var(--xp-plum); color:var(--xp-sand); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:20px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.xp-lk:active { transform:scale(.93); }
+.xp-lk-off { opacity:.28; cursor:default; }
+.xv-yr { background:#E4D4EA; }
+
+/* v4.50: en ordenador la ficha de variantes se amplía (en móvil queda como estaba) */
+@media (min-width:700px) {
+  .xv-sheet { zoom:1.5; width:calc(100% / 1.5); max-height:calc(94vh / 1.5); border-radius:calc(28px); }
+}
+@media (min-width:1100px) {
+  .xv-sheet { zoom:1.8; width:calc(100% / 1.8); max-height:calc(94vh / 1.8); }
+}
+
+/* ===== v4.51: ficha desplegada (nuevo diseño): las dos caras a la vez, píldoras y tarjetas crema ===== */
+.xf-overlay { --xf-bg:#4B2866; --xp-sand:#E8D5AC; --xp-sand-l:#F3E4C4; --xp-plum:#3D1A54; --xp-plum-d:#2A0F42; --xp-orange:#E8702F; --xf-teal:#0d9488; --xf-lav:#E4D4EA;
+  position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; background:rgba(42,15,66,.80); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  font-family:'Inter',system-ui,sans-serif; color:var(--xp-plum); }
+.xf-overlay.hidden { display:none; }
+@media (min-width:640px) { .xf-overlay { align-items:center; padding:16px; } }
+.xf-sheet { position:relative; box-sizing:border-box; width:100%; max-width:30rem; max-height:100vh; max-height:100dvh; min-height:min(640px,92dvh); overflow-y:auto; scrollbar-width:none;
+  display:flex; flex-direction:column; gap:10px; padding:12px 12px 12px; background:var(--xf-bg); border-radius:34px 34px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.4); text-align:left; }
+.xf-sheet::-webkit-scrollbar { display:none; }
+.xf-sheet *, .xf-sheet *::before, .xf-sheet *::after { box-sizing:border-box; }
+@media (min-width:640px) { .xf-sheet { border-radius:34px; max-height:96dvh; } }
+.xf-card.hidden, .xf-chip.hidden, .xf-silver.hidden { display:none !important; }
+
+/* Las dos caras */
+.xf-hero { flex:none; padding:16px 12px 40px; border-radius:30px; background:radial-gradient(circle at 50% 45%, #4F2A6E 0%, var(--xp-plum) 75%); box-shadow:inset 0 0 0 1px rgba(240,223,184,.10); }
+.xf-coins { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; max-width:380px; margin:0 auto; }
+.xf-coin { aspect-ratio:1/1; width:100%; display:flex; align-items:center; justify-content:center; border-radius:50%; overflow:hidden; text-align:center; }
+.xf-coin.has-img { border-radius:0; overflow:visible; }
+.xf-coin img { width:100%; height:100%; object-fit:contain; background:transparent; }
+.xf-coin.has-img img { filter:drop-shadow(0 6px 8px rgba(0,0,0,.55)); }
+.xf-coin .xm-fallback { color:#3D1A54; }
+.xf-titlebox { position:relative; z-index:2; flex:none; display:flex; justify-content:center; margin:-48px 10px 0; }
+.xf-title { margin:0; max-width:100%; padding:7px 24px; border-radius:30px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:center; font-family:'Poppins',sans-serif; font-weight:800; font-size:24px; line-height:1.15; box-shadow:0 5px 12px rgba(0,0,0,.28); overflow-wrap:anywhere; }
+
+/* Tarjetas crema */
+.xf-card, .xf-info { flex:none; padding:10px; border-radius:24px; background:var(--xp-sand); }
+.xf-info { display:flex; flex-direction:column; gap:7px; }
+.xf-r { display:flex; align-items:stretch; gap:7px; min-width:0; }
+.xf-grow { flex:1 1 0; min-width:0; }
+.xf-r3 { align-items:stretch; }
+.xf-flag { flex:none; width:38%; min-height:68px; border-radius:14px; background-size:cover; box-shadow:0 0 0 1px rgba(61,26,84,.15); }
+.xf-col { flex:1 1 0; min-width:0; display:flex; flex-direction:column; justify-content:space-between; gap:7px; }
+.xf-pill { display:flex; align-items:center; justify-content:center; min-width:0; height:32px; padding:0 10px; border-radius:11px; font-family:'Poppins',sans-serif; font-weight:800; font-size:13.5px; line-height:1; text-align:center; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:2px solid var(--xp-plum); }
+.xf-dark { background:var(--xp-plum); color:var(--xp-sand-l); }
+.xf-lav { flex:none; background:var(--xf-lav); color:var(--xp-plum); }
+.xf-line { background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Inter',sans-serif; font-weight:700; font-size:12.5px; }
+#modal-grid-km { flex:none; max-width:55%; }
+.xf-chips { flex-wrap:nowrap; }
+.xf-chip { flex:none; display:inline-flex; align-items:center; justify-content:center; height:32px; padding:0 12px; border-radius:11px; font-family:'Poppins',sans-serif; font-weight:800; font-size:13px; line-height:1; color:var(--xp-plum-d); white-space:nowrap; }
+.xf-chip.xf-price { background:var(--xp-sand-l); border:2px solid var(--xf-teal); color:var(--xf-teal); font-style:italic; }
+#modal-type-chip { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:11.5px; letter-spacing:.02em; }
+
+/* Mis monedas: año · conservación · formato · notas */
+.xf-items { display:flex; flex-direction:column; gap:8px; }
+.xf-row { display:flex; align-items:center; gap:6px; }
+.xf-field { height:38px; border:2px solid var(--xp-plum); border-radius:11px; outline:0; font-size:13px; }
+.xf-year, .xf-grade { background:var(--xp-plum); color:var(--xp-sand-l); font-family:'Poppins',sans-serif; font-weight:800; text-align:center; padding:0 4px; }
+.xf-year { width:64px; }
+.xf-grade { width:58px; -webkit-appearance:none; appearance:none; text-align-last:center; }
+.xf-year::placeholder { color:rgba(243,228,196,.5); }
+.xf-field:focus { border-color:var(--xp-orange); }
+.xf-notes { flex:1; min-width:0; padding:0 10px; background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Inter',sans-serif; font-weight:700; text-transform:uppercase; }
+.xf-notes::placeholder { color:rgba(61,26,84,.5); font-weight:800; letter-spacing:.03em; }
+.xf-fwrap { position:relative; flex:none; width:38px; height:38px; }
+.xf-fbtn { width:38px; height:38px; display:flex; align-items:center; justify-content:center; border:2px solid var(--xp-plum); border-radius:11px; background:var(--xp-plum); color:var(--xp-sand-l); }
+.xf-fbtn.xf-on { background:var(--xp-orange); border-color:var(--xp-plum); color:var(--xp-plum-d); }
+.xf-fmenu { position:absolute; top:0; left:0; z-index:30; display:flex; flex-direction:column; overflow:hidden; border:2px solid var(--xp-plum); border-radius:11px; background:var(--xp-sand-l); box-shadow:0 8px 18px rgba(0,0,0,.35); }
+.xf-fopt { width:38px; height:38px; display:flex; align-items:center; justify-content:center; border:0; background:transparent; color:var(--xp-plum); }
+.xf-fopt.xf-on { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xf-trash { flex:none; width:24px; height:38px; border:0; background:none; color:rgba(61,26,84,.55); font-size:14px; cursor:pointer; }
+
+/* + Moneda · enlaces · plata */
+.xf-bar { display:flex; flex-direction:column; gap:9px; }
+.xf-r-add { align-items:center; }
+.xf-add { flex:1 1 0; height:42px; border-radius:12px; border:2px solid var(--xp-plum); background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:14px; letter-spacing:.03em; cursor:pointer; }
+.xf-add i { margin-right:5px; font-size:12px; }
+.xf-add:active { filter:brightness(.93); }
+.xf-bar .xp-lk { width:42px; height:42px; border-radius:12px; }
+.xf-silver { display:flex; flex-direction:column; gap:7px; padding-top:9px; border-top:2px solid rgba(61,26,84,.16); }
+.xf-silver-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.xf-silver-title { display:flex; align-items:center; gap:6px; font-family:'Poppins',sans-serif; font-weight:800; font-size:11px; letter-spacing:.06em; color:var(--xp-plum); }
+.xf-rate { padding:4px 10px; border-radius:999px; background:rgba(61,26,84,.12); color:var(--xp-plum); font-size:10px; font-weight:700; text-align:right; cursor:pointer; }
+.xf-silver-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.xf-sbox { display:flex; flex-direction:column; justify-content:center; gap:1px; min-width:0; height:48px; padding:3px 10px; border-radius:12px; border:2px solid var(--xp-plum); background:var(--xp-sand-l); }
+.xf-sbox span { font-size:8.5px; font-weight:800; letter-spacing:.07em; color:rgba(61,26,84,.62); white-space:nowrap; }
+.xf-sbox input { width:100%; min-width:0; padding:0; border:0; background:transparent; outline:0; color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:15px; }
+.xf-sbox:focus-within { border-color:var(--xp-orange); }
+.xf-sbox-est { border-color:var(--xf-teal); }
+.xf-sbox-est b { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:15px; color:var(--xf-teal); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Pie */
+.xf-foot { position:sticky; bottom:0; margin-top:auto; flex:none; display:flex; align-items:center; gap:10px; padding:10px; border-radius:30px; background:var(--xp-sand); box-shadow:0 -6px 14px rgba(42,15,66,.35); }
+.xf-edit { flex:0 1 54%; height:44px; border-radius:14px; border:2.5px solid var(--xp-plum); background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:14px; letter-spacing:.03em; cursor:pointer; white-space:nowrap; }
+.xf-del, .xf-x { flex:none; height:44px; border:0; border-radius:14px; background:var(--xp-plum); color:var(--xp-sand-l); cursor:pointer; font-family:'Poppins',sans-serif; font-weight:800; }
+.xf-del { width:44px; font-size:16px; }
+.xf-x { width:64px; font-size:16px; }
+.xf-sp { flex:1 1 0; }
+.xf-edit:active, .xf-del:active, .xf-x:active { filter:brightness(.9); }
+
+/* En ordenador la ficha se amplía (fitCoinSheet() en modals.js calcula el zoom según el alto de la pantalla; en móvil queda igual) */
+.xf-coins { max-width:300px; }
+
+/* v4.52: tarjeta de datos en 3 filas (país · KM# · rareza / años · período / bandera · ceca · tipo) */
+.xf-info { gap:7px; }
+.xf-pill { height:34px; }
+.xf-dark { color:#fff; }
+.xf-km { flex:none; max-width:42%; background:#573A70; color:#fff; }
+.xf-yr { flex:none; background:var(--xp-sand-l); color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:13.5px; text-transform:none; }
+.xf-flag { flex:none; width:80px; min-height:34px; height:34px; border-radius:10px; background-size:cover; background-position:center; box-shadow:0 0 0 1px rgba(61,26,84,.2); }
+.xf-chip { height:34px; }
+#modal-type-chip.xf-type { flex:0 0 36%; font-size:12px; letter-spacing:.02em; padding:0 6px; text-transform:uppercase; }
+/* La moneda que tengo: tarjeta de ejemplares con borde verde */
+.xf-mine { border:3px solid #0d9488; padding:8px; }
+.xf-km { text-transform:none; }

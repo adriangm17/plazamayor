@@ -4,10 +4,11 @@
    Así, "atrás" deshace el último paso en vez de cerrar la app; solo se sale de la app desde el Índice.
    Funciona por "fotos" del estado: cuando la foto cambia se añade una entrada al historial; si vuelve a ser
    igual que la anterior (p. ej. se cierra la ficha con su botón) se retrocede una entrada en vez de añadir otra. */
-const NAV_MODALS = ['periods-overlay', 'coin-modal', 'create-modal', 'edit-period-modal', 'edit-zone-modal', 'edit-country-modal', 'import-modal'];
+const NAV_MODALS = ['periods-overlay', 'coin-modal', 'variants-modal', 'create-modal', 'edit-period-modal', 'edit-zone-modal', 'edit-country-modal', 'import-modal'];
 const NAV_CLOSERS = {
   'periods-overlay': () => closePeriodsOverlay(),
   'coin-modal': () => closeModal(),
+  'variants-modal': () => closeVariantsSheet(),
   'create-modal': () => closeCreateModal(),
   'edit-period-modal': () => closeEditPeriodModal(),
   'edit-zone-modal': () => closeEditZoneModal(),

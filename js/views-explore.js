@@ -201,8 +201,9 @@ function countryCardHtml(c) {
   const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
   const id = jsArg(c.id);
   return `
-    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras} ${eras === 1 ? 'época' : 'épocas'}, ${s.pct}% completado. Mantén pulsado para editar"><div class="xp-in">
+    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras} ${eras === 1 ? 'época' : 'épocas'}, ${s.pct}% completado"><div class="xp-in">
       <div class="xp-photo ${photo ? '' : 'xp-empty'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
+      <button type="button" class="xp-edit" onclick="event.stopPropagation(); editCountryCard('${id}')" aria-label="Editar ${esc(name)}" title="Editar"><i class="fa-solid fa-pen"></i></button>
       <span class="xp-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span>
       <div class="xp-dots" title="${eras} ${eras === 1 ? 'época' : 'épocas'}" aria-hidden="true">${dots}</div>
       <div class="xp-pct ${s.pct >= 100 ? 'xp-p100' : ''}" title="${s.a} de ${s.t} monedas">${s.pct}%</div>
@@ -457,42 +458,8 @@ window.addEventListener('click', e => {
 window.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.xp-row')) e.preventDefault(); });
 
 
-/* ----- Pulsación larga en una tarjeta de país: abre el menú de edición ----- */
-const CARD_HOLD_MS = 500;
-let cardHold = null;
-let cardHoldSuppressClick = false;
-
-window.addEventListener('pointerdown', e => {
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  const card = e.target.closest && e.target.closest('.xp-card[data-cid]');
-  if (!card) return;
-  cardHoldCancel();
-  cardHold = { card, id: card.dataset.cid, x: e.clientX, y: e.clientY };
-  cardHold.press = setTimeout(() => card.classList.add('xp-pressing'), 130);
-  cardHold.timer = setTimeout(() => {
-    const h = cardHold; if (!h) return;
-    cardHoldCancel();
-    cardHoldSuppressClick = true;
-    setTimeout(() => { cardHoldSuppressClick = false; }, 600);
-    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) {} }
-    editCountryCard(h.id);
-  }, CARD_HOLD_MS);
-});
-window.addEventListener('pointermove', e => {
-  if (cardHold && (Math.abs(e.clientX - cardHold.x) > 8 || Math.abs(e.clientY - cardHold.y) > 8)) cardHoldCancel();
-});
-window.addEventListener('pointerup', () => cardHoldCancel());
-window.addEventListener('pointercancel', () => cardHoldCancel());
-function cardHoldCancel() {
-  if (!cardHold) return;
-  clearTimeout(cardHold.timer); clearTimeout(cardHold.press);
-  cardHold.card.classList.remove('xp-pressing');
-  cardHold = null;
-}
-window.addEventListener('click', e => {
-  if (cardHoldSuppressClick) { e.stopPropagation(); e.preventDefault(); }
-}, true);
-// En móvil, mantener pulsado no debe abrir el menú contextual del navegador sobre la tarjeta
+/* ----- Tarjeta de país: ya no se edita con pulsación larga; se usa el icono de la esquina inferior izquierda de la foto.
+   En móvil, mantener pulsado no debe abrir el menú contextual del navegador sobre la tarjeta ----- */
 window.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.xp-card[data-cid]')) e.preventDefault(); });
 
 /* ----- Ordenar los países dentro de su zona geográfica (desde el menú de edición) ----- */

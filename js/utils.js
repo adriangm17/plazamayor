@@ -15,9 +15,9 @@ function itemFormatIcon(id, size) {
 }
 const RARITIES =['A', 'B', 'C', 'R', 'RR', 'RRR', 'RRR*', 'UR', 'PLATA'];
 // Tipo de moneda (solo se edita desde "Editar ficha"). Circulante es el valor por defecto y no lleva marca en las tarjetas.
-const COIN_TYPES = ['Circulante', 'Conmemorativas', 'Colección', 'Falsas de época'];
+const COIN_TYPES = ['Circulante', 'Conmemorativas', 'Colección', 'Falsas de época', 'FAO'];
 const DEFAULT_COIN_TYPE = 'Circulante';
-const COIN_TYPE_COLORS = { 'Circulante': '#45bbff', 'Conmemorativas': '#efde97', 'Colección': '#ff85d0', 'Falsas de época': '#aea0a0' };
+const COIN_TYPE_COLORS = { 'Circulante': '#45bbff', 'Conmemorativas': '#efde97', 'Colección': '#ff85d0', 'Falsas de época': '#aea0a0', 'FAO': '#7fd1a0' };
 function coinType(c) { return (c && COIN_TYPES.includes(c.type)) ? c.type : DEFAULT_COIN_TYPE; }
 function coinTypeChipStyle(t) { return `background-color: ${COIN_TYPE_COLORS[t] || COIN_TYPE_COLORS[DEFAULT_COIN_TYPE]}; color: #0f172a;`; }
 
@@ -115,3 +115,30 @@ function renderDualProgressBar(normalPct, silverPct, hasSilver) {
     </div>
   `;
 }
+
+/* ----- Ajusta la fuente de un texto al hueco disponible (p. ej. KM# muy largos en móvil) ----- */
+function fitText(el, minPx) {
+  if (!el || !el.isConnected) return;
+  el.style.fontSize = '';
+  if (el.clientWidth === 0) return;
+  let size = parseFloat(getComputedStyle(el).fontSize) || 14;
+  const min = minPx || 7;
+  const inner = el.firstElementChild && el.firstElementChild.classList.contains('fit-in') ? el.firstElementChild : el;
+  const over = () => inner.scrollWidth > el.clientWidth + 0.5;
+  let guard = 40;
+  while (over() && size > min && guard-- > 0) { size -= 0.5; el.style.fontSize = size + 'px'; }
+}
+function fitAllText() {
+  document.querySelectorAll('.xc-km, .xc-rar, #modal-grid-km').forEach(el => fitText(el, 7));
+}
+let _fitQueued = false;
+function queueFitText() {
+  if (_fitQueued) return;
+  _fitQueued = true;
+  requestAnimationFrame(() => { _fitQueued = false; fitAllText(); });
+}
+// Se reajusta tras cualquier cambio de la página y al girar/redimensionar
+window.addEventListener('DOMContentLoaded', () => {
+  new MutationObserver(queueFitText).observe(document.body, { childList: true, subtree: true, characterData: true });
+});
+window.addEventListener('resize', queueFitText);

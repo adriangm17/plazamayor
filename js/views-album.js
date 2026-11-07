@@ -1,6 +1,13 @@
 /* ===== VISTA ÁLBUM ===== */
 let pressTimer = null;
 let isLongPress = false;
+let coinHoldSuppressClick = false;
+// Tras una pulsación larga, el clic al soltar no debe tocar lo que haya debajo (p. ej. cerrar la ficha recién abierta)
+window.addEventListener('click', e => {
+  if (coinHoldSuppressClick) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+// En móvil, mantener pulsado no debe abrir el menú del navegador sobre la imagen de la moneda
+window.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.xc')) e.preventDefault(); });
 
 let albumGroup = '';   // (sin uso desde 4.10: ya no hay pestañas ni grupos de períodos; se mantiene vacío por compatibilidad)
 
@@ -144,6 +151,7 @@ function selectCountry(countryId) {
   albumGroup = '';
   movingCoinId = null;
   render();
+  window.scrollTo(0, 0);
 }
 
 // Un solo botón: si hay algún período abierto los contrae todos; si están todos contraídos, los despliega
@@ -273,11 +281,20 @@ function toggleOnlySpecial() {
 }
 
 /* ----- Interacción con monedas ----- */
+function openCoinOrVariants(el, coinId) {   // ficha base de un grupo de variantes → ficha de variantes; el resto → su ficha
+  if (el && el.dataset && el.dataset.vkey) openVariantsSheet(el.dataset.vkey, el.dataset.vok);
+  else openCoinModal(coinId);
+}
 function handleCoinTouchStart(e, coinId) {
   isLongPress = false;
+  const cardEl = e && e.currentTarget;
   pressTimer = setTimeout(() => {
+    // Pulsación larga: solo despliega la ficha (mover la moneda se hace desde "Editar ficha")
     isLongPress = true;
-    setMovingCoin(coinId);
+    coinHoldSuppressClick = true;
+    setTimeout(() => { coinHoldSuppressClick = false; }, 600);
+    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) {} }
+    openCoinOrVariants(cardEl, coinId);
   }, 500);
 }
 
@@ -293,13 +310,7 @@ function handleCoinClick(e, coinId) {
     isLongPress = false;
     return;
   }
-  if (movingCoinId === coinId) return;
-  openCoinModal(coinId);
-}
-
-function setMovingCoin(coinId) {
-  movingCoinId = (movingCoinId === coinId) ? null : coinId;
-  renderSections();
+  openCoinOrVariants(e.currentTarget, coinId);
 }
 
 function flipGridCoin(event, coinId) {
@@ -391,7 +402,7 @@ function renderSections() {
         </div>
 
         <div class="xa-grid ${isCollapsed ? 'hidden' : ''}">
-          ${(isCollapsed ? [] : periodCoins).map(renderCoinCard).join('')}
+          ${(isCollapsed ? [] : buildAlbumCards(periodCoins)).map(x => renderCoinCard(x.coin, { group: x.group, ok: x.ok, base: x.base })).join('')}
           ${(!isCollapsed && periodCoins.length === 0) ? `<p class="xa-msg">${allPeriodCoins.length === 0 ? 'Este período aún no tiene monedas. Usa el + para añadir la primera.' : 'No hay monedas que mostrar con este filtro.'}</p>` : ''}
         </div>
       </section>
@@ -408,7 +419,7 @@ function renderSections() {
 
 /* ----- Variantes de una misma moneda (KM# 12, 12a, 12.1, 12.2…) -----
    Se agrupan por país + número base del catálogo. Una ficha con 2 o más del mismo grupo lleva un círculo
-   dividido en tantas porciones como variantes (la original también cuenta); cada una conseguida se pinta de verde. */
+   dividido en tantas porciones como variantes (la original también cuenta); cada una conseguida se pinta de verde y cada hueco (las que faltan) en #ff6f6f, en todas las fichas del grupo. */
 let variantCache = null;   // se reconstruye en cada pintado (se vacía al terminar la tarea actual)
 function kmKey(km) {
   const m = String(km ?? '').match(/^\s*([A-Za-zÀ-ÿ]*)\s*[#.]?\s*(\d+)(.*)$/);
@@ -432,24 +443,102 @@ function variantGroupOf(c) {
   const g = variantCache.get(c.countryId + '|' + k.base);
   return g && g.length > 1 ? g.map(e => e.coin) : null;
 }
+/* ----- v4.33: una sola ficha por grupo de variantes (mismo país + período + número base de KM) -----
+   El álbum pinta la variante elegida (por defecto la original, sin sufijo) y el círculo partido hace de selector.
+   Cada variante sigue siendo una moneda independiente (conseguida, ejemplares, grado, plata, imágenes, backups). */
+function compactGroupKey(c) {
+  const k = kmKey(c && c.km);
+  return k ? c.periodId + '|' + c.countryId + '|' + k.base : null;
+}
+function compactGroupsMap() {   // clave → variantes (2 o más) del mismo período, la original primero
+  const m = new Map();
+  coins.forEach(x => {
+    const key = compactGroupKey(x); if (!key) return;
+    if (!m.has(key)) m.set(key, []);
+    m.get(key).push({ coin: x, suffix: kmKey(x.km).suffix });
+  });
+  const out = new Map();
+  m.forEach((g, key) => {
+    if (g.length < 2) return;
+    g.sort((a, b) => a.suffix.localeCompare(b.suffix, undefined, { numeric: true }));
+    out.set(key, g.map(e => e.coin));
+  });
+  return out;
+}
+// De la lista de monedas visibles de un período devuelve una ficha por grupo (en la posición de su primera variante).
+// Solo se ve la ficha BASE del grupo.
+function buildAlbumCards(list) {
+  const groups = compactGroupsMap(), visibleIds = new Set(list.map(c => c.id)), seen = new Set(), out = [];
+  list.forEach(c => {
+    const key = compactGroupKey(c), g = key && groups.get(key);
+    if (!g) { out.push({ coin: c, group: null }); return; }
+    if (seen.has(key)) return;
+    seen.add(key);
+    const ok = g.filter(x => visibleIds.has(x.id)).map(x => x.id);   // las que no pasan el filtro no se pueden elegir
+    out.push({ coin: g[0], group: g, ok, base: true });   // v4.47: solo existe la ficha base; las variantes se abren desde su desplegable
+  });
+  return out;
+}
+
+// Años de la ficha base: del primer año al último de todas las monedas del grupo
+function unionRange(g) {
+  let lo = Infinity, hi = -Infinity, act = false;
+  g.forEach(x => {
+    const str = String(x.range || ''), m = str.match(/\d{4}/g);
+    if (!m) return;
+    m.forEach(y => { lo = Math.min(lo, +y); hi = Math.max(hi, +y); });
+    if (/ACT/i.test(str)) act = true;
+  });
+  if (lo === Infinity) return formatYearRange(g[0].range);
+  if (act) hi = Math.max(hi, new Date().getFullYear());
+  return formatYearRange(lo === hi ? String(lo) : `${lo}-${hi}`);
+}
+// Ficha base: las rarezas distintas del grupo cada una con su color y su letra, repartidas por igual en la casilla
+function groupRarityHtml(g) {
+  const set = [...new Set(g.map(x => String(x.rarity || '').trim().toUpperCase()).filter(Boolean))];   // en el orden de KM del grupo
+  if (!set.length) return `<div class="xc-cell xc-rar w-[45%]" style="background:rgba(232,213,172,.16);color:#E8D5AC;">-</div>`;
+  const fs = set.length <= 1 ? 12 : set.length === 2 ? 11 : set.length === 3 ? 10 : 8.5;
+  return `<div class="xc-cell xc-rar xc-rar-split w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="font-size:${fs}px">${set.map(r => `<span style="${getRarityStyle(r)}">${r === 'PLATA' ? 'AG' : esc(r)}</span>`).join('')}</div>`;
+}
+function baseKmLabel(c) {   // KM# del que parten las variantes (sin sufijo): KM# 26.1 → KM# 26
+  const k = kmKey(c && c.km);
+  return k ? k.base.replace('#', '# ') : (c && c.km) || 'KM#-';
+}
+
 function variantMarkHtml(c) {
-  const g = variantGroupOf(c);
+  const g = variantGroupOf(c);   // todas las variantes del país con ese número base (también las de otros períodos)
   if (!g) return '';
   const n = g.length, f = v => v.toFixed(2);
-  const pt = i => { const a = -Math.PI / 2 + 2 * Math.PI * i / n; return [12 + 10 * Math.cos(a), 12 + 10 * Math.sin(a)]; };
-  let fills = '', lines = '', got = 0;
+  // Las porciones van en sentido antihorario desde arriba: la 1.ª variante a la izquierda, la 2.ª a la derecha…
+  const pt = i => { const a = -Math.PI / 2 - 2 * Math.PI * i / n; return [12 + 12 * Math.cos(a), 12 + 12 * Math.sin(a)]; };
+  let fills = '', gaps = '', got = 0;
   g.forEach((x, i) => {
     const [x1, y1] = pt(i), [x2, y2] = pt(i + 1);
-    if (x.acquired) { got++; fills += `<path d="M12 12L${f(x1)} ${f(y1)}A10 10 0 0 1 ${f(x2)} ${f(y2)}Z" fill="#0d9488" stroke="none"/>`; }
-    lines += `M12 12L${f(x1)} ${f(y1)}`;
+    // Conseguida → verde; las que faltan → rojo (igual en todas las fichas del grupo)
+    if (x.acquired) got++;
+    fills += n === 1 ? '' : `<path d="M12 12L${f(x1)} ${f(y1)}A12 12 0 0 0 ${f(x2)} ${f(y2)}Z" fill="${x.acquired ? '#0d9488' : '#ff6f6f'}"/>`;
+    gaps += `M12 12L${f(x1)} ${f(y1)}`;
   });
-  return `<span class="xc-var" title="Variantes: ${got} de ${n} conseguidas">` +
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
-    `${fills}<path d="${lines}" stroke-width="1.2"/><circle cx="12" cy="12" r="10"/></svg></span>`;
+  // Círculo plano sin contorno: las porciones se separan con un hueco del color de la ficha
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">` +
+    `${fills}<path d="${gaps}" fill="none" stroke="var(--xp-plum)" stroke-width="1.4"/></svg>`;
+  return `<span class="xc-var" title="Variantes: ${got} de ${n} conseguidas">${svg}</span>`;
+}
+
+// Número romano de una variante (lo usa la ficha de variantes)
+function toRoman(n) {
+  const t = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let r = ''; t.forEach(([v, l]) => { while (n >= v) { r += l; n -= v; } }); return r;
 }
 
 function renderCoinCard(c, opts) {
   opts = (opts && typeof opts === 'object') ? opts : {};   // (.map le pasa el índice como 2.º argumento)
+  // Ficha BASE de un grupo de variantes: imagen y KM# de la original; verde si se tiene al menos una variante; años y rarezas del grupo entero
+  const isBase = !!(opts.base && opts.group);
+  if (isBase) {
+    const first = opts.group[0];
+    c = Object.assign({}, first, { acquired: opts.group.some(x => x.acquired), items: opts.group.flatMap(x => Array.isArray(x.items) ? x.items : []) });
+  }
   let baseStyleClass = 'coin-base-style';
   const mat = (c.cecaMaterial || '').toLowerCase();
   if (mat.includes('oro')) baseStyleClass = 'coin-oro-style';
@@ -457,31 +546,27 @@ function renderCoinCard(c, opts) {
 
   const isPlata = isSilverCoin(c);
   const hasCeca = c.cecaMaterial && c.cecaMaterial.trim() !== '';
-  const isMoving = !opts.plain && movingCoinId === c.id;
-
-  const cardBorderClass = isMoving
-    ? 'coin-moving-active'
-    : (c.acquired
+  const cardBorderClass = (c.acquired
       ? ({ F: 'border-[#a3b84a] shadow-[0_0_10px_rgba(163,184,74,0.28)]',      // F: verde pálido amarillento
            TBD: 'border-[#8d8cb3] shadow-[0_0_10px_rgba(141,140,179,0.22)] ' }[bestGrade(c)]   // TBD: morado pálido grisáceo
          || 'border-[#0d9488] shadow-[0_0_10px_rgba(13,148,136,0.25)]')
       : (isPlata ? 'border-[#7f8aa3]/60' : 'border-[#e8d5ac]/20'));
 
-  const cecaOrValue = isPlata
-    ? `<span class="xc-price">${computeCoinSilverValue(c) || '0,00 €'}</span>`
-    : (hasCeca ? esc(c.cecaMaterial) : '—');
+  // La ceca/variante siempre es libre; en las de plata, el valor calculado ocupa la casilla de rareza (mismo color de la etiqueta PLATA)
+  const cecaOrValue = hasCeca ? esc(c.cecaMaterial) : '—';
+  const rarityHtml = isPlata ? `<span class="xc-price">${computeCoinSilverValue(c) || '0,00 €'}</span>` : esc(c.rarity || '-');
 
   const id = esc(c.id);
   const denom = esc(c.denom);
-  // Círculo del tipo en la esquina superior derecha (los circulantes no llevan marca)
+  // Esquina superior derecha: tipo (círculo; FAO lleva la palabra). Los circulantes no llevan marca.
   const type = coinType(c), typeColor = COIN_TYPE_COLORS[type];
   const typeDot = type === DEFAULT_COIN_TYPE ? '' :
-    `<span class="absolute top-2 right-2 z-10 w-3.5 h-3.5 rounded-full pointer-events-none" style="background:${typeColor};border:2px solid ${typeColor}" title="${esc(type)}"></span>`;
-
-  // Iconos de formato en la esquina superior izquierda (solo los distintos del formato por defecto, de los ejemplares que se tienen)
+    type === 'FAO' ? `<span class="xc-fao" title="FAO">FAO</span>` :
+    `<span class="xc-tdot" style="background:${typeColor};border:2px solid ${typeColor}" title="${esc(type)}"></span>`;
+  // Esquina superior izquierda: iconos de formato (solo los distintos del formato por defecto, de los ejemplares que se tienen)
   const ownedFormats = [...new Set((c.items || []).filter(i => i && String(i.grade || '').trim() !== '').map(i => i.format).filter(f => f && f !== DEFAULT_ITEM_FORMAT && ITEM_FORMATS.some(x => x.id === f)))];
-  const formatMark = ownedFormats.length === 0 ? '' :
-    `<span class="absolute top-2 left-2 z-10 flex gap-0.5 pointer-events-none" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`;
+  const topLeft = ownedFormats.length === 0 ? '' :
+    `<span class="xc-tl" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`;
 
   // Estado de conservación en la esquina inferior izquierda, justo encima de la denominación (mejor grado de los ejemplares)
   const grade = bestGrade(c);
@@ -498,24 +583,13 @@ function renderCoinCard(c, opts) {
       ontouchend="handleCoinTouchEnd(event, '${id}')"
       ontouchmove="handleCoinTouchMove(event)"
       onclick="handleCoinClick(event, '${id}')"`}
+      ${isBase ? `data-vkey="${esc(compactGroupKey(c))}" data-vok="${(opts.ok || []).map(esc).join(',')}"` : ''}
       class="xc ${cardBorderClass}">
 
       ${typeDot}
-      ${formatMark}
+      ${topLeft}
 
       ${opts.extra || ''}
-
-      ${isMoving ? `
-        <div class="xc-move">
-          <button onclick="event.stopPropagation(); moveCoin('${id}', -1)">
-            <i class="fa-solid fa-arrow-left text-[9px]"></i>
-          </button>
-          <span class="text-[8px] font-bold uppercase tracking-widest">Mover</span>
-          <button onclick="event.stopPropagation(); moveCoin('${id}', 1)">
-            <i class="fa-solid fa-arrow-right text-[9px]"></i>
-          </button>
-        </div>
-      ` : ''}
 
       <div class="relative w-full flex justify-center">
       ${gradeMark}
@@ -539,28 +613,77 @@ function renderCoinCard(c, opts) {
 
         <div class="flex gap-1 w-full">
           <div class="xc-cell xc-soft w-[55%] tracking-wider">
-            ${esc(formatYearRange(c.range))}
+            ${esc(isBase ? unionRange(opts.group) : formatYearRange(c.range))}
           </div>
-          <div class="xc-cell w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(232,213,172,.16);color:#E8D5AC;'}">
-            ${esc(c.rarity || '-')}
-          </div>
+          ${isBase
+            ? groupRarityHtml(opts.group)
+            : `<div class="xc-cell xc-rar w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(232,213,172,.16);color:#E8D5AC;'}">${rarityHtml}</div>`}
         </div>
 
         <div class="flex gap-1 w-full">
           <div class="xc-cell xc-km w-[45%]">
-            ${esc(c.km || 'KM#-')}
+            ${esc(isBase ? baseKmLabel(c) : (c.km || 'KM#-'))}
           </div>
-          <div class="xc-cell xc-soft w-[55%]" style="font-weight:600;font-size:11px">
-            ${cecaOrValue}
-          </div>
+          ${isBase
+            ? `<div class="xc-cell xc-multi w-[55%]" title="${opts.group.length} variantes · toca la ficha para verlas"><i class="fa-solid fa-layer-group"></i><span>${opts.group.length} VARIANTES</span></div>`
+            : `<div class="xc-cell xc-soft w-[55%]" style="font-weight:600;font-size:11px">${cecaOrValue}</div>`}
         </div>
-
-        ${isMoving ? `
-          <button onclick="event.stopPropagation(); setMovingCoin('${id}')" class="xc-ok">
-            Listo
-          </button>
-        ` : ''}
       </div>
     </div>
   `;
+}
+
+
+/* ===== Ficha desplegable de variantes (se abre al pulsar una ficha BASE) =====
+   Una fila por variante: número romano en la esquina (rojo = me falta, verde = la tengo), moneda, KM# + años,
+   ceca/material, rareza · precio de la plata · conservación y botones a Numista / Ucoin. Pulsar la fila abre la ficha completa. */
+let variantsSheetKey = null;
+function openVariantsSheet(key, okStr) {
+  const g = compactGroupsMap().get(key); if (!g) return;
+  variantsSheetKey = key;
+  const ok = new Set(String(okStr || '').split(',').filter(Boolean));
+  const first = g[0];
+  document.getElementById('variants-title').textContent = first.denom;
+  document.getElementById('variants-subtitle').textContent = [coinCountryName(first), coinPeriodName(first), unionRange(g)].filter(Boolean).join(' · ').toUpperCase();
+  const lk = (url, letter, name) => url
+    ? `<button type="button" class="xp-lk" title="${name}" aria-label="${name}" onclick="event.stopPropagation();openCoinLink('${jsArg(url)}','${name}')">${letter}</button>`
+    : `<span class="xp-lk xp-lk-off" title="${name}: sin enlace">${letter}</span>`;
+  document.getElementById('variants-list').innerHTML = g.map((x, i) => {
+    const off = ok.size && !ok.has(x.id) ? ' xv-off' : '';
+    const grade = bestGrade(x), ceca = x.cecaMaterial && x.cecaMaterial.trim();
+    const silver = isSilverCoin(x), price = silver ? computeCoinSilverValue(x) : '';
+    const rar = silver ? 'AG' : String(x.rarity || '').toUpperCase();
+    return `<div class="xv-row ${x.acquired ? 'xv-own' : 'xv-miss'}${off}" role="button" onclick="openVariantFromSheet('${jsArg(x.id)}')">
+      <span class="xv-tab">${toRoman(i + 1)}</span>
+      <span class="xv-thumb">${x.hasFront ? imgTag(x.id, 'front') : `<em>${esc(x.denom)}</em>`}</span>
+      <span class="xv-rule"></span>
+      <div class="xv-mid">
+        <div class="xv-r1"><span class="xv-km">${esc(x.km || 'KM#-')}</span><span class="xv-yr">${esc(formatYearRange(x.range))}</span></div>
+        <div class="xv-ceca">${ceca ? esc(ceca) : '—'}</div>
+        <div class="xv-r3">
+          ${rar ? `<span class="xv-rar" style="${silver ? getRarityStyle('PLATA') : getRarityStyle(rar)}">${esc(rar)}</span>` : ''}
+          ${silver ? `<span class="xv-price">${esc(price || '0,00 €')}</span>` : ''}
+          ${grade ? `<span class="xv-grade">${esc(grade)}</span>` : ''}
+        </div>
+      </div>
+      <span class="xv-rule"></span>
+      <div class="xv-links">${lk(x.numistaUrl, 'N', 'Numista')}${lk(x.ucoinUrl, 'U', 'Ucoin')}</div>
+    </div>`;
+  }).join('');
+  const ov = document.getElementById('variants-modal');
+  ov.classList.remove('hidden');
+  hydrateImages(ov);
+}
+function closeVariantsSheet() { document.getElementById('variants-modal').classList.add('hidden'); }
+function openVariantFromSheet(id) { closeVariantsSheet(); openCoinModal(id); }
+// Añadir una variante nueva: abre el formulario de crear ficha con país, período, denominación y KM# base ya rellenos
+function addVariantFromSheet() {
+  const g = compactGroupsMap().get(variantsSheetKey); if (!g) return;
+  const first = g[0];
+  closeVariantsSheet();
+  openCreateModal(first.periodId);
+  document.getElementById('new-denom').value = first.denom || '';
+  const km = document.getElementById('new-km');
+  km.value = baseKmLabel(first);
+  setTimeout(() => { try { km.focus(); km.setSelectionRange(km.value.length, km.value.length); } catch (e) {} }, 60);
 }

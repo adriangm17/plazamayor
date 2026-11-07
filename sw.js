@@ -2,7 +2,7 @@
    - Archivos propios: primero red (así ves siempre la última versión) y, si no hay conexión, la copia guardada.
    - Recursos externos (Tailwind, iconos, fuentes, banderas): se guardan la primera vez y se reutilizan sin conexión.
    Si cambias de versión y algo se queda antiguo, sube el número de CACHE. */
-const CACHE = 'plaza-mayor-v42';
+const CACHE = 'plaza-mayor-v72';
 const LOCAL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'img/numista.png', 'img/ucoin.png', 'css/style.css',
   'js/utils.js', 'js/db.js', 'js/data.js', 'js/flags.js', 'js/silver.js', 'js/views-index.js',
   'js/views-album.js', 'js/views-explore.js', 'js/views-stats.js', 'js/modals.js', 'js/backup.js', 'js/nav.js', 'js/app.js'];

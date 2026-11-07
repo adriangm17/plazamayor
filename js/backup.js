@@ -39,16 +39,16 @@ function updateBackupStatus() {
   try { last = localStorage.getItem('numis_last_backup'); } catch (e) {}
   if (!last) {
     el.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Sin copia de seguridad';
-    el.className = 'text-[10px] text-red-400 font-semibold truncate px-1';
+    el.className = 'xh-status xh-bad';
     return;
   }
   const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
   if (days >= 14) {
     el.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Copia hace ${days}d`;
-    el.className = 'text-[10px] text-amber-400 font-semibold truncate px-1';
+    el.className = 'xh-status xh-warn';
   } else {
     el.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> Copia: ${days === 0 ? 'hoy' : 'hace ' + days + 'd'}`;
-    el.className = 'text-[10px] text-emerald-400 font-semibold truncate px-1';
+    el.className = 'xh-status xh-ok';
   }
 }
 

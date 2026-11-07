@@ -34,10 +34,10 @@ function showTab(tabName) {
     const btn = document.getElementById(`nav-btn-${t}`);
     if (t === tabName) {
       view.classList.remove('hidden');
-      btn.className = "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-amber-400 bg-slate-800/60 font-bold";
+      btn.className = "xn-btn xn-on";
     } else {
       view.classList.add('hidden');
-      btn.className = "flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-slate-400 hover:text-white";
+      btn.className = "xn-btn";
     }
   });
 }

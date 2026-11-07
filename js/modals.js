@@ -353,39 +353,58 @@ function coinCountryName(coin) { const c = countryById(coin.countryId); return c
 function coinPeriodName(coin) { const p = periodById(coin.periodId); return p ? p.name.trim() : 'General'; }
 
 function setMaterialBox(coin) {
-  const matLabel = document.getElementById('modal-grid-material-label');
+  // La ceca/variante siempre es libre; el valor de las de plata va en su propia etiqueta, junto a la rareza
   const matValue = document.getElementById('modal-grid-material');
-  if (isSilverCoin(coin)) {
-    matLabel.innerText = 'VALOR ESTIMADO';
-    matValue.className = 'xm-val xm-silverv';
-    matValue.innerText = computeCoinSilverValue(coin) || '0,00 €';
-  } else {
-    matLabel.innerText = 'CECA/VARIANTE';
-    matValue.className = 'xm-val';
-    matValue.innerText = (coin.cecaMaterial && coin.cecaMaterial.trim() !== '') ? coin.cecaMaterial : '—';
-  }
+  matValue.innerText = (coin.cecaMaterial && coin.cecaMaterial.trim() !== '') ? coin.cecaMaterial : '—';
+  setSilverChip(coin, isSilverCoin(coin) ? (computeCoinSilverValue(coin) || '0,00 €') : '');
+}
+function setSilverChip(coin, text) {
+  const chip = document.getElementById('modal-silver-chip');
+  if (!chip) return;
+  if (coin && isSilverCoin(coin) && text) { chip.innerText = text; chip.classList.remove('hidden'); }
+  else chip.classList.add('hidden');
 }
 
+/* Ordenador: amplía la ficha todo lo que permita el alto de la pantalla (máx. 1,8×). En móvil no se toca. */
+function fitCoinSheet() {
+  const sheet = document.querySelector('#coin-modal .xf-sheet');
+  if (!sheet || document.getElementById('coin-modal').classList.contains('hidden')) return;
+  if (window.innerWidth < 700) { sheet.style.zoom = ''; sheet.style.width = ''; sheet.style.maxHeight = ''; sheet.style.minHeight = ''; return; }
+  sheet.style.zoom = '1'; sheet.style.width = '100%'; sheet.style.maxHeight = 'none'; sheet.style.minHeight = '0';
+  const natural = sheet.scrollHeight || 640;
+  const z = Math.max(1, Math.min(1.8, (window.innerHeight * 0.94) / natural, (window.innerWidth * 0.9) / 480));
+  sheet.style.zoom = String(z);
+  sheet.style.width = `calc(100% / ${z})`;
+  sheet.style.maxHeight = `calc(96vh / ${z})`;
+  sheet.style.minHeight = `min(640px, calc(88vh / ${z}))`;
+}
+window.addEventListener('resize', fitCoinSheet);
+
+let forceItemEditor = false;   // true: se muestra la fila de edición aunque la moneda aún no tenga ejemplares
 function openCoinModal(id) {
   formatMenuIdx = -1;
+  forceItemEditor = false;
   activeCoinId = id;
   const coin = coins.find(c => c.id === id);
   if (!coin) return;
 
   const periodName = coinPeriodName(coin);
   const displayRange = formatYearRange(coin.range);
+  const country = countryById(coin.countryId);
 
   document.getElementById('modal-title').innerText = coin.denom;
-  document.getElementById('modal-subtitle').innerText = `${coinCountryName(coin)} · ${periodName} · ${displayRange}`;
+  document.getElementById('modal-country').innerText = coinCountryName(coin);
   document.getElementById('modal-grid-period').innerText = periodName;
   document.getElementById('modal-grid-range').innerText = displayRange;
   document.getElementById('modal-grid-km').innerText = coin.km || 'KM# -';
+  document.getElementById('modal-flag').style.background = country ? flagLayers(country) : '';
   setMaterialBox(coin);
 
   // La rareza solo se muestra aquí; se cambia desde "Editar ficha"
   const chip = document.getElementById('modal-rarity-chip');
   if (coin.rarity) {
-    chip.innerText = String(coin.rarity).toUpperCase();
+    const r = String(coin.rarity).toUpperCase();
+    chip.innerText = r === 'PLATA' ? 'AG' : r;   // AG = plata (como en las fichas del álbum)
     chip.style.cssText = getRarityStyle(coin.rarity);
     chip.classList.remove('hidden');
   } else {
@@ -395,11 +414,11 @@ function openCoinModal(id) {
   const typeChip = document.getElementById('modal-type-chip');
   const type = coinType(coin);
   typeChip.innerText = type.toUpperCase();
-  typeChip.style.cssText = coinTypeChipStyle(type);
+  typeChip.style.cssText = `background:${COIN_TYPE_COLORS[type] || COIN_TYPE_COLORS[DEFAULT_COIN_TYPE]};`;
   typeChip.classList.remove('hidden');
 
-  setLinkBox('modal-grid-numista', coin.numistaUrl, 'xm-lk-numista');
-  setLinkBox('modal-grid-ucoin', coin.ucoinUrl, 'xm-lk-ucoin');
+  document.getElementById('modal-btn-numista').classList.toggle('xp-lk-off', !(coin.numistaUrl && coin.numistaUrl.trim()));
+  document.getElementById('modal-btn-ucoin').classList.toggle('xp-lk-off', !(coin.ucoinUrl && coin.ucoinUrl.trim()));
 
   document.getElementById('silver-weight-input').value = coin.silverWeight || '';
   document.getElementById('silver-purity-input').value = coin.silverPurity || '900';
@@ -407,35 +426,27 @@ function openCoinModal(id) {
   renderCoinItems();
   toggleSilverValuation(coin.rarity);
 
-  const front = document.getElementById('modal-coin-front');
-  const back = document.getElementById('modal-coin-back');
-  let baseStyleClass = 'coin-base-style';
+  // Las dos caras a la vez (sin girar)
   const mat = (coin.cecaMaterial || '').toLowerCase();
+  let baseStyleClass = 'coin-base-style';
   if (mat.includes('oro')) baseStyleClass = 'coin-oro-style';
   if (mat.includes('cobre') || mat.includes('bronce')) baseStyleClass = 'coin-cobre-style';
-
-  front.className = `coin-front ${!coin.hasFront ? baseStyleClass : 'has-img'}`;
-  back.className = `coin-back ${!coin.hasBack ? baseStyleClass : 'has-img'}`;
   const fallback = `<span class="xm-fallback">${esc(coin.denom)}</span>`;
-  front.innerHTML = coin.hasFront ? imgTag(coin.id, 'front') : fallback;
-  back.innerHTML = coin.hasBack ? imgTag(coin.id, 'back') : fallback;
-  hydrateImages(front); hydrateImages(back);
+  [['modal-coin-front', coin.hasFront, 'front'], ['modal-coin-back', coin.hasBack, 'back']].forEach(([elId, has, side]) => {
+    const el = document.getElementById(elId);
+    el.className = `xf-coin ${has ? 'has-img' : baseStyleClass}`;
+    el.innerHTML = has ? imgTag(coin.id, side) : fallback;
+    hydrateImages(el);
+  });
 
-  document.getElementById('modal-coin-inner').classList.remove('flipped');
-  document.getElementById('modal-side-label').innerText = 'Anverso · toca para girar';
   document.getElementById('coin-modal').classList.remove('hidden');
+  const sheet = document.querySelector('#coin-modal .xf-sheet'); if (sheet) sheet.scrollTop = 0;
+  if (typeof queueFitText === 'function') queueFitText();
+  fitCoinSheet(); setTimeout(fitCoinSheet, 300);
 }
 
 function closeModal() {
   document.getElementById('coin-modal').classList.add('hidden');
-}
-
-function flipCoinModal() {
-  const inner = document.getElementById('modal-coin-inner');
-  inner.classList.toggle('flipped');
-  document.getElementById('modal-side-label').innerText = inner.classList.contains('flipped')
-    ? 'Reverso · toca para girar'
-    : 'Anverso · toca para girar';
 }
 
 function toggleSilverValuation(rarity) {
@@ -446,6 +457,7 @@ function toggleSilverValuation(rarity) {
   } else {
     container.classList.add('hidden');
   }
+  fitCoinSheet();
 }
 
 let silverSaveTimer = null;
@@ -469,8 +481,7 @@ function calculateSilverValue(persist = true) {
     coin.silverPurity = purityInput;
     clearTimeout(silverSaveTimer);
     silverSaveTimer = setTimeout(() => { if (coins.includes(coin)) saveCoins(coin); }, 400);
-    const matValue = document.getElementById('modal-grid-material');
-    if (matValue && isSilverCoin(coin)) matValue.innerText = formatted;
+    setSilverChip(coin, formatted);
   }
 }
 
@@ -494,23 +505,15 @@ function coinItems(coin) {
   return coin.items;
 }
 
-function setLinkBox(id, url, colorClass) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const has = Boolean(url && url.trim() !== '');
-  el.innerHTML = has ? 'Abrir <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>' : 'Sin enlace';
-  el.className = `xm-val ${has ? colorClass : 'xm-nolink'}`;
-}
-
 /* Selector de formato: muestra solo el icono actual; al pulsar se despliegan todos en vertical */
 let formatMenuIdx = -1;
 function formatPickerHtml(i, it) {
   const cur = ITEM_FORMATS.some(f => f.id === it.format) ? it.format : DEFAULT_ITEM_FORMAT;
   const isDefault = cur === DEFAULT_ITEM_FORMAT;
-  const btn = `<button type="button" onclick="event.stopPropagation(); toggleFormatMenu(${i})" aria-haspopup="true" aria-label="Formato" title="Formato" class="xm-fbtn ${isDefault ? '' : 'xm-on'}">${itemFormatIcon(cur, 18)}</button>`;
-  if (formatMenuIdx !== i) return `<div class="xm-fwrap">${btn}</div>`;
-  const opts = ITEM_FORMATS.map(f => { const on = f.id === cur; return `<button type="button" role="menuitemradio" aria-checked="${on}" aria-label="${f.label}" title="${f.label}" onclick="event.stopPropagation(); onItemFormat(${i}, '${f.id}')" class="xm-fopt ${on ? 'xm-on' : ''}">${itemFormatIcon(f.id, 18)}</button>`; }).join('');
-  return `<div class="xm-fwrap"><div class="xm-fmenu" role="menu">${opts}</div></div>`;
+  const btn = `<button type="button" onclick="event.stopPropagation(); toggleFormatMenu(${i})" aria-haspopup="true" aria-label="Formato" title="Formato" class="xf-fbtn ${isDefault ? '' : 'xf-on'}">${itemFormatIcon(cur, 18)}</button>`;
+  if (formatMenuIdx !== i) return `<div class="xf-fwrap">${btn}</div>`;
+  const opts = ITEM_FORMATS.map(f => { const on = f.id === cur; return `<button type="button" role="menuitemradio" aria-checked="${on}" aria-label="${f.label}" title="${f.label}" onclick="event.stopPropagation(); onItemFormat(${i}, '${f.id}')" class="xf-fopt ${on ? 'xf-on' : ''}">${itemFormatIcon(f.id, 18)}</button>`; }).join('');
+  return `<div class="xf-fwrap"><div class="xf-fmenu" role="menu">${opts}</div></div>`;
 }
 function toggleFormatMenu(i) {
   formatMenuIdx = (formatMenuIdx === i) ? -1 : i;
@@ -518,25 +521,33 @@ function toggleFormatMenu(i) {
 }
 window.addEventListener('click', () => { if (formatMenuIdx !== -1) { formatMenuIdx = -1; renderCoinItems(); } });
 
+function itemIsBlank(it) { return !(it && (String(it.year || '').trim() || it.grade || String(it.notes || '').trim() || (it.format && it.format !== DEFAULT_ITEM_FORMAT))); }
+
 function renderCoinItems() {
   const coin = coins.find(c => c.id === activeCoinId);
   const box = document.getElementById('coin-items-container');
+  const card = document.getElementById('coin-items-box');
   if (!coin || !box) return;
   const items = coinItems(coin);
+  // Sin ejemplares todavía: no se muestra ninguna fila hasta pulsar "+ MONEDA"
+  const hide = items.length === 1 && itemIsBlank(items[0]) && !forceItemEditor;
+  card.classList.toggle('hidden', hide);
+  if (hide) { box.innerHTML = ''; fitCoinSheet(); return; }
   const range = parseYearRange(coin.range);
   const ph = range ? String(range.min) : 'Año';
   box.innerHTML = items.map((it, i) => `
-    <div class="xm-row">
-      <input type="number" inputmode="numeric" value="${esc(it.year)}" placeholder="${esc(ph)}" oninput="onItemField(${i}, 'year', this.value)" class="xm-field xm-year">
-      <select onchange="onItemGrade(${i}, this.value)" class="xm-field xm-grade ${it.grade ? 'xm-on' : ''}">
+    <div class="xf-row">
+      <input type="number" inputmode="numeric" value="${esc(it.year)}" placeholder="${esc(ph)}" oninput="onItemField(${i}, 'year', this.value)" class="xf-field xf-year">
+      <select onchange="onItemGrade(${i}, this.value)" class="xf-field xf-grade">
         <option value="">—</option>
         ${GRADES.map(g => `<option value="${g}" ${g === it.grade ? 'selected' : ''}>${g}</option>`).join('')}
       </select>
       ${formatPickerHtml(i, it)}
-      <input type="text" value="${esc(it.notes)}" placeholder="Notas" oninput="onItemField(${i}, 'notes', this.value)" class="xm-field xm-notes">
-      ${items.length > 1 ? `<button onclick="removeCoinItem(${i})" class="xm-trash" title="Quitar esta moneda"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+      <input type="text" value="${esc(it.notes)}" placeholder="NOTAS" oninput="onItemField(${i}, 'notes', this.value)" class="xf-field xf-notes">
+      <button type="button" onclick="removeCoinItem(${i})" class="xf-trash" title="Quitar esta moneda" aria-label="Quitar esta moneda"><i class="fa-solid fa-xmark"></i></button>
     </div>
   `).join('');
+  fitCoinSheet();
 }
 
 let itemSaveTimer = null;
@@ -575,7 +586,10 @@ function onItemFormat(i, format) {
 function addCoinItem() {
   const coin = coins.find(c => c.id === activeCoinId);
   if (!coin) return;
-  coinItems(coin).push(newCoinItem());
+  const items = coinItems(coin);
+  // Si aún no hay ejemplares, la fila en blanco existente se muestra; si no, se añade una nueva
+  if (items.length === 1 && itemIsBlank(items[0]) && !forceItemEditor) forceItemEditor = true;
+  else items.push(newCoinItem());
   renderCoinItems();
   const last = document.getElementById('coin-items-container').lastElementChild;
   if (last) last.querySelector('input').focus();
@@ -586,8 +600,9 @@ function removeCoinItem(i) {
   if (!coin) return;
   const items = coinItems(coin);
   const it = items[i];
-  if ((it.year || it.grade || it.notes) && !confirm('¿Quitar esta moneda?')) return;
-  items.splice(i, 1);
+  if (!itemIsBlank(it) && !confirm('¿Quitar esta moneda?')) return;
+  if (items.length === 1) { items[0] = newCoinItem(); forceItemEditor = false; }   // la última vuelve a "sin ejemplares"
+  else items.splice(i, 1);
   clearTimeout(itemSaveTimer);
   renderCoinItems();
   saveCoins(coin);
@@ -611,6 +626,7 @@ async function deleteCurrentCoin() {
 /* ----- Crear / editar ficha ----- */
 function openCreateModal(periodId) {
   document.getElementById('edit-coin-id').value = '';
+  document.getElementById('edit-coin-move-box').classList.add('hidden');
   document.getElementById('create-modal-title').innerText = 'Añadir Hueco al Álbum';
   document.getElementById('create-form').reset();
   document.getElementById('new-img-front').value = '';
@@ -634,6 +650,8 @@ async function openAdvancedEditFromModal() {
   if (!coin) return;
 
   document.getElementById('edit-coin-id').value = coin.id;
+  document.getElementById('edit-coin-move-box').classList.remove('hidden');
+  updateCoinMoveUI(coin.id);
   document.getElementById('create-modal-title').innerText = 'Editar Hueco';
   document.getElementById('new-country').value = coinCountryName(coin);
   document.getElementById('new-period').value = coinPeriodName(coin);
@@ -656,6 +674,24 @@ async function openAdvancedEditFromModal() {
     }
   }
   document.getElementById('create-modal').classList.remove('hidden');
+}
+
+/* Mover la moneda dentro de su período (desde la edición avanzada de la ficha) */
+function updateCoinMoveUI(coinId) {
+  const coin = coins.find(c => c.id === coinId);
+  const list = coin ? coinsOfPeriod(coin.periodId).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) : [];
+  const i = list.findIndex(c => c.id === coinId);
+  const l = document.getElementById('btn-coin-left'), r = document.getElementById('btn-coin-right');
+  if (l) l.disabled = i <= 0;
+  if (r) r.disabled = i < 0 || i >= list.length - 1;
+  const t = document.getElementById('edit-coin-pos');
+  if (t) t.textContent = i >= 0 ? `Posición ${i + 1} de ${list.length}` : '';
+}
+function moveCoinFromEdit(direction) {
+  const id = document.getElementById('edit-coin-id').value;
+  if (!id) return;
+  moveCoin(id, direction);
+  updateCoinMoveUI(id);
 }
 
 function closeCreateModal() {

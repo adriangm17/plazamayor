@@ -30,6 +30,7 @@ function jumpToCountry(countryId) {
   currentCountryId = countryId;
   albumPeriodId = ''; albumGroup = '';
   switchTab('album');
+  window.scrollTo(0, 0);   // al ir a un país se llega a su principio (solo una época concreta baja hasta su sección)
 }
 
 function jumpToPeriod(periodId) {

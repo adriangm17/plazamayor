@@ -19,36 +19,27 @@
 <body class="pb-28">
 
   <!-- CABECERA GLOBAL -->
-  <header class="bg-[#151c2c] border-b border-gray-800 p-3.5 sticky top-0 z-40">
-    <div class="max-w-4xl mx-auto flex justify-between items-center gap-2">
-      <div class="flex items-center space-x-2 shrink-0">
-        <i class="fa-solid fa-coins text-amber-400 text-lg"></i>
-        <h1 class="text-xs font-bold text-white tracking-wide">PLAZA MAYOR</h1>
+  <header class="xh-bar">
+    <div class="xh-in">
+      <div class="xh-brand">
+        <span class="xh-logo"><i class="fa-solid fa-coins"></i></span>
+        <h1 class="xh-name">Plaza Mayor</h1>
       </div>
 
-      <div id="backup-status" class="text-[10px] text-slate-400 font-semibold truncate px-2 text-center max-w-[180px] sm:max-w-xs"></div>
+      <div id="backup-status" class="xh-status"></div>
 
-      <div class="flex items-center gap-2 shrink-0">
-        <button onclick="openCreateModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition shadow flex items-center gap-1">
-          <i class="fa-solid fa-plus text-[10px]"></i> AÑADIR
-        </button>
+      <div class="xh-actions">
+        <button onclick="openCreateModal()" class="xh-add"><i class="fa-solid fa-plus"></i> Añadir</button>
 
         <div class="relative">
-          <button onclick="toggleSettingsMenu(event)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-bold transition border border-slate-700 flex items-center gap-1.5">
-            <i class="fa-solid fa-gear text-amber-400"></i> Ajustes <i class="fa-solid fa-chevron-down text-[9px]"></i>
-          </button>
-          
-          <div id="settings-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-[#182030] border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50">
-            <button onclick="closeSettingsMenu(); exportBackup();" class="w-full text-left px-3 py-2 text-xs text-emerald-400 hover:bg-slate-800 font-bold flex items-center gap-2">
-              <i class="fa-solid fa-download w-4"></i> Exportar
-            </button>
-            <label class="w-full text-left px-3 py-2 text-xs text-sky-400 hover:bg-slate-800 font-bold flex items-center gap-2 cursor-pointer">
-              <i class="fa-solid fa-upload w-4"></i> Importar
+          <button onclick="toggleSettingsMenu(event)" class="xh-set"><i class="fa-solid fa-gear"></i> Ajustes <i class="fa-solid fa-chevron-down xh-chev"></i></button>
+
+          <div id="settings-dropdown" class="xh-menu hidden">
+            <button onclick="closeSettingsMenu(); exportBackup();"><i class="fa-solid fa-download"></i> Exportar</button>
+            <label><i class="fa-solid fa-upload"></i> Importar
               <input type="file" accept=".json" onchange="closeSettingsMenu(); importBackup(event)" class="hidden">
             </label>
-            <button onclick="closeSettingsMenu(); openImportModal();" class="w-full text-left px-3 py-2 text-xs text-amber-400 hover:bg-slate-800 font-bold flex items-center gap-2">
-              <i class="fa-solid fa-file-csv w-4"></i> CSV
-            </button>
+            <button onclick="closeSettingsMenu(); openImportModal();"><i class="fa-solid fa-file-csv"></i> CSV</button>
           </div>
         </div>
       </div>
@@ -131,265 +122,206 @@
   </main>
 
   <!-- BOTTOM NAVIGATION -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-[#121824]/95 backdrop-blur-lg border-t border-slate-800/80 z-40">
-    <div class="max-w-md mx-auto grid grid-cols-4 p-2">
-      <button onclick="switchTab('indice')" id="nav-btn-indice" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-amber-400 bg-slate-800/60 font-bold">
-        <i class="fa-solid fa-list-ul text-base mb-0.5"></i>
-        <span class="text-[11px]">Índice</span>
-      </button>
-      <button onclick="switchTab('album')" id="nav-btn-album" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-slate-400 hover:text-white">
-        <i class="fa-solid fa-border-all text-base mb-0.5"></i>
-        <span class="text-[11px]">Álbum</span>
-      </button>
-      <button onclick="switchTab('explorar')" id="nav-btn-explorar" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-slate-400 hover:text-white">
-        <i class="fa-solid fa-compass text-base mb-0.5"></i>
-        <span class="text-[11px]">Explorar</span>
-      </button>
-      <button onclick="switchTab('estadisticas')" id="nav-btn-estadisticas" class="flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition text-slate-400 hover:text-white">
-        <i class="fa-solid fa-chart-column text-base mb-0.5"></i>
-        <span class="text-[11px]">Estadísticas</span>
-      </button>
+  <nav class="xn-bar">
+    <div class="xn-in">
+      <button onclick="switchTab('indice')" id="nav-btn-indice" class="xn-btn xn-on"><i class="fa-solid fa-list-ul"></i><span>Índice</span></button>
+      <button onclick="switchTab('album')" id="nav-btn-album" class="xn-btn"><i class="fa-solid fa-border-all"></i><span>Álbum</span></button>
+      <button onclick="switchTab('explorar')" id="nav-btn-explorar" class="xn-btn"><i class="fa-solid fa-compass"></i><span>Explorar</span></button>
+      <button onclick="switchTab('estadisticas')" id="nav-btn-estadisticas" class="xn-btn"><i class="fa-solid fa-chart-column"></i><span>Estadísticas</span></button>
     </div>
   </nav>
 
   <!-- MODAL EDITAR PAÍS -->
-  <div id="edit-country-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#151c2c] border border-gray-800 w-full max-w-sm rounded-2xl p-5 text-left space-y-4 max-h-[92vh] overflow-y-auto">
-      <h2 class="text-lg font-bold text-white">Editar País</h2>
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Nombre del país:</label>
-        <input type="text" id="input-edit-country-name" class="w-full bg-slate-900 text-white text-sm p-3 rounded-xl border border-slate-800 font-bold outline-none focus:border-amber-500">
-      </div>
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Zona geográfica:</label>
-        <select id="input-edit-country-continent" class="w-full bg-slate-900 text-white text-xs p-3 rounded-xl border border-slate-800 outline-none focus:border-amber-500"><option value="">Automático</option></select>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Posición dentro de la zona (orden en Explorar):</label>
-        <div class="flex items-center gap-2">
-          <button type="button" id="btn-country-left" onclick="moveCountryInZone(-1)" class="w-10 h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl flex items-center justify-center transition hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Mover antes" aria-label="Mover antes"><i class="fa-solid fa-arrow-left"></i></button>
-          <button type="button" id="btn-country-right" onclick="moveCountryInZone(1)" class="w-10 h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl flex items-center justify-center transition hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Mover después" aria-label="Mover después"><i class="fa-solid fa-arrow-right"></i></button>
-          <span id="edit-country-pos" class="text-[11px] text-slate-400"></span>
+  <div id="edit-country-modal" class="xe-overlay hidden">
+    <div class="xe-sheet xe-wide">
+      <div class="xe-head"><h2 class="xe-title">Editar país</h2><button type="button" onclick="closeEditCountryModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="xe-cols">
+        <div class="xe-col">
+          <div class="xe-f"><label>Nombre del país</label>
+            <input type="text" id="input-edit-country-name" class="xe-in xe-strong"></div>
+          <div class="xe-f"><label>Zona geográfica</label>
+            <select id="input-edit-country-continent" class="xe-in"><option value="">Automático</option></select></div>
+          <div class="xe-f"><label>Posición dentro de la zona (orden en Explorar)</label>
+            <div class="xe-row">
+              <button type="button" id="btn-country-left" onclick="moveCountryInZone(-1)" class="xe-ico" title="Mover antes" aria-label="Mover antes"><i class="fa-solid fa-arrow-left"></i></button>
+              <button type="button" id="btn-country-right" onclick="moveCountryInZone(1)" class="xe-ico" title="Mover después" aria-label="Mover después"><i class="fa-solid fa-arrow-right"></i></button>
+              <span id="edit-country-pos" class="xe-note"></span>
+            </div></div>
+          <div class="xe-f"><label>Bandera (código ISO, opcional)</label>
+            <div class="xe-row">
+              <input type="text" id="input-edit-country-flag" maxlength="6" placeholder="Automática · ej: es, fr, gb-sct" oninput="updateFlagPreview()" class="xe-in" style="flex:1;min-width:0">
+              <span id="flag-edit-preview"></span>
+            </div>
+            <div class="xe-row" style="margin-top:6px">
+              <label class="xe-btn xe-soft" style="cursor:pointer"><i class="fa-solid fa-image"></i> Mi imagen
+                <input type="file" accept="image/*" class="hidden" onchange="onFlagFileSelected(this)"></label>
+              <button type="button" onclick="clearFlagImage()" class="xe-btn xe-soft">Quitar</button>
+              <span id="flag-image-label" class="xe-note xe-or"></span>
+            </div></div>
+        </div>
+        <div class="xe-col">
+          <div class="xe-f"><label>Foto de la tarjeta (Explorar)</label>
+            <div id="card-photo-preview" class="xp-modal-photo xp-nophoto"><canvas id="card-photo-canvas" width="636" height="492"></canvas><span id="card-photo-empty">Sin foto</span></div>
+            <div class="xp-zoom" id="card-photo-zoomrow"><i class="fa-solid fa-magnifying-glass-minus"></i><input type="range" id="card-photo-zoom" min="1" max="3" step="0.01" value="1" oninput="onCardPhotoZoom(this.value)" aria-label="Zoom de la foto"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+            <p class="xe-note" style="text-align:center;margin:4px 0 0">Arrastra la foto para encuadrarla.</p>
+            <div class="xe-row" style="margin-top:6px;justify-content:center">
+              <label class="xe-btn xe-soft" style="cursor:pointer"><i class="fa-solid fa-camera"></i> Subir foto
+                <input type="file" accept="image/*" class="hidden" onchange="onCardPhotoSelected(this)"></label>
+              <button type="button" onclick="clearCardPhoto()" class="xe-btn xe-soft">Quitar</button>
+            </div></div>
         </div>
       </div>
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Bandera (código ISO, opcional):</label>
-        <div class="flex items-center gap-3">
-          <input type="text" id="input-edit-country-flag" maxlength="6" placeholder="Automática · ej: es, fr, gb-sct" oninput="updateFlagPreview()" class="flex-1 bg-slate-900 text-white text-xs p-3 rounded-xl border border-slate-800 outline-none focus:border-amber-500">
-          <span id="flag-edit-preview"></span>
-        </div>
-        <div class="flex items-center gap-2 mt-2">
-          <label class="cursor-pointer px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] text-slate-200 font-bold transition">
-            <i class="fa-solid fa-image text-amber-400 mr-1"></i> Usar mi propia imagen
-            <input type="file" accept="image/*" class="hidden" onchange="onFlagFileSelected(this)">
-          </label>
-          <button type="button" onclick="clearFlagImage()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] text-slate-300 font-bold transition">Quitar</button>
-          <span id="flag-image-label" class="text-[10px] text-amber-400 truncate"></span>
-        </div>
-      </div>
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Foto de la tarjeta (pestaña Explorar):</label>
-        <div id="card-photo-preview" class="xp-modal-photo xp-nophoto"><canvas id="card-photo-canvas" width="636" height="492"></canvas><span id="card-photo-empty">Sin foto</span></div>
-        <div class="xp-zoom" id="card-photo-zoomrow"><i class="fa-solid fa-magnifying-glass-minus"></i><input type="range" id="card-photo-zoom" min="1" max="3" step="0.01" value="1" oninput="onCardPhotoZoom(this.value)" aria-label="Zoom de la foto"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
-        <p class="text-[10px] text-slate-500 mt-1 text-center">Arrastra la foto para encuadrarla; lo que ves es lo que saldrá en la tarjeta.</p>
-        <div class="flex items-center gap-2 mt-2">
-          <label class="cursor-pointer px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] text-slate-200 font-bold transition">
-            <i class="fa-solid fa-camera text-amber-400 mr-1"></i> Subir foto
-            <input type="file" accept="image/*" class="hidden" onchange="onCardPhotoSelected(this)">
-          </label>
-          <button type="button" onclick="clearCardPhoto()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[11px] text-slate-300 font-bold transition">Quitar</button>
-        </div>
-      </div>
-      <button type="button" onclick="deleteCurrentCountry()" class="w-full border border-red-900/70 text-red-400 hover:bg-red-950/40 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Eliminar país por completo</button>
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closeEditCountryModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
-        <button onclick="saveEditedCountryName()" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-xl text-xs font-bold">Guardar</button>
+      <div class="xe-foot">
+        <button type="button" onclick="deleteCurrentCountry()" class="xe-btn xe-danger"><i class="fa-solid fa-trash"></i> Eliminar país</button>
+        <span class="xe-sp"></span>
+        <button type="button" onclick="closeEditCountryModal()" class="xe-btn xe-soft">Cancelar</button>
+        <button type="button" onclick="saveEditedCountryName()" class="xe-btn xe-main">Guardar</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL EDITAR ZONA (Explorar) -->
-  <div id="edit-zone-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#151c2c] border border-gray-800 w-full max-w-sm rounded-2xl p-5 text-left space-y-4">
-      <h2 class="text-lg font-bold text-white">Editar zona</h2>
+  <div id="edit-zone-modal" class="xe-overlay hidden">
+    <div class="xe-sheet xe-narrow">
+      <div class="xe-head"><h2 class="xe-title">Editar zona</h2><button type="button" onclick="closeEditZoneModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
       <input type="hidden" id="input-edit-zone-old">
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Nombre de la zona:</label>
-        <input type="text" id="input-edit-zone-name" maxlength="40" onkeydown="if(event.key==='Enter')saveEditedZone()" class="w-full bg-slate-900 text-white text-sm p-3 rounded-xl border border-slate-800 font-bold outline-none focus:border-amber-500">
-      </div>
-      <button type="button" onclick="deleteZoneFromModal()" class="w-full border border-red-900/70 text-red-400 hover:bg-red-950/40 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Eliminar zona</button>
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closeEditZoneModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
-        <button onclick="saveEditedZone()" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-xl text-xs font-bold">Guardar</button>
+      <div class="xe-f"><label>Nombre de la zona</label>
+        <input type="text" id="input-edit-zone-name" maxlength="40" onkeydown="if(event.key==='Enter')saveEditedZone()" class="xe-in xe-strong"></div>
+      <div class="xe-foot">
+        <button type="button" onclick="deleteZoneFromModal()" class="xe-btn xe-danger"><i class="fa-solid fa-trash"></i> Eliminar</button>
+        <span class="xe-sp"></span>
+        <button type="button" onclick="closeEditZoneModal()" class="xe-btn xe-soft">Cancelar</button>
+        <button type="button" onclick="saveEditedZone()" class="xe-btn xe-main">Guardar</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL EDITAR PERÍODO -->
-  <div id="edit-period-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#151c2c] border border-gray-800 w-full max-w-sm rounded-2xl p-5 text-left space-y-4">
-      <h2 class="text-lg font-bold text-white" id="edit-period-title">Editar Período</h2>
+  <div id="edit-period-modal" class="xe-overlay hidden">
+    <div class="xe-sheet xe-narrow">
+      <div class="xe-head"><h2 class="xe-title" id="edit-period-title">Editar período</h2><button type="button" onclick="closeEditPeriodModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
       <input type="hidden" id="input-edit-period-old">
-      <div>
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Nombre del período:</label>
-        <input type="text" id="input-edit-period-name" class="w-full bg-slate-900 text-white text-sm p-3 rounded-xl border border-slate-800 font-bold outline-none focus:border-amber-500">
+      <div class="xe-f"><label>Nombre del período</label>
+        <input type="text" id="input-edit-period-name" class="xe-in xe-strong"></div>
+      <div class="xe-f" id="edit-period-move-box"><label>Posición en el país</label>
+        <div class="xe-row">
+          <button type="button" id="btn-period-up" onclick="movePeriodFromModal(-1)" class="xe-ico" title="Subir período" aria-label="Subir período"><i class="fa-solid fa-arrow-up"></i></button>
+          <button type="button" id="btn-period-down" onclick="movePeriodFromModal(1)" class="xe-ico" title="Bajar período" aria-label="Bajar período"><i class="fa-solid fa-arrow-down"></i></button>
+          <span id="edit-period-pos" class="xe-note"></span>
+        </div></div>
+      <button type="button" id="btn-period-addcoin" onclick="addCoinFromPeriodModal()" class="hidden xe-btn xe-soft xe-full"><i class="fa-solid fa-plus"></i> Añadir moneda a este período</button>
+      <div class="xe-foot">
+        <button type="button" id="btn-period-delete" onclick="deleteEmptyPeriodFromModal()" class="hidden xe-btn xe-danger"><i class="fa-solid fa-trash"></i> Eliminar vacío</button>
+        <span class="xe-sp"></span>
+        <button type="button" onclick="closeEditPeriodModal()" class="xe-btn xe-soft">Cancelar</button>
+        <button type="button" onclick="saveEditedPeriodName()" class="xe-btn xe-main">Guardar</button>
       </div>
-      <div id="edit-period-move-box">
-        <label class="text-xs text-slate-400 block mb-1 font-semibold">Posición en el país:</label>
-        <div class="flex items-center gap-2">
-          <button type="button" id="btn-period-up" onclick="movePeriodFromModal(-1)" class="w-10 h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl flex items-center justify-center transition hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Subir período" aria-label="Subir período"><i class="fa-solid fa-arrow-up"></i></button>
-          <button type="button" id="btn-period-down" onclick="movePeriodFromModal(1)" class="w-10 h-10 bg-slate-800 border border-slate-700 text-slate-200 rounded-xl flex items-center justify-center transition hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed" title="Bajar período" aria-label="Bajar período"><i class="fa-solid fa-arrow-down"></i></button>
-          <span id="edit-period-pos" class="text-[11px] text-slate-400"></span>
-        </div>
+    </div>
+  </div>
+
+  <!-- MODAL FICHA DE VARIANTES (se abre al pulsar una ficha base) -->
+  <div id="variants-modal" class="xm-overlay hidden" onclick="if(event.target===this)closeVariantsSheet()">
+    <div class="xm-sheet xv-sheet">
+      <div class="xv-head">
+        <h2 class="xv-title" id="variants-title"></h2>
+        <p class="xv-sub" id="variants-subtitle"></p>
       </div>
-      <button type="button" id="btn-period-addcoin" onclick="addCoinFromPeriodModal()" class="hidden w-full bg-slate-800 border border-slate-700 text-slate-100 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-semibold items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> Añadir moneda a este período</button>
-      <button type="button" id="btn-period-delete" onclick="deleteEmptyPeriodFromModal()" class="hidden w-full border border-red-900/70 text-red-400 hover:bg-red-950/40 py-2 rounded-xl text-xs font-semibold items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Eliminar período vacío</button>
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closeEditPeriodModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
-        <button onclick="saveEditedPeriodName()" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-xl text-xs font-bold">Guardar</button>
+      <div id="variants-list" class="xv-list"></div>
+      <div class="xv-foot">
+        <button type="button" class="xv-add" onclick="addVariantFromSheet()">+ AÑADIR VARIANTE</button>
+        <button type="button" class="xv-close" onclick="closeVariantsSheet()" aria-label="Cerrar">X</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL FICHA MONEDA COMPACTA Y CORREGIDA -->
-  <div id="coin-modal" class="xm-overlay hidden">
-    <div class="xm-sheet">
-      <div class="xm-grab"></div>
+  <div id="coin-modal" class="xf-overlay hidden" onclick="if(event.target===this)closeModal()">
+    <div class="xf-sheet">
 
-      <div class="xm-top">
-        <button onclick="openAdvancedEditFromModal()" class="xm-edit"><i class="fa-solid fa-gear"></i> Editar ficha</button>
-        <button onclick="closeModal()" class="xm-close" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      <!-- Las dos caras de la moneda a la vez -->
+      <div class="xf-hero">
+        <div class="xf-coins">
+          <div id="modal-coin-front" class="xf-coin" role="img" aria-label="Anverso"></div>
+          <div id="modal-coin-back" class="xf-coin" role="img" aria-label="Reverso"></div>
+        </div>
+      </div>
+      <div class="xf-titlebox"><h2 class="xf-title" id="modal-title">1 fr</h2></div>
+
+      <!-- Datos de la moneda -->
+      <div class="xf-info">
+        <div class="xf-r">
+          <span class="xf-pill xf-dark xf-grow" id="modal-country">Francia</span>
+          <span class="xf-pill xf-km" id="modal-grid-km">KM# 781</span>
+          <span id="modal-rarity-chip" class="xf-chip hidden"></span>
+        </div>
+        <div class="xf-r">
+          <span class="xf-pill xf-line xf-yr" id="modal-grid-range">1852–1870</span>
+          <span class="xf-pill xf-dark xf-grow" id="modal-grid-period">Segundo Imperio</span>
+        </div>
+        <div class="xf-r">
+          <span class="xf-flag" id="modal-flag"></span>
+          <span class="xf-pill xf-line xf-grow" id="modal-grid-material">Variante A</span>
+          <span id="modal-type-chip" class="xf-chip xf-type hidden"></span>
+        </div>
       </div>
 
-      <div class="xm-hero">
-        <div id="modal-outer-wrapper" class="xm-disc">
-          <div class="xm-coin coin-perspective" onclick="flipCoinModal()" title="Toca para girar anverso/reverso">
-            <div id="modal-coin-inner" class="coin-inner">
-              <div id="modal-coin-front" class="coin-front"></div>
-              <div id="modal-coin-back" class="coin-back"></div>
-            </div>
+      <!-- Monedas que tengo: año · conservación · formato · notas -->
+      <div id="coin-items-box" class="xf-card xf-mine hidden">
+        <div id="coin-items-container" class="xf-items"></div>
+      </div>
+
+      <!-- + Moneda, enlaces y valor de la plata -->
+      <div class="xf-card xf-bar">
+        <div class="xf-r xf-r-add">
+          <button type="button" onclick="addCoinItem()" class="xf-add"><i class="fa-solid fa-plus"></i> MONEDA</button>
+          <button type="button" id="modal-btn-ucoin" onclick="openUcoinLink()" class="xp-lk" title="Ucoin" aria-label="Ucoin">U</button>
+          <button type="button" id="modal-btn-numista" onclick="openNumistaLink()" class="xp-lk" title="Numista" aria-label="Numista">N</button>
+        </div>
+        <div id="silver-valuation-container" class="xf-silver hidden">
+          <div class="xf-silver-head">
+            <span class="xf-silver-title"><i class="fa-solid fa-scale-balanced"></i> VALOR PLATA</span>
+            <span id="silver-price-rate-display" onclick="editSilverPrice()" class="xf-rate">Cargando...</span>
           </div>
-        </div>
-        <p id="modal-side-label" class="xm-side">Anverso · toca para girar</p>
-      </div>
-
-      <div class="xm-titlebox">
-        <h2 class="xm-title" id="modal-title">1 fr</h2>
-      </div>
-      <p class="xm-sub" id="modal-subtitle">Francia · Segundo Imperio · 1852–1870</p>
-      <div class="xm-chips">
-        <span id="modal-rarity-chip" class="xm-chip hidden"></span>
-        <span id="modal-type-chip" class="xm-chip hidden"></span>
-      </div>
-
-      <div class="xm-grid">
-        <div class="xm-tile">
-          <span class="xm-lab">PERÍODO</span>
-          <span class="xm-val" id="modal-grid-period">Segundo Imperio</span>
-        </div>
-        <div class="xm-tile">
-          <span class="xm-lab">AÑOS PERIODO</span>
-          <span class="xm-val" id="modal-grid-range">1852–1870</span>
-        </div>
-        <div class="xm-tile">
-          <span class="xm-lab" id="modal-grid-material-label">CECA/VARIANTE</span>
-          <span class="xm-val" id="modal-grid-material">Variante A</span>
-        </div>
-        <div class="xm-tile">
-          <span class="xm-lab">KM#</span>
-          <span class="xm-val" id="modal-grid-km">KM# 781</span>
-        </div>
-        <button type="button" id="modal-btn-numista" onclick="openNumistaLink()" class="xm-tile xm-tile-btn">
-          <img src="img/numista.png" alt="">
-          <span class="xm-tile-txt">
-            <span class="xm-lab">NUMISTA</span>
-            <span class="xm-val" id="modal-grid-numista">Sin enlace</span>
-          </span>
-        </button>
-        <button type="button" id="modal-btn-ucoin" onclick="openUcoinLink()" class="xm-tile xm-tile-btn">
-          <img src="img/ucoin.png" alt="">
-          <span class="xm-tile-txt">
-            <span class="xm-lab">UCOIN</span>
-            <span class="xm-val" id="modal-grid-ucoin">Sin enlace</span>
-          </span>
-        </button>
-      </div>
-
-      <!-- SECCIÓN MIS MONEDAS -->
-      <div class="xm-mine">
-        <!-- MONEDAS QUE TENGO: año · conservación · formato · notas -->
-        <div>
-          <div class="xm-mine-head">
-            <span class="xm-mine-title">MIS MONEDAS</span>
-            <span class="xm-mine-hint">Año · Conservación · Formato · Notas</span>
-          </div>
-          <div id="coin-items-container" class="xm-items"></div>
-          <button type="button" onclick="addCoinItem()" class="xm-add"><i class="fa-solid fa-plus"></i> Añadir moneda</button>
-        </div>
-
-        <!-- VALORACIÓN DE PLATA -->
-        <div id="silver-valuation-container" class="xm-silver hidden">
-          <div class="xm-silver-head">
-            <span class="xm-silver-title"><i class="fa-solid fa-scale-balanced"></i> Valor Plata</span>
-            <span id="silver-price-rate-display" onclick="editSilverPrice()" class="xm-rate">Cargando...</span>
-          </div>
-          <div class="xm-silver-grid">
-            <div class="xm-sbox">
-              <label>Peso (g)</label>
-              <input type="number" id="silver-weight-input" step="0.01" min="0" placeholder="0.00" oninput="calculateSilverValue()">
-            </div>
-            <div class="xm-sbox">
-              <label>Ley (‰)</label>
-              <input type="number" id="silver-purity-input" step="1" min="0" max="1000" placeholder="900" oninput="calculateSilverValue()">
-            </div>
-            <div class="xm-sbox xm-sbox-est">
-              <label>Estimado</label>
-              <span id="silver-calculated-value">0,00 €</span>
-            </div>
+          <div class="xf-silver-grid">
+            <label class="xf-sbox"><span>PESO (g)</span>
+              <input type="number" id="silver-weight-input" step="0.01" min="0" placeholder="0.00" oninput="calculateSilverValue()"></label>
+            <label class="xf-sbox"><span>LEY (‰)</span>
+              <input type="number" id="silver-purity-input" step="1" min="0" max="1000" placeholder="900" oninput="calculateSilverValue()"></label>
+            <div class="xf-sbox xf-sbox-est"><span>ESTIMADO</span>
+              <b id="silver-calculated-value">0,00 €</b></div>
           </div>
         </div>
       </div>
 
-      <div class="xm-foot">
-        <button onclick="deleteCurrentCoin()" class="xm-del"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
-        <button onclick="closeModal()" class="xm-ok">Listo</button>
+      <div class="xf-foot">
+        <button type="button" onclick="openAdvancedEditFromModal()" class="xf-edit">EDITAR FICHA</button>
+        <button type="button" onclick="deleteCurrentCoin()" class="xf-del" title="Eliminar" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+        <span class="xf-sp"></span>
+        <button type="button" onclick="closeModal()" class="xf-x" aria-label="Cerrar">X</button>
       </div>
 
     </div>
   </div>
 
-  <!-- MODAL CREAR / EDITAR -->
-  <div id="create-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#151c2c] border border-gray-800 w-full max-w-sm rounded-2xl p-5 text-left max-h-[90vh] overflow-y-auto">
-      <h2 class="text-lg font-bold text-white mb-3" id="create-modal-title">Añadir Hueco al Álbum</h2>
-      <form id="create-form" onsubmit="handleSaveCoin(event)" class="space-y-3 text-xs">
+  <!-- MODAL CREAR / EDITAR FICHA -->
+  <div id="create-modal" class="xe-overlay hidden">
+    <div class="xe-sheet xe-wide">
+      <div class="xe-head"><h2 class="xe-title" id="create-modal-title">Añadir hueco al álbum</h2><button type="button" onclick="closeCreateModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <form id="create-form" onsubmit="handleSaveCoin(event)">
         <input type="hidden" id="edit-coin-id">
-        <div>
-          <label class="text-gray-400 block mb-1">País</label>
-          <input type="text" id="new-country" required placeholder="Ej: España" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-        </div>
-        <div>
-          <label class="text-gray-400 block mb-1">Época / Período</label>
-          <input type="text" id="new-period" placeholder="Ej: Alfonso XII" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-        </div>
-        <div>
-          <label class="text-gray-400 block mb-1">Denominación</label>
-          <input type="text" id="new-denom" required placeholder="Ej: 25 ptas" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-gray-400 block mb-1">Ceca / Variante</label>
-            <input type="text" id="new-ceca-material" placeholder="Ej: Variante A" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-          </div>
-          <div>
-            <label class="text-gray-400 block mb-1">KM#</label>
-            <input type="text" id="new-km" placeholder="Ej: KM# 677" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-gray-400 block mb-1">Rareza</label>
-            <select id="new-rarity" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
+        <div class="xe-grid">
+          <div class="xe-f xe-c4"><label>País</label>
+            <input type="text" id="new-country" required placeholder="Ej: España" class="xe-in"></div>
+          <div class="xe-f xe-c4"><label>Época / período</label>
+            <input type="text" id="new-period" placeholder="Ej: Alfonso XII" class="xe-in"></div>
+          <div class="xe-f xe-c4"><label>Denominación</label>
+            <input type="text" id="new-denom" required placeholder="Ej: 25 ptas" class="xe-in"></div>
+          <div class="xe-f xe-c4"><label>Ceca / variante</label>
+            <input type="text" id="new-ceca-material" placeholder="Ej: Variante A" class="xe-in"></div>
+          <div class="xe-f xe-c4"><label>KM#</label>
+            <input type="text" id="new-km" placeholder="Ej: KM# 677" class="xe-in"></div>
+          <div class="xe-f xe-c4"><label>Rareza</label>
+            <select id="new-rarity" class="xe-in">
               <option value="A">A</option>
               <option value="B">B</option>
               <option value="C">C</option>
@@ -399,84 +331,68 @@
               <option value="RRR*">RRR*</option>
               <option value="UR">UR</option>
               <option value="PLATA">PLATA</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-gray-400 block mb-1">Rango de Años</label>
-            <input type="text" id="new-range" placeholder="Ej: 1876-1885" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-          </div>
-        </div>
-        <div>
-          <label class="text-gray-400 block mb-1">Tipo</label>
-          <select id="new-type" class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-            <option value="Circulante" selected>Circulante</option>
-            <option value="Conmemorativas">Conmemorativas</option>
-            <option value="Colección">Colección</option>
-            <option value="Falsas de época">Falsas de época</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-gray-400 block mb-1">Enlace Numista</label>
-            <input type="url" id="new-numista-url" placeholder="https://en.numista.com/..." class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-          </div>
-          <div>
-            <label class="text-gray-400 block mb-1">Enlace Ucoin</label>
-            <input type="url" id="new-ucoin-url" placeholder="https://en.ucoin.net/..." class="w-full bg-slate-900 text-white p-2.5 rounded-lg border border-slate-800">
-          </div>
-        </div>
-
-        <div class="border-t border-slate-800 pt-3 space-y-3">
-          <span class="text-gray-300 font-semibold block text-xs">Fotografías (Anverso / Reverso)</span>
-          <div>
-            <label class="text-[10px] text-gray-400 block mb-1 font-semibold">Anverso</label>
-            <div class="relative border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-3 text-center bg-slate-900/80 transition cursor-pointer flex flex-col items-center justify-center gap-1">
-              <i class="fa-solid fa-cloud-arrow-up text-amber-400 text-base"></i>
-              <span class="text-[11px] text-slate-300 font-medium">Toca, arrastra o pega (Ctrl+V) la imagen aquí</span>
-              <span id="label-file-front" class="text-[9px] text-slate-500 truncate max-w-[220px]">JPG, PNG, WEBP</span>
+            </select></div>
+          <div class="xe-f xe-c4"><label>Rango de años</label>
+            <input type="text" id="new-range" placeholder="Ej: 1876-1885" class="xe-in"></div>
+          <div class="xe-f xe-c4"><label>Tipo</label>
+            <select id="new-type" class="xe-in">
+              <option value="Circulante" selected>Circulante</option>
+              <option value="Conmemorativas">Conmemorativas</option>
+              <option value="Colección">Colección</option>
+              <option value="Falsas de época">Falsas de época</option>
+              <option value="FAO">FAO</option>
+            </select></div>
+          <div class="xe-f xe-c4 hidden" id="edit-coin-move-box"><label>Posición en el período</label>
+            <div class="xe-row">
+              <button type="button" id="btn-coin-left" onclick="moveCoinFromEdit(-1)" class="xe-ico" title="Mover antes" aria-label="Mover antes"><i class="fa-solid fa-arrow-left"></i></button>
+              <button type="button" id="btn-coin-right" onclick="moveCoinFromEdit(1)" class="xe-ico" title="Mover después" aria-label="Mover después"><i class="fa-solid fa-arrow-right"></i></button>
+              <span id="edit-coin-pos" class="xe-note"></span>
+            </div></div>
+          <div class="xe-f xe-c6"><label>Enlace Numista</label>
+            <input type="url" id="new-numista-url" placeholder="https://en.numista.com/..." class="xe-in"></div>
+          <div class="xe-f xe-c6"><label>Enlace Ucoin</label>
+            <input type="url" id="new-ucoin-url" placeholder="https://en.ucoin.net/..." class="xe-in"></div>
+          <div class="xe-c6"><div class="xe-f"><label>Anverso</label>
+            <div class="xe-drop">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span class="xe-d1">Toca, arrastra o pega (Ctrl+V)</span>
+              <span id="label-file-front" class="xe-d2">JPG, PNG, WEBP</span>
               <input type="file" id="file-front" accept="image/*" onchange="handleFileSelect(event, 'new-img-front', 'label-file-front')" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
             </div>
             <input type="hidden" id="new-img-front">
-            <button type="button" onclick="clearCoinImage('new-img-front', 'label-file-front', 'file-front')" class="mt-1.5 text-[10px] text-red-400 hover:text-red-300 font-semibold"><i class="fa-solid fa-trash-can mr-1"></i>Quitar imagen</button>
-          </div>
-
-          <div>
-            <label class="text-[10px] text-gray-400 block mb-1 font-semibold">Reverso</label>
-            <div class="relative border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-xl p-3 text-center bg-slate-900/80 transition cursor-pointer flex flex-col items-center justify-center gap-1">
-              <i class="fa-solid fa-cloud-arrow-up text-amber-400 text-base"></i>
-              <span class="text-[11px] text-slate-300 font-medium">Toca, arrastra o pega (Ctrl+V) la imagen aquí</span>
-              <span id="label-file-back" class="text-[9px] text-slate-500 truncate max-w-[220px]">JPG, PNG, WEBP</span>
+            <button type="button" onclick="clearCoinImage('new-img-front', 'label-file-front', 'file-front')" class="xe-link"><i class="fa-solid fa-trash-can"></i> Quitar imagen</button>
+          </div></div>
+          <div class="xe-c6"><div class="xe-f"><label>Reverso</label>
+            <div class="xe-drop">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span class="xe-d1">Toca, arrastra o pega (Ctrl+V)</span>
+              <span id="label-file-back" class="xe-d2">JPG, PNG, WEBP</span>
               <input type="file" id="file-back" accept="image/*" onchange="handleFileSelect(event, 'new-img-back', 'label-file-back')" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
             </div>
             <input type="hidden" id="new-img-back">
-            <button type="button" onclick="clearCoinImage('new-img-back', 'label-file-back', 'file-back')" class="mt-1.5 text-[10px] text-red-400 hover:text-red-300 font-semibold"><i class="fa-solid fa-trash-can mr-1"></i>Quitar imagen</button>
-          </div>
+            <button type="button" onclick="clearCoinImage('new-img-back', 'label-file-back', 'file-back')" class="xe-link"><i class="fa-solid fa-trash-can"></i> Quitar imagen</button>
+          </div></div>
         </div>
-
-        <div class="pt-3 flex space-x-2">
-          <button type="button" onclick="closeCreateModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-lg font-semibold">Cancelar</button>
-          <button type="submit" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-lg font-bold">Guardar</button>
+        <div class="xe-foot">
+          <span class="xe-sp"></span>
+          <button type="button" onclick="closeCreateModal()" class="xe-btn xe-soft">Cancelar</button>
+          <button type="submit" class="xe-btn xe-main">Guardar</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- MODAL IMPORTAR CSV -->
-  <div id="import-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#151c2c] border border-gray-800 w-full max-w-sm rounded-2xl p-5 text-left">
-      <h2 class="text-lg font-bold text-white mb-2">Importar por CSV</h2>
-      <p class="text-xs text-gray-400 mb-3">Sube un archivo `.csv` o pega el contenido:<br><code class="text-amber-400">pais,periodo,denominacion,ceca_variante,rarity,rango,km</code></p>
-      
-      <div class="mb-3">
-        <input type="file" id="csv-file-input" accept=".csv,text/csv" onchange="handleCSVFileSelect(event)" class="w-full text-slate-400 text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-slate-800 file:text-amber-400 file:font-bold border border-slate-800 rounded-lg bg-slate-900">
-      </div>
-
-      <textarea id="import-csv-data" rows="5" placeholder="Francia;Segundo Imperio;1 fr;Variante A;C;1852-1870;KM# 781" class="w-full bg-slate-900 text-white text-xs p-2.5 rounded-lg border border-slate-800 font-mono"></textarea>
-      
-      <div class="mt-4 flex space-x-2">
-        <button onclick="closeImportModal()" class="w-1/2 bg-slate-800 text-gray-300 py-2.5 rounded-lg text-xs font-semibold">Cancelar</button>
-        <button onclick="processCSVImport()" class="w-1/2 bg-amber-500 text-slate-950 py-2.5 rounded-lg text-xs font-bold">Importar</button>
+  <div id="import-modal" class="xe-overlay hidden">
+    <div class="xe-sheet xe-mid">
+      <div class="xe-head"><h2 class="xe-title">Importar por CSV</h2><button type="button" onclick="closeImportModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <p class="xe-note" style="margin:0 0 8px">Sube un archivo <b>.csv</b> o pega el contenido:<br><code class="xe-code">pais,periodo,denominacion,ceca_variante,rarity,rango,km</code></p>
+      <div class="xe-f"><input type="file" id="csv-file-input" accept=".csv,text/csv" onchange="handleCSVFileSelect(event)" class="xe-file"></div>
+      <div class="xe-f"><textarea id="import-csv-data" rows="5" placeholder="Francia;Segundo Imperio;1 fr;Variante A;C;1852-1870;KM# 781" class="xe-in xe-mono"></textarea></div>
+      <div class="xe-foot">
+        <span class="xe-sp"></span>
+        <button type="button" onclick="closeImportModal()" class="xe-btn xe-soft">Cancelar</button>
+        <button type="button" onclick="processCSVImport()" class="xe-btn xe-main">Importar</button>
       </div>
     </div>
   </div>
