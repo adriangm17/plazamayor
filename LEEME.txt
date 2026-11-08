@@ -23,3 +23,5 @@ js/nav.js            botón "atrás" del móvil: historial de fichas, filtros, p
 js/app.js           arranque y navegación
 
 Abre index.html desde un servidor (p. ej. GitHub Pages). Mantén la carpeta tal cual.
+
+v7.01: icono nuevo (Plaza Mayor redibujada) y moneda circular sin fondo morado (icon-192/512, favicon, logo). Cache sw: plaza-mayor-v82.

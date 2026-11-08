@@ -673,6 +673,7 @@ function openVariantsSheet(key, okStr) {
   const ov = document.getElementById('variants-modal');
   ov.classList.remove('hidden');
   hydrateImages(ov);
+  fitVariantsSheet();
 }
 function closeVariantsSheet() { document.getElementById('variants-modal').classList.add('hidden'); }
 function openVariantFromSheet(id) { closeVariantsSheet(); openCoinModal(id); }

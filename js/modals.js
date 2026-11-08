@@ -339,19 +339,39 @@ function setSilverChip(coin, text) {
   else chip.classList.add('hidden');
 }
 
-/* Ordenador: amplía la ficha todo lo que permita el alto de la pantalla (máx. 1,8×). En móvil no se toca. */
+/* Ordenador: amplía la ficha con transform:scale (v5.07). Antes se usaba `zoom` + width:calc(100%/z): los Chrome/Edge recientes lo interpretan
+   distinto y la ficha quedaba estrecha, con los textos cortados. Ahora la ficha mide siempre 30rem de ancho y se escala desde el centro;
+   el factor depende solo del tamaño de la ventana (no del contenido), así que todas las fichas tienen el mismo ancho. Si el contenido es
+   más alto de lo que cabe, la ficha se desplaza por dentro. En móvil (<700 px) no se toca. */
+function sheetScaleFor(natural, baseW, maxZ) {
+  const byW = (window.innerWidth - 32) / baseW;                     // cabe en ancho (overlay con 16 px de margen)
+  const byH = (window.innerHeight * 0.94) / Math.max(640, Math.min(natural || 640, 780));   // alto de referencia estable
+  return Math.max(1, Math.min(maxZ, byW, byH));
+}
+function applySheetScale(sheet, z, vhMax, vhMin) {
+  sheet.style.transformOrigin = 'center center';
+  sheet.style.transform = z > 1.001 ? `scale(${z})` : '';
+  sheet.style.maxHeight = vhMax ? `calc(${vhMax}vh / ${z})` : '';
+  sheet.style.minHeight = vhMin ? `min(640px, calc(${vhMin}vh / ${z}))` : '';
+}
 function fitCoinSheet() {
   const sheet = document.querySelector('#coin-modal .xf-sheet');
   if (!sheet || document.getElementById('coin-modal').classList.contains('hidden')) return;
-  if (window.innerWidth < 700) { sheet.style.zoom = ''; sheet.style.width = ''; sheet.style.maxHeight = ''; sheet.style.minHeight = ''; return; }
-  sheet.style.zoom = '1'; sheet.style.width = '100%'; sheet.style.maxHeight = 'none'; sheet.style.minHeight = '0';
+  sheet.style.width = '';
+  if (window.innerWidth < 700) { sheet.style.transform = ''; sheet.style.maxHeight = ''; sheet.style.minHeight = ''; return; }
+  sheet.style.transform = ''; sheet.style.maxHeight = 'none'; sheet.style.minHeight = '0';
   const natural = sheet.scrollHeight || 640;
-  const z = Math.max(1, Math.min(1.8, (window.innerHeight * 0.94) / natural, (window.innerWidth * 0.9) / 480));
-  sheet.style.zoom = String(z);
-  sheet.style.width = `calc(100% / ${z})`;
-  sheet.style.maxHeight = `calc(96vh / ${z})`;
-  sheet.style.minHeight = `min(640px, calc(88vh / ${z}))`;
+  applySheetScale(sheet, sheetScaleFor(natural, 480, 1.8), 96, 88);
 }
+// Ficha de variantes: mismo escalado (1,5× en ventanas medias, 1,8× en grandes)
+function fitVariantsSheet() {
+  const ov = document.getElementById('variants-modal'), sheet = ov && ov.querySelector('.xv-sheet');
+  if (!sheet || ov.classList.contains('hidden')) return;
+  if (window.innerWidth < 700) { sheet.style.transform = ''; sheet.style.maxHeight = ''; return; }
+  const z = Math.max(1, Math.min(window.innerWidth >= 1100 ? 1.8 : 1.5, (window.innerWidth - 32) / 480, (window.innerHeight * 0.94) / 560));
+  applySheetScale(sheet, z, 94, 0);
+}
+window.addEventListener('resize', fitVariantsSheet);
 window.addEventListener('resize', fitCoinSheet);
 
 let forceItemEditor = false;   // true: se muestra la fila de edición aunque la moneda aún no tenga ejemplares

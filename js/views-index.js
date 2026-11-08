@@ -4,12 +4,13 @@ function onIndiceSearchInput(val) {
   renderIndiceView();
 }
 
-// Por defecto los períodos salen contraídos; si hay búsqueda se muestran para ver las coincidencias
+// Por defecto los períodos salen contraídos (la búsqueda solo filtra países, no abre ni filtra épocas)
 function isIndiceCollapsed(countryId) {
   const v = indiceCollapsedCountries[countryId];
-  if (v === undefined) return !indiceSearchText;
-  return v;
+  return v === undefined ? true : v;
 }
+// Búsqueda sin tildes ni mayúsculas: «peru» encuentra «Perú»
+const indiceNorm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 function expandAllIndice() {
   countries.forEach(c => { indiceCollapsedCountries[c.id] = false; });
@@ -72,14 +73,13 @@ function renderIndiceView() {
     return;
   }
 
-  const search = indiceSearchText.toLowerCase();
+  const search = indiceNorm(indiceSearchText);
 
   const html = list.map(country => {
     const ps = periodsOfCountry(country.id);
 
-    const matchesCountry = country.name.toLowerCase().includes(search);
-    const matching = ps.filter(p => matchesCountry || p.name.toLowerCase().includes(search));
-    if (search && !matchesCountry && matching.length === 0) return '';
+    if (search && !indiceNorm(country.name).includes(search)) return '';   // solo se busca por nombre de país
+    const matching = ps;
 
     const shown = new Set(ps.map(p => p.id));
     const normal = coinsOfCountry(country.id).filter(c => shown.has(c.periodId) && !isSilverCoin(c));
@@ -87,13 +87,14 @@ function renderIndiceView() {
     const cTotal = normal.length;
     const cPct = cTotal > 0 ? Math.round((cAcquired / cTotal) * 100) : 0;
     const isCollapsed = isIndiceCollapsed(country.id);
-    const banner = `linear-gradient(90deg,rgba(var(--xp-plum-rgb),.96) 0%,rgba(var(--xp-plum-rgb),.80) 45%,rgba(var(--xp-plum-rgb),.25) 100%),${flagLayers(country)}`;
+    const flagBg = flagLayers(country).replace(/"/g, '&quot;');
 
     return `
       <div class="xi-card">
-        <div class="xi-head" style="background:${banner.replace(/"/g, '&quot;')}">
+        <div class="xi-head">
           <div class="xi-main" onclick="jumpToCountry('${esc(country.id)}')">
             <div class="xi-donut" style="--progress: ${cPct}%;"><div>${cPct}%</div></div>
+            <span class="xi-flag" style="background:${flagBg}" role="img" aria-label="Bandera de ${esc(country.name)}"></span>
             <div class="min-w-0">
               <h3 class="xi-name truncate">${esc(country.name)}</h3>
               <p class="xi-sub">${cAcquired} de ${cTotal} monedas</p>
@@ -126,7 +127,7 @@ function renderIndiceView() {
               </div>
             `;
           }).join('')}
-          ${search ? '' : `<button type="button" onclick="addPeriodFromIndice('${esc(country.id)}')" class="xi-addperiod"><i class="fa-solid fa-plus"></i> Añadir período</button>`}
+          ${`<button type="button" onclick="addPeriodFromIndice('${esc(country.id)}')" class="xi-addperiod"><i class="fa-solid fa-plus"></i> Añadir período</button>`}
         </div>
       </div>
     `;

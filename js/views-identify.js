@@ -10,7 +10,7 @@ const IDENT_USAGE_LS = 'plaza-gemini-usage';
 // Los modelos de Google cambian a menudo: se prueban por orden y se pueden editar o detectar desde la propia pestaña
 const IDENT_DEFAULT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
 const IDENT_API = 'https://generativelanguage.googleapis.com/v1beta/';
-const IDENT_MAX_DIM = 1024;   // lado mayor de la foto enviada (suficiente para leer la moneda y ligera)
+const IDENT_MAX_DIM = 1536;   // lado mayor de la foto enviada (permite leer años y leyendas gastadas sin pesar demasiado)
 
 let identPhotos = [];        // [{ src (dataURL de vista previa), b64, mime }] · máx. 2 (anverso y reverso)
 let identBusy = false, identBusyMsg = '';
@@ -175,7 +175,7 @@ function identMatch(ex, refine) {
   const byKey = new Map();
   cands.forEach(c => {
     const d = identCoinDenom(c), ys = identYearScore(year, c);
-    const s = 10 + identUnitScore(exUnits, d.units) + ys.s + identHintScore(ex, c);
+    const s = 10 + identUnitScore(exUnits, d.units) + ys.s + identHintScore(ex, c) + (ex.catalogueCoinId && ex.catalogueCoinId === c.id ? 5 : 0);
     const k = identGroupKey(c);
     if (!byKey.has(k)) byKey.set(k, { key: k, coins: [], score: -99, yearIn: null, owned: false, rep: null, repScore: -99 });
     const g = byKey.get(k);
@@ -230,13 +230,27 @@ const IDENT_SCHEMA = {
     denomination_unit: { type: 'STRING', nullable: true },
     denomination_text: { type: 'STRING', nullable: true },
     year: { type: 'INTEGER', nullable: true },
+    year_legible: { type: 'BOOLEAN' },
+    catalogue_index: { type: 'INTEGER', nullable: true },
     ruler_or_motif: { type: 'STRING', nullable: true },
     inscriptions: { type: 'ARRAY', items: { type: 'STRING' } },
     confidence: { type: 'NUMBER' },
     notes: { type: 'STRING', nullable: true }
   },
-  required: ['is_coin', 'country', 'denomination_value', 'denomination_unit', 'year', 'confidence']
+  required: ['is_coin', 'country', 'denomination_value', 'denomination_unit', 'year', 'year_legible', 'confidence']
 };
+
+// Lista compacta del catálogo (índice|país|denominación|años) que se envía en la misma petición para que Gemini pueda señalar la serie
+let identCatMap = [];
+function identCatalogueText() {
+  identCatMap = [];
+  const lines = [];
+  sortedCountries().forEach(co => coinsOfCountry(co.id).forEach(c => {
+    identCatMap.push(c.id);
+    lines.push(`${identCatMap.length - 1}|${co.name}|${String(c.denom).replace(/\s+/g, ' ')}|${c.range || ''}`);
+  }));
+  return lines.join('\n');
+}
 
 function identPrompt() {
   const known = countries.map(c => c.name).join(', ') || '(none)';
@@ -252,7 +266,11 @@ Rules:
 - ruler_or_motif: the ruler or monarch portrayed (e.g. "Elizabeth II", "Tupou IV") or the main motif (e.g. "kiwi", "condor").
 - inscriptions: the main legible words of the legend.
 - confidence: 0 to 1.
-- notes: one short sentence only if something matters (worn, partial view, doubt about the year...).`;
+- year_legible: false if the year is worn, partly hidden or you are not sure of every digit (then year may be your best guess or null).
+- notes: one short sentence only if something matters (worn, partial view, doubt about the year...).
+- catalogue_index: AFTER reading the coin on its own merits (never let the list below bias what you read), the index of the catalogue entry that is clearly the same coin type: same country, same face value and the same series/portrait/design for that year. Use null if no entry clearly matches: the coin may well be missing from the catalogue.
+CATALOGUE (index|country|denomination|years):
+${identCatalogueText()}`;
 }
 
 function identApiError(status, body, raw) {
@@ -328,10 +346,13 @@ function identSanitize(d) {
   const num = v => { const n = typeof v === 'number' ? v : identParseValue(v); return (n && isFinite(n)) ? n : null; };
   let year = parseInt(d && d.year, 10);
   if (!(year >= 1400 && year <= new Date().getFullYear() + 1)) year = null;
+  const yearDoubt = !!year && d && d.year_legible === false;   // año dudoso: no se usa para descartar series
+  if (yearDoubt) year = null;
+  const ci = Number.isInteger(d && d.catalogue_index) ? d.catalogue_index : -1;
   return {
     is_coin: d && d.is_coin !== false,
     country: str(d && d.country), denomination_value: num(d && d.denomination_value), denomination_unit: str(d && d.denomination_unit),
-    denomination_text: str(d && d.denomination_text), year, ruler_or_motif: str(d && d.ruler_or_motif),
+    denomination_text: str(d && d.denomination_text), year, yearDoubt, catalogueCoinId: (ci >= 0 && ci < identCatMap.length) ? identCatMap[ci] : null, ruler_or_motif: str(d && d.ruler_or_motif),
     inscriptions: Array.isArray(d && d.inscriptions) ? d.inscriptions.filter(x => typeof x === 'string').slice(0, 12) : [],
     confidence: Number(d && d.confidence) || 0, notes: str(d && d.notes), source: 'gemini'
   };
@@ -392,6 +413,13 @@ async function identRun() {
     const { data, model } = await identGenerate(parts, IDENT_SCHEMA);
     if (runId !== identRunId) return;
     identExtract = identSanitize(data); identExtract.model = model;
+    // Si queda empate entre varias fichas, se compara solo con sus imágenes del catálogo (1 petición más, solo en esos casos)
+    const m = identMatch(identExtract);
+    if (identCanRefine(m)) {
+      identBusyMsg = 'Varias fichas posibles: comparando con las imágenes del catálogo…'; renderIdentificar();
+      try { const r = await identRefineCore(m); if (runId !== identRunId) return; identRefine = r; }
+      catch (e) { if (runId !== identRunId) return; identError = identErrorText(e) + ' (resultado sin afinar con imágenes)'; }
+    }
   } catch (e) { if (runId !== identRunId) return; identError = identErrorText(e); }
   identBusy = false;
   renderIdentificar(true);
@@ -406,33 +434,37 @@ function identRunManual() {
   renderIdentificar(true);
 }
 
-// Segunda consulta (opcional): se envían la foto y las imágenes del catálogo de las candidatas empatadas para que Gemini diga cuáles se parecen
+// Compara la foto con las imágenes del catálogo de las candidatas empatadas y devuelve qué fichas tienen el mismo diseño
+async function identRefineCore(m) {
+  const sent = m.contenders.slice(0, 6);
+  const parts = [{ text: 'The first image(s) are a photo of a coin taken by the user. Then come numbered catalogue candidates, each with its obverse/reverse reference picture. Decide which candidates show the SAME coin type/design as the photo (same portrait, motifs and layout; ignore the minting year, photo quality and lighting). Return the indices of every candidate that matches (empty if none) and the single best one.' }]
+    .concat(identPhotos.map(p => ({ inline_data: { mime_type: p.mime, data: p.b64 } })));
+  for (let i = 0; i < sent.length; i++) {
+    const c = sent[i].rep;
+    parts.push({ text: `Candidate ${i}: ${c.denom} · ${coinPeriodName(c)} · ${c.range || ''}` });
+    for (const side of ['front', 'back']) {
+      if (!c[side === 'front' ? 'hasFront' : 'hasBack']) continue;
+      const blob = await dbGetImage(imgKey(c.id, side));
+      if (blob) { const u = await blobToDataURL(blob); parts.push({ inline_data: { mime_type: blob.type || 'image/webp', data: u.slice(u.indexOf(',') + 1) } }); }
+    }
+  }
+  const schema = { type: 'OBJECT', properties: { same_design_indices: { type: 'ARRAY', items: { type: 'INTEGER' } }, best_index: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING', nullable: true } }, required: ['same_design_indices'] };
+  const { data } = await identGenerate(parts, schema);
+  const idx = new Set((data.same_design_indices || []).filter(i => Number.isInteger(i) && i >= 0 && i < sent.length));
+  if (Number.isInteger(data.best_index) && data.best_index >= 0 && data.best_index < sent.length) idx.add(data.best_index);
+  return { sent: new Set(sent.map(g => g.key)), same: new Set([...idx].map(i => sent[i].key)), reason: data.reason || '' };
+}
+const identCanRefine = m => m && m.contenders.length > 1 && m.contenders.some(g => g.rep.hasFront || g.rep.hasBack);
+
+// Botón manual (por si el afinado automático falló o se quiere repetir)
 async function identRefineRun() {
   const m = identLastMatch;
-  if (identBusy || !m || m.contenders.length < 2 || !identPhotos.length) return;
+  if (identBusy || !identCanRefine(m) || !identPhotos.length) return;
   identBusy = true; identBusyMsg = 'Comparando con las imágenes del catálogo…'; identError = '';
   const runId = identRunId;
   renderIdentificar();
-  try {
-    const sent = m.contenders.slice(0, 6);
-    const parts = [{ text: 'The first image(s) are a photo of a coin taken by the user. Then come numbered catalogue candidates, each with its obverse/reverse reference picture. Decide which candidates show the SAME coin type/design as the photo (same portrait, motifs and layout; ignore the minting year, photo quality and lighting). Return the indices of every candidate that matches (empty if none) and the single best one.' }]
-      .concat(identPhotos.map(p => ({ inline_data: { mime_type: p.mime, data: p.b64 } })));
-    for (let i = 0; i < sent.length; i++) {
-      const c = sent[i].rep;
-      parts.push({ text: `Candidate ${i}: ${c.denom} · ${coinPeriodName(c)} · ${c.range || ''}` });
-      for (const side of ['front', 'back']) {
-        if (!c[side === 'front' ? 'hasFront' : 'hasBack']) continue;
-        const blob = await dbGetImage(imgKey(c.id, side));
-        if (blob) { const u = await blobToDataURL(blob); parts.push({ inline_data: { mime_type: blob.type || 'image/webp', data: u.slice(u.indexOf(',') + 1) } }); }
-      }
-    }
-    const schema = { type: 'OBJECT', properties: { same_design_indices: { type: 'ARRAY', items: { type: 'INTEGER' } }, best_index: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING', nullable: true } }, required: ['same_design_indices'] };
-    const { data } = await identGenerate(parts, schema);
-    if (runId !== identRunId) return;
-    const idx = new Set((data.same_design_indices || []).filter(i => Number.isInteger(i) && i >= 0 && i < sent.length));
-    if (Number.isInteger(data.best_index) && data.best_index >= 0 && data.best_index < sent.length) idx.add(data.best_index);
-    identRefine = { sent: new Set(sent.map(g => g.key)), same: new Set([...idx].map(i => sent[i].key)), reason: data.reason || '' };
-  } catch (e) { if (runId !== identRunId) return; identError = identErrorText(e); }
+  try { const r = await identRefineCore(m); if (runId !== identRunId) return; identRefine = r; }
+  catch (e) { if (runId !== identRunId) return; identError = identErrorText(e); }
   identBusy = false;
   renderIdentificar(true);
 }
@@ -612,6 +644,7 @@ function identSeenHtml(ex) {
   const den = ex.denomination_text || [ex.denomination_value, ex.denomination_unit].filter(x => x != null && x !== '').join(' ');
   if (den) chips.push(`<i class="fa-solid fa-coins"></i> ${esc(den)}`);
   if (ex.year) chips.push(`<i class="fa-regular fa-calendar"></i> ${ex.year}`);
+  else if (ex.yearDoubt) chips.push('<i class="fa-regular fa-calendar"></i> año dudoso (no lo uso)');
   if (ex.ruler_or_motif) chips.push(`<i class="fa-solid fa-crown"></i> ${esc(ex.ruler_or_motif)}`);
   if (!chips.length) return '';
   return `<div class="xid-seen"><span class="xid-seenlab">${ex.source === 'manual' ? 'Has escrito' : 'He leído'}</span>${chips.map(c => `<span class="xid-chip">${c}</span>`).join('')}</div>`;

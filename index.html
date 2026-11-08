@@ -6,9 +6,10 @@
   <title>Plaza Mayor - Mi Álbum Numismático</title>
 
   <!-- Configuración PWA Nativa -->
-  <meta name="theme-color" content="#151c2c">
+  <meta name="theme-color" content="#2A0F42">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -23,7 +24,7 @@
   <header class="xh-bar">
     <div class="xh-in">
       <div class="xh-brand">
-        <span class="xh-logo"><i class="fa-solid fa-coins"></i></span>
+        <span class="xh-logo"><img src="logo-coin.png" alt="Plaza Mayor" width="36" height="36"></span>
         <h1 class="xh-name">Plaza Mayor</h1>
       </div>
 
@@ -56,7 +57,7 @@
       <div class="xp-top">
       <div class="xp-search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-        <input type="search" id="indice-search" oninput="onIndiceSearchInput(this.value)" placeholder="Buscar por país o período..." aria-label="Buscar por país o período" autocomplete="off">
+        <input type="search" id="indice-search" oninput="onIndiceSearchInput(this.value)" placeholder="Buscar país..." aria-label="Buscar país" autocomplete="off">
       </div>
       <div class="xp-tools">
         <button type="button" class="xp-btn" onclick="expandAllIndice()" title="Expandir todo" aria-label="Expandir todo"><i class="fa-solid fa-angles-down"></i></button>
