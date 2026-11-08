@@ -30,8 +30,6 @@ function navSnap() {
       Object.keys(periodOnlyMissing).filter(k => periodOnlyMissing[k]).sort().join(',');
   } else if (currentTab === 'estadisticas') {
     s.sg = statsGrade; s.st = statsType; s.sh = statsTypeHave;
-  } else if (currentTab === 'identificar') {
-    s.id = identStageKey();   // 'r' = pantalla de resultado: "atrás" vuelve a las fotos
   }
   return s;
 }
@@ -84,8 +82,6 @@ function navApply(S) {
     }
   } else if (S.t === 'estadisticas' && sameTab) {
     statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsGradePage = 1;
-  } else if (S.t === 'identificar' && sameTab) {
-    if (S.id === 'r' && identReading) identStage = 'result'; else if (identStage === 'result') identStage = 'capture';
   }
   showTab(S.t);
   render();

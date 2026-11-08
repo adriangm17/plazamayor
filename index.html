@@ -86,15 +86,13 @@
       <div id="explorar-content"></div>
     </div>
 
-    <!-- VISTA IDENTIFICACIÓN (foto → ¿la tengo?) -->
-    <div id="view-identificar" class="xp hidden">
-      <div id="identificar-content"></div>
-    </div>
-
     <!-- VISTA ESTADÍSTICAS -->
     <div id="view-estadisticas" class="xp hidden">
       <div id="estadisticas-content"></div>
     </div>
+
+    <!-- VISTA IDENTIFICACIÓN (foto o imagen → ¿la tengo?) -->
+    <div id="view-identificar" class="xp hidden"></div>
 
     <!-- VISTA ÁLBUM -->
     <div id="view-album" class="xp hidden">
@@ -133,9 +131,9 @@
     <div class="xn-in">
       <button onclick="switchTab('indice')" id="nav-btn-indice" class="xn-btn xn-on"><i class="fa-solid fa-list-ul"></i><span>Índice</span></button>
       <button onclick="switchTab('album')" id="nav-btn-album" class="xn-btn"><i class="fa-solid fa-border-all"></i><span>Álbum</span></button>
-      <button onclick="switchTab('identificar')" id="nav-btn-identificar" class="xn-btn"><i class="fa-solid fa-camera"></i><span>Identificar</span></button>
       <button onclick="switchTab('explorar')" id="nav-btn-explorar" class="xn-btn"><i class="fa-solid fa-compass"></i><span>Explorar</span></button>
       <button onclick="switchTab('estadisticas')" id="nav-btn-estadisticas" class="xn-btn"><i class="fa-solid fa-chart-column"></i><span>Estadísticas</span></button>
+      <button onclick="switchTab('identificar')" id="nav-btn-identificar" class="xn-btn"><i class="fa-solid fa-camera"></i><span>Identificación</span></button>
     </div>
   </nav>
 
@@ -423,7 +421,6 @@
   <script src="js/views-album.js"></script>
   <script src="js/views-explore.js"></script>
   <script src="js/views-stats.js"></script>
-  <script src="js/identify.js"></script>
   <script src="js/views-identify.js"></script>
   <script src="js/stats-map.js"></script>
   <script src="js/modals.js"></script>

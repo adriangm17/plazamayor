@@ -29,7 +29,7 @@ function switchTab(tabName) {
 function showTab(tabName) {
   currentTab = tabName;
   document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album' || tabName === 'identificar');
-  ['album', 'indice', 'explorar', 'identificar', 'estadisticas'].forEach(t => {
+  ['album', 'indice', 'explorar', 'estadisticas', 'identificar'].forEach(t => {
     const view = document.getElementById(`view-${t}`);
     const btn = document.getElementById(`nav-btn-${t}`);
     if (t === tabName) {
@@ -50,10 +50,10 @@ function render() {
     renderIndiceView();
   } else if (currentTab === 'explorar') {
     renderExplorar();
-  } else if (currentTab === 'identificar') {
-    renderIdentificar();
   } else if (currentTab === 'estadisticas') {
     renderEstadisticas();
+  } else if (currentTab === 'identificar') {
+    renderIdentificar();
   }
   if (typeof navSync === 'function') navSync();
 }
