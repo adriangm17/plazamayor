@@ -4,6 +4,7 @@ manifest.json       datos de la app instalable (nombre, icono, colores)
 sw.js               funcionamiento sin conexión (si cambias versión, sube el número CACHE)
 icon-192.png / icon-512.png  iconos de la app
 css/style.css       estilos
+css/tailwind.css    utilidades de Tailwind ya generadas (sin depender de internet). Si añades clases de Tailwind nuevas, hay que regenerarlo
 js/utils.js         utilidades sin estado (formatos, rarezas)
 js/db.js            IndexedDB: monedas, imágenes (Blob), países, períodos
 js/flags.js         banderas por país (banner, chips y tintes)
@@ -13,7 +14,10 @@ js/silver.js        precio y valor de la plata
 js/views-index.js   vista Índice
 js/views-album.js   vista Álbum y tarjetas de moneda (v4.33: una ficha por grupo de variantes con el círculo partido como selector)
 js/views-explore.js vista Explorar: zonas geográficas (predefinidas + propias)
-js/views-stats.js   vista Estadísticas: totales, plata y línea de tiempo por año
+js/identify.js      Identificación: foto → lectura con Gemini (clave GRATUITA de Google AI Studio; contador diario y lecturas guardadas) → comparación con la colección
+js/views-identify.js vista Identificar (pestaña de la cámara): capturar, resultado LA TENGO / NO LA TENGO / NO REGISTRADA; plan B sin cupo (Google Lens + datos a mano)
+js/views-stats.js   vista Estadísticas: totales, plata, tipos, mapa, ranking y gráfico por año
+js/stats-map.js     mapa mundial de Estadísticas (fronteras de world-atlas, se descargan la primera vez y se guardan)
 js/modals.js        ventanas: país, período, ficha, crear/editar, CSV
 js/backup.js        exportar / importar copias (formato v2; acepta v1)
 js/nav.js            botón "atrás" del móvil: historial de fichas, filtros, país/período y pestañas

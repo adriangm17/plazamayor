@@ -148,7 +148,6 @@ function fillZoneSelect(selected) {
 let exploreAddZone = '';   // zona cuyo selector de países está abierto
 let exploreSearch = '';
 const exploreClosed = {};
-const DOTS_PER_TIER = 10;  // bolitas de cada tarjeta: una por época; pasadas 10 se vuelven a colorear en un naranja más oscuro (hasta 3 vueltas)
 
 function expandAllZones() { Object.keys(exploreClosed).forEach(k => delete exploreClosed[k]); renderExplorar(); }
 function collapseAllZones() { [...allZones(), UNCLASSIFIED].forEach(k => { exploreClosed[k] = true; }); renderExplorar(); }
@@ -189,23 +188,35 @@ function prettyName(s) {
 
 function editCountryCard(countryId) { currentCountryId = countryId; openEditCountryModal(); }
 
+/* Bolas de "PERIODOS": una por período creado, rellena (como un círculo de progreso) según lo completo que esté.
+   Caben en un hueco de 84 × 32 px (máx. 5 por fila y 3 filas): se elige el mayor tamaño de bola con el que entran todas; con pocas bolas salen más grandes. */
+const DOTS_BOX_W = 84, DOTS_BOX_H = 32, DOTS_MAX_COLS = 5, DOTS_MAX_ROWS = 3, DOTS_GAP = 0.25;   // como mucho 5 bolas por fila y 3 filas
+function dotsLayout(n) {
+  n = Math.max(1, n);
+  const k = DOTS_GAP;   // separación = 25 % del diámetro de la bola
+  const cols = Math.min(DOTS_MAX_COLS, n), rows = Math.min(DOTS_MAX_ROWS, Math.ceil(n / DOTS_MAX_COLS));   // primero se llena la fila de 5; la sobrante baja (7 → 5 + 2)
+  const s = Math.floor(Math.min(DOTS_BOX_H / (rows + (rows - 1) * k), DOTS_BOX_W / (cols + (cols - 1) * k), DOTS_BOX_H) * 10) / 10;
+  return { s, g: Math.round(s * k * 10) / 10, cols, shown: Math.min(n, DOTS_MAX_ROWS * DOTS_MAX_COLS) };   // (más de 15 períodos: se dibujan los 15 primeros)
+}
+function periodPctOf(p) {
+  const all = coinsOfPeriod(p.id), normal = all.filter(x => !isSilverCoin(x)), list = normal.length ? normal : all;   // un período solo de plata se mide con sus monedas de plata
+  return list.length ? Math.round(list.filter(x => x.acquired).length / list.length * 100) : 0;
+}
+
 function countryCardHtml(c) {
   const s = countryStats(c);
-  // Una bolita por época; con más de 10, se recorre otra vez desde la primera con un naranja más oscuro (máx. 3 vueltas)
-  const eras = periodsOfCountry(c.id).length;
-  const dots = Array.from({ length: DOTS_PER_TIER }, (_, i) => {
-    const lvl = Math.min(3, Math.max(0, Math.ceil((eras - i) / DOTS_PER_TIER)));
-    return `<i class="${lvl ? 'xp-l' + lvl : ''}"></i>`;
-  }).join('');
+  const pers = periodsOfCountry(c.id), eras = pers.length;
+  const lay = dotsLayout(eras);
+  const dots = pers.slice(0, lay.shown).map(p => { const pc = periodPctOf(p); return `<i style="--p:${pc}" title="${esc(periodDisplayName(p))}: ${pc}%"></i>`; }).join('');
   const name = prettyName(c.name);
   const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
   const id = jsArg(c.id);
   return `
-    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras} ${eras === 1 ? 'época' : 'épocas'}, ${s.pct}% completado"><div class="xp-in">
+    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras} ${eras === 1 ? 'período' : 'períodos'}, ${s.pct}% completado"><div class="xp-in">
       <div class="xp-photo ${photo ? '' : 'xp-empty'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
       <button type="button" class="xp-edit" onclick="event.stopPropagation(); editCountryCard('${id}')" aria-label="Editar ${esc(name)}" title="Editar"><i class="fa-solid fa-pen"></i></button>
       <span class="xp-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span>
-      <div class="xp-dots" title="${eras} ${eras === 1 ? 'época' : 'épocas'}" aria-hidden="true">${dots}</div>
+      <div class="xp-dots" aria-hidden="true"><div class="xp-dots-b" style="--ds:${lay.s}px;--dg:${lay.g}px;--dc:${lay.cols}">${dots}</div></div>
       <div class="xp-pct ${s.pct >= 100 ? 'xp-p100' : ''}" title="${s.a} de ${s.t} monedas">${s.pct}%</div>
       <div class="xp-name ${name.length > 14 ? 'xp-long' : (name.length > 9 ? 'xp-mid' : '')}">${esc(name)}</div>
     </div></div>`;
@@ -306,7 +317,7 @@ function zoneDragActivate() {
   d.card.style.position = 'relative';
   d.card.style.zIndex = '40';
   d.card.style.transform = 'scale(1.02)';
-  d.card.style.boxShadow = '0 14px 34px rgba(61,26,84,0.40)';
+  d.card.style.boxShadow = '0 14px 34px rgba(var(--xp-plum-rgb),0.40)';
   d.card.classList.add('xp-dragging');
   d.card.style.touchAction = 'none';
   try { d.card.setPointerCapture(d.pointerId); } catch (err) {}

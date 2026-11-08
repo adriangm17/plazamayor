@@ -4,7 +4,7 @@
    Así, "atrás" deshace el último paso en vez de cerrar la app; solo se sale de la app desde el Índice.
    Funciona por "fotos" del estado: cuando la foto cambia se añade una entrada al historial; si vuelve a ser
    igual que la anterior (p. ej. se cierra la ficha con su botón) se retrocede una entrada en vez de añadir otra. */
-const NAV_MODALS = ['periods-overlay', 'coin-modal', 'variants-modal', 'create-modal', 'edit-period-modal', 'edit-zone-modal', 'edit-country-modal', 'import-modal'];
+const NAV_MODALS = ['periods-overlay', 'coin-modal', 'variants-modal', 'create-modal', 'edit-period-modal', 'edit-zone-modal', 'edit-country-modal', 'import-modal', 'theme-modal'];
 const NAV_CLOSERS = {
   'periods-overlay': () => closePeriodsOverlay(),
   'coin-modal': () => closeModal(),
@@ -13,7 +13,8 @@ const NAV_CLOSERS = {
   'edit-period-modal': () => closeEditPeriodModal(),
   'edit-zone-modal': () => closeEditZoneModal(),
   'edit-country-modal': () => closeEditCountryModal(),
-  'import-modal': () => closeImportModal()
+  'import-modal': () => closeImportModal(),
+  'theme-modal': () => closeThemeModal()
 };
 let navReady = false, navSnaps = [], navIdx = 0, navPending = 0, navTimer = 0, navPendingTimer = 0;
 
@@ -28,7 +29,9 @@ function navSnap() {
     s.f = [albumOnlyMissing, albumOnlyOwned, albumOnlySpecial].map(Number).join('') + '|' +
       Object.keys(periodOnlyMissing).filter(k => periodOnlyMissing[k]).sort().join(',');
   } else if (currentTab === 'estadisticas') {
-    s.sg = statsGrade; s.st = statsType;
+    s.sg = statsGrade; s.st = statsType; s.sh = statsTypeHave;
+  } else if (currentTab === 'identificar') {
+    s.id = identStageKey();   // 'r' = pantalla de resultado: "atrás" vuelve a las fotos
   }
   return s;
 }
@@ -80,7 +83,9 @@ function navApply(S) {
       setFilterButtonState('btn-only-special', albumOnlySpecial);
     }
   } else if (S.t === 'estadisticas' && sameTab) {
-    statsGrade = S.sg || ''; statsType = S.st || ''; statsGradePage = 1;
+    statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsGradePage = 1;
+  } else if (S.t === 'identificar' && sameTab) {
+    if (S.id === 'r' && identReading) identStage = 'result'; else if (identStage === 'result') identStage = 'capture';
   }
   showTab(S.t);
   render();

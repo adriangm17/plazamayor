@@ -6,6 +6,8 @@ let statsGradePage = 1;
 let statsNoYearOpen = false; // lista desplegable de monedas sin año
 let statsGrade = '';        // estado de conservación elegido ('' = ninguno)
 let statsType = '';         // tipo de moneda elegido ('' = ninguno)
+let statsTypeHave = false;  // false = todas las fichas registradas del tipo; true = solo las obtenidas
+let statsByCountry = {};    // monedas por país (para el mapa)
 let statsRankAll = false;   // ranking de países: false = top 10, true = todos
 let statsRange = null;   // [añoDesde, añoHasta] al ampliar la línea de tiempo
 
@@ -45,21 +47,21 @@ function statsChartHTML(byYear) {
   if (statsRange && (b < dMin || a > dMax)) { statsRange = null; a = dMin; b = dMax; }
   if (a === b) { a -= 1; b += 1; }
   const n = b - a + 1;
-  const W = 360, H = 210, L = 30, R = 6, T = 8, B = 24, pw = W - L - R, ph = H - T - B;
+  const W = 360, H = 112, L = 26, R = 6, T = 6, B = 18, pw = W - L - R, ph = H - T - B;
   const vis = years.filter(y => y >= a && y <= b);
   const maxV = Math.max(1, ...vis.map(y => byYear[y]));
-  const ystep = niceStep(maxV / 4, [1, 2, 5, 10, 20, 50, 100, 200, 500]);
+  const ystep = niceStep(maxV / 2, [1, 2, 5, 10, 20, 50, 100, 200, 500]);
   const yMax = Math.ceil(maxV / ystep) * ystep;
   const slot = pw / n, bw = Math.max(1, Math.min(slot * 0.72, 18));
   const X = y => L + (y - a) * slot + slot / 2, Y = v => T + ph - (v / yMax) * ph;
   let g = '';
-  for (let v = 0; v <= yMax; v += ystep) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(61,26,84,.14)"/><text x="${L - 4}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6f5a73">${v}</text>`;
-  const xstep = niceStep((b - a) / 6, [1, 2, 5, 10, 20, 25, 50, 100]);
-  for (let y = Math.ceil(a / xstep) * xstep; y <= b; y += xstep) g += `<line x1="${X(y)}" x2="${X(y)}" y1="${T}" y2="${T + ph}" stroke="rgba(61,26,84,.14)"/><text x="${X(y)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#6f5a73">${y}</text>`;
-  const bars = vis.map(y => `<rect x="${(X(y) - bw / 2).toFixed(2)}" y="${Y(byYear[y]).toFixed(2)}" width="${bw.toFixed(2)}" height="${(T + ph - Y(byYear[y])).toFixed(2)}" rx="1.5" fill="#E8702F"><title>${y}: ${byYear[y]} ${byYear[y] === 1 ? 'moneda' : 'monedas'}</title></rect>`).join('');
+  for (let v = 0; v <= yMax; v += ystep) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:rgba(var(--xp-plum-rgb),.14)"/><text x="${L - 4}" y="${Y(v) + 3}" text-anchor="end" font-size="8" style="fill:rgba(var(--xp-plum-rgb),.62)">${v}</text>`;
+  const xstep = niceStep((b - a) / 5, [1, 2, 5, 10, 20, 25, 50, 100]);
+  for (let y = Math.ceil(a / xstep) * xstep; y <= b; y += xstep) g += `<line x1="${X(y)}" x2="${X(y)}" y1="${T}" y2="${T + ph}" style="stroke:rgba(var(--xp-plum-rgb),.14)"/><text x="${X(y)}" y="${H - 5}" text-anchor="middle" font-size="8" style="fill:rgba(var(--xp-plum-rgb),.62)">${y}</text>`;
+  const bars = vis.map(y => `<rect x="${(X(y) - bw / 2).toFixed(2)}" y="${Y(byYear[y]).toFixed(2)}" width="${bw.toFixed(2)}" height="${(T + ph - Y(byYear[y])).toFixed(2)}" rx="1.5" style="fill:var(--xp-orange)"><title>${y}: ${byYear[y]} ${byYear[y] === 1 ? 'moneda' : 'monedas'}</title></rect>`).join('');
   return `<svg id="stats-svg" viewBox="0 0 ${W} ${H}" class="w-full select-none" data-a="${a}" data-n="${n}" data-l="${L}" data-pw="${pw}">
-    ${g}<line x1="${L}" x2="${W - R}" y1="${T + ph}" y2="${T + ph}" stroke="#3D1A54"/>${bars}
-    <rect id="stats-sel" x="${L}" y="${T}" width="0" height="${ph}" fill="#E8702F" fill-opacity="0.2"/>
+    ${g}<line x1="${L}" x2="${W - R}" y1="${T + ph}" y2="${T + ph}" style="stroke:var(--xp-plum)"/>${bars}
+    <rect id="stats-sel" x="${L}" y="${T}" width="0" height="${ph}" style="fill:var(--xp-orange)" fill-opacity="0.2"/>
     <rect id="stats-overlay" x="${L}" y="${T}" width="${pw}" height="${ph}" fill="transparent" style="cursor:crosshair;touch-action:none"/>
   </svg>`;
 }
@@ -85,8 +87,8 @@ function attachStatsChart() {
 function toggleNoYear() { statsNoYearOpen = !statsNoYearOpen; renderEstadisticas(); }
 function setStatsGradePage(n) { statsGradePage = n; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 function pickStatsGrade(g) { statsGrade = g; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function pickStatsType(t) { statsType = t; statsGrade = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function closeStatsGrade() { statsGrade = ''; statsType = ''; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function pickStatsType(t, have) { statsType = t; statsTypeHave = !!have; statsGrade = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function closeStatsGrade() { statsGrade = ''; statsType = ''; statsTypeHave = false; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 
 // Lista paginada de fichas (40 por hoja) compartida por la página de un estado y la de un tipo
 function renderCoinListPage(box, cfg) {
@@ -124,7 +126,7 @@ function sortCoinsForList(arr) {
 function coinListHead(c, rightHtml, detail) {
   const co = countryById(c.countryId), p = periodById(c.periodId);
   return `<div class="w-full flex items-center gap-1.5 px-0.5 pb-0.5 min-w-0">${co ? flagChip(co, 18, 13) : ''}<span class="text-[10px] font-bold text-slate-300 truncate flex-1">${esc(co ? co.name : '')}${p ? ' · ' + esc(periodDisplayName(p)) : ''}</span>${rightHtml}</div>
-      <div class="w-full text-[10px] text-amber-400 font-bold px-0.5 truncate">${detail}</div>`;
+      <div class="w-full text-[10px] text-[color:var(--xp-orange)] font-bold px-0.5 truncate">${detail}</div>`;
 }
 
 // Página de un estado: todas las fichas con algún ejemplar en ese estado, sin importar país ni época
@@ -139,18 +141,19 @@ function renderGradePage(box) {
     list, kicker: 'Estado de conservación',
     titleHtml: `${esc(statsGrade)} <span class="xs-dim">· ${list.length} ${list.length === 1 ? 'ficha' : 'fichas'} · ${total} ${total === 1 ? 'moneda' : 'monedas'}</span>`,
     emptyMsg: `No tienes ninguna moneda en estado ${esc(statsGrade)}.`,
-    extraFor: c => { const its = byCoin.get(c); return coinListHead(c, its.length > 1 ? `<span class="text-[10px] font-black text-amber-400 shrink-0">×${its.length}</span>` : '', esc(its.map(i => i.year || 's/f').join(' · '))); }
+    extraFor: c => { const its = byCoin.get(c); return coinListHead(c, its.length > 1 ? `<span class="text-[10px] font-black text-[color:var(--xp-orange)] shrink-0">×${its.length}</span>` : '', esc(its.map(i => i.year || 's/f').join(' · '))); }
   });
 }
 
-// Página de un tipo: todas las fichas de ese tipo (las tenga o no), sin importar país ni época
+// Página de un tipo: las fichas registradas de ese tipo (statsTypeHave = false) o solo las obtenidas (true), sin importar país ni época
 function renderTypePage(box) {
-  const list = sortCoinsForList(coins.filter(c => coinType(c) === statsType));
-  const have = list.filter(c => c.acquired).length;
+  const all = coins.filter(c => coinType(c) === statsType);
+  const list = sortCoinsForList(statsTypeHave ? all.filter(c => c.acquired) : all);
+  const have = all.filter(c => c.acquired).length;
   renderCoinListPage(box, {
-    list, kicker: 'Tipo de moneda',
-    titleHtml: `<span class="inline-block px-2 py-0.5 rounded-md text-sm font-black align-middle" style="${coinTypeChipStyle(statsType)}font-style:normal;">${esc(statsType)}</span> <span class="xs-dim">· ${list.length} ${list.length === 1 ? 'ficha' : 'fichas'} · ${have} ${have === 1 ? 'conseguida' : 'conseguidas'}</span>`,
-    emptyMsg: `No hay fichas de tipo ${esc(statsType)}.`,
+    list, kicker: `Tipo de moneda · ${statsTypeHave ? 'obtenidas' : 'registradas'}`,
+    titleHtml: `<span class="inline-block px-2 py-0.5 rounded-md text-sm font-black align-middle xs-typechip" style="${coinTypeChipStyle(statsType)}font-style:normal;">${esc(statsType)}</span> <span class="xs-dim">· ${list.length} ${list.length === 1 ? 'ficha' : 'fichas'}${statsTypeHave ? '' : ` · ${have} ${have === 1 ? 'conseguida' : 'conseguidas'}`}</span>`,
+    emptyMsg: statsTypeHave ? `Aún no tienes ninguna ficha de tipo ${esc(statsType)}.` : `No hay fichas de tipo ${esc(statsType)}.`,
     extraFor: c => {
       const yrs = (c.items || []).filter(i => i && String(i.grade || '').trim()).map(i => i.year || 's/f');
       return coinListHead(c, '', yrs.length ? esc(yrs.join(' · ')) : '<span style="color:#94a3b8">Aún no la tengo</span>');
@@ -166,6 +169,7 @@ function renderEstadisticas() {
   if (statsGrade) { renderGradePage(box); return; }
   if (statsType) { renderTypePage(box); return; }
   const s = collectionStats();
+  statsByCountry = s.byCountry; statsMapData = { ...(statsMapData || {}), byCountry: s.byCountry };
   if (s.total === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay monedas en tu colección. Marca alguna con su estado para ver las estadísticas.</div>`; return; }
   const card = (icon, label, value, sub) => `
     <div class="xs-stat">
@@ -195,10 +199,12 @@ function renderEstadisticas() {
     </button>`;
   const typeRows = COIN_TYPES.filter(t => t !== DEFAULT_COIN_TYPE).map(t => {
     const all = coins.filter(c => coinType(c) === t), n = all.length, have = all.filter(c => c.acquired).length;
-    return `<div class="xs-row">
-      <span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-black" style="${coinTypeChipStyle(t)}">${esc(t)}</span>
-      <span class="flex items-center gap-2.5 shrink-0"><span class="xs-dim" style="font-size:11px">${have} conseguida${have === 1 ? '' : 's'}</span>
-      <button ${n ? `onclick="pickStatsType('${jsArg(t)}')"` : 'disabled'} class="xs-count" title="${n ? 'Ver las fichas de este tipo' : 'Sin fichas'}">${n}</button></span>
+    return `<div class="xs-type">
+      <span class="xs-typechip" style="${coinTypeChipStyle(t)}">${esc(t)}</span>
+      <div class="xs-type-btns">
+        <button ${n ? `onclick="pickStatsType('${jsArg(t)}', false)"` : 'disabled'} class="xs-count xs-reg" title="${n ? 'Ver todas las fichas registradas de este tipo' : 'Sin fichas'}" aria-label="${esc(t)}: ${n} registradas">${n}</button>
+        <button ${have ? `onclick="pickStatsType('${jsArg(t)}', true)"` : 'disabled'} class="xs-count xs-got" title="${have ? 'Ver las fichas obtenidas de este tipo' : 'Ninguna obtenida'}" aria-label="${esc(t)}: ${have} obtenidas">${have}</button>
+      </div>
     </div>`;
   }).join('');
   const nyName = x => (countryById(x.c.countryId) || {}).name || '', nyOrd = x => (periodById(x.c.periodId) || {}).order ?? 0;
@@ -236,8 +242,13 @@ function renderEstadisticas() {
       <div class="grid grid-cols-3 gap-2">${['UNC', 'AU', 'XF'].map(tile).join('')}</div>
       <div class="grid grid-cols-3 gap-2 mt-2">${['VF', 'F', 'TBD'].map(tile).join('')}</div>
       ${s.noGrade ? `<p class="xs-hint" style="margin-top:10px">${s.noGrade} ${s.noGrade === 1 ? 'ejemplar sin estado indicado' : 'ejemplares sin estado indicado'}.</p>` : ''}`)}
-    ${sec('03', 'Tipo de moneda', 'Fichas de cada tipo (las circulantes no se cuentan). Toca la cantidad para verlas.', `<div class="space-y-2">${typeRows}</div>`)}
-    ${sec('04', 'Monedas por año', `Arrastra sobre el gráfico para ampliar un período. ${statsRange ? 'Pulsa «Restablecer» (o clic derecho) para volver.' : ''}`, `
+    ${sec('03', 'Tipo de moneda', 'Las circulantes no se cuentan. Toca <span class="xs-dotkey xs-reg"></span> las registradas o <span class="xs-dotkey xs-got"></span> las obtenidas para verlas.', `<div class="xs-types">${typeRows}</div>`)
+    }
+    ${sec('04', 'Mapa de la colección', 'Cuanto más oscuro, más monedas. Pellizca (o usa + / −) para ampliar y arrastra para moverte.', `<div id="stats-map-box">${statsMapInner()}</div>`)}
+    ${sec('05', 'Ranking de países', `${statsRankAll ? `Todos (${rank.length})` : `Top ${Math.min(10, rank.length)}`} · monedas`, `
+      <div class="space-y-3">${rankHTML}</div>
+      ${rank.length > 10 ? `<button onclick="toggleStatsRank()" class="xs-btn2 w-full" style="margin-top:14px"><i class="fa-solid fa-chevron-${statsRankAll ? 'up' : 'down'} mr-1"></i>${statsRankAll ? 'Ver solo el top 10' : `Ver todos los países (${rank.length})`}</button>` : ''}`)}
+    ${sec('06', 'Monedas por año', `Arrastra sobre el gráfico para ampliar. ${statsRange ? 'Pulsa «Restablecer» (o clic derecho) para volver.' : ''}`, `
       ${statsRange ? `<div class="flex justify-end mb-1"><button onclick="resetStatsZoom()" class="xs-btn2"><i class="fa-solid fa-magnifying-glass-minus mr-1"></i>Restablecer</button></div>` : ''}
       ${statsChartHTML(s.byYear)}
       ${s.noYear ? `
@@ -245,9 +256,7 @@ function renderEstadisticas() {
           <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${s.noYear} ${s.noYear === 1 ? 'moneda sin año' : 'monedas sin año'} (no ${s.noYear === 1 ? 'aparece' : 'aparecen'} en el gráfico)</span>
           <i class="fa-solid fa-chevron-${statsNoYearOpen ? 'up' : 'down'} text-[10px]"></i>
         </button>
-        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}
-    ${sec('05', 'Ranking de países', `${statsRankAll ? `Todos (${rank.length})` : `Top ${Math.min(10, rank.length)}`} · monedas`, `
-      <div class="space-y-3">${rankHTML}</div>
-      ${rank.length > 10 ? `<button onclick="toggleStatsRank()" class="xs-btn2 w-full" style="margin-top:14px"><i class="fa-solid fa-chevron-${statsRankAll ? 'up' : 'down'} mr-1"></i>${statsRankAll ? 'Ver solo el top 10' : `Ver todos los países (${rank.length})`}</button>` : ''}`)}`;
+        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}`;
   attachStatsChart();
+  ensureWorldMap();
 }

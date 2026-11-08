@@ -87,7 +87,7 @@ function renderIndiceView() {
     const cTotal = normal.length;
     const cPct = cTotal > 0 ? Math.round((cAcquired / cTotal) * 100) : 0;
     const isCollapsed = isIndiceCollapsed(country.id);
-    const banner = `linear-gradient(90deg,rgba(61,26,84,.96) 0%,rgba(61,26,84,.80) 45%,rgba(61,26,84,.25) 100%),${flagLayers(country)}`;
+    const banner = `linear-gradient(90deg,rgba(var(--xp-plum-rgb),.96) 0%,rgba(var(--xp-plum-rgb),.80) 45%,rgba(var(--xp-plum-rgb),.25) 100%),${flagLayers(country)}`;
 
     return `
       <div class="xi-card">

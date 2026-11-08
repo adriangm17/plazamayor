@@ -12,7 +12,7 @@ function closeSettingsMenu() {
 // Limpia los filtros de TODAS las pestañas (así, al volver, no parece que falten monedas)
 function resetAllFilters() {
   if (typeof resetAlbumFilters === 'function') resetAlbumFilters();
-  if (typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsGradePage = 1; statsNoYearOpen = false; statsRange = null; }
+  if (typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsGradePage = 1; statsNoYearOpen = false; statsRange = null; }
   indiceSearchText = '';
   const is = document.getElementById('indice-search'); if (is) is.value = '';
   if (typeof exploreSearch !== 'undefined') exploreSearch = '';
@@ -20,7 +20,7 @@ function resetAllFilters() {
 }
 
 function switchTab(tabName) {
-  if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; }   // tocar de nuevo la pestaña vuelve al resumen
+  if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; }   // tocar de nuevo la pestaña vuelve al resumen
   if (tabName !== currentTab) resetAllFilters();   // al cambiar de pestaña no se mantiene ningún filtro
   showTab(tabName);
   render();
@@ -28,8 +28,8 @@ function switchTab(tabName) {
 
 function showTab(tabName) {
   currentTab = tabName;
-  document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album');
-  ['album', 'indice', 'explorar', 'estadisticas'].forEach(t => {
+  document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album' || tabName === 'identificar');
+  ['album', 'indice', 'explorar', 'identificar', 'estadisticas'].forEach(t => {
     const view = document.getElementById(`view-${t}`);
     const btn = document.getElementById(`nav-btn-${t}`);
     if (t === tabName) {
@@ -50,6 +50,8 @@ function render() {
     renderIndiceView();
   } else if (currentTab === 'explorar') {
     renderExplorar();
+  } else if (currentTab === 'identificar') {
+    renderIdentificar();
   } else if (currentTab === 'estadisticas') {
     renderEstadisticas();
   }

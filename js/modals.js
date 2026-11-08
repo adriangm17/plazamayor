@@ -11,16 +11,13 @@ function openEditCountryModal() {
   updateFlagPreview();
   pendingCardPhoto = undefined;
   loadCardPhotoEditor(country.photo || '');
-  cardCoinDraft = { coinId: country.coinId || '', image: country.coinImage || '' };
   updateCardPhotoPreview();
-  renderCardCoinPicker();
   updateCountryMoveUI();
   document.getElementById('edit-country-modal').classList.remove('hidden');
 }
 
-/* ----- Tarjeta del país en Explorar: foto y moneda ----- */
+/* ----- Tarjeta del país en Explorar: foto ----- */
 let pendingCardPhoto;                       // undefined = sin cambios, '' = quitar, 'data:…' = nueva
-let cardCoinDraft = { coinId: '', image: '' };
 
 // Lee una imagen, la reduce y la devuelve como data URL (WebP conserva la transparencia de las monedas recortadas)
 function readImageAsDataURL(file, maxDim, quality, cb) {
@@ -149,27 +146,6 @@ function bindCardPhotoDrag() {
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
 }
 
-function renderCardCoinPicker() {
-  const box = document.getElementById('card-coin-picker');
-  const country = countryById(currentCountryId);
-  if (!box || !country) return;
-  const list = coinsOfCountry(country.id).filter(c => c.hasFront).slice(0, 60);
-  const custom = cardCoinDraft.image;
-  const chosen = !custom && cardCoinDraft.coinId && list.some(c => c.id === cardCoinDraft.coinId) ? cardCoinDraft.coinId : '';
-  const tile = (sel, onclick, inner, title) => `<button type="button" class="xp-coin-tile ${sel ? 'xp-sel' : ''}" onclick="${onclick}" title="${esc(title)}" aria-label="${esc(title)}" aria-pressed="${sel}">${inner}</button>`;
-  box.innerHTML =
-    tile(!custom && !chosen, "pickCardCoin('')", 'Auto', 'Automática') +
-    (custom ? tile(true, "pickCardCoin('')", `<img src="${esc(custom)}" alt="">`, 'Tu imagen (pulsa para quitarla)') : '') +
-    list.map(c => tile(chosen === c.id, `pickCardCoin('${jsArg(c.id)}')`, imgTag(c.id, 'front'), c.denom)).join('');
-  hydrateImages(box);
-}
-function pickCardCoin(coinId) { cardCoinDraft = { coinId, image: '' }; renderCardCoinPicker(); }
-function onCardCoinSelected(input) {
-  const file = input.files[0];
-  input.value = '';
-  readImageAsDataURL(file, 420, 0.85, url => { cardCoinDraft = { coinId: '', image: url }; renderCardCoinPicker(); });
-}
-
 function closeEditCountryModal() {
   document.getElementById('edit-country-modal').classList.add('hidden');
 }
@@ -195,8 +171,6 @@ function saveEditedCountryName() {
     if (pendingCardPhoto) country.photo = pendingCardPhoto; else delete country.photo;
     pendingCardPhoto = undefined;
   }
-  if (cardCoinDraft.image) country.coinImage = cardCoinDraft.image; else delete country.coinImage;
-  if (cardCoinDraft.coinId && !cardCoinDraft.image) country.coinId = cardCoinDraft.coinId; else delete country.coinId;
 
   country.name = newName;
   const cont = document.getElementById('input-edit-country-continent').value;

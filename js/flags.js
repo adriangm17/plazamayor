@@ -81,16 +81,6 @@ function flagLayers(country) {
   return code ? `url('${FLAG_BASE}${code}.svg') center/cover no-repeat,${fallback}` : fallback;
 }
 
-// Banner del Índice: bandera de fondo con velo oscuro a la izquierda para que el texto se lea
-function flagBanner(country) {
-  return `linear-gradient(90deg,rgba(20,27,42,.96) 0%,rgba(20,27,42,.80) 45%,rgba(20,27,42,.28) 100%),${flagLayers(country)}`;
-}
-
-// Franja del Álbum: la bandera solo como tinte suave
-function flagTint(country) {
-  return `linear-gradient(90deg,rgba(21,28,44,.94) 0%,rgba(21,28,44,.74) 100%),${flagLayers(country)}`;
-}
-
 // Bandera pequeña con borde fino
 function flagChip(country, w = 24, h = 16) {
   return `<span class="inline-block shrink-0" style="width:${w}px;height:${h}px;border-radius:3px;background:${flagLayers(country)};box-shadow:0 0 0 1px rgba(255,255,255,.14)"></span>`;

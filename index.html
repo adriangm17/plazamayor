@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plaza Mayor - Mi Álbum Numismático (1.25)</title>
+  <title>Plaza Mayor - Mi Álbum Numismático</title>
 
   <!-- Configuración PWA Nativa -->
   <meta name="theme-color" content="#151c2c">
@@ -12,9 +12,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/themes.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/tailwind.css">
 </head>
 <body class="pb-28">
 
@@ -40,6 +41,7 @@
               <input type="file" accept=".json" onchange="closeSettingsMenu(); importBackup(event)" class="hidden">
             </label>
             <button onclick="closeSettingsMenu(); openImportModal();"><i class="fa-solid fa-file-csv"></i> CSV</button>
+            <button onclick="closeSettingsMenu(); openThemeModal();"><i class="fa-solid fa-palette"></i> Temas</button>
           </div>
         </div>
       </div>
@@ -84,6 +86,11 @@
       <div id="explorar-content"></div>
     </div>
 
+    <!-- VISTA IDENTIFICACIÓN (foto → ¿la tengo?) -->
+    <div id="view-identificar" class="xp hidden">
+      <div id="identificar-content"></div>
+    </div>
+
     <!-- VISTA ESTADÍSTICAS -->
     <div id="view-estadisticas" class="xp hidden">
       <div id="estadisticas-content"></div>
@@ -126,6 +133,7 @@
     <div class="xn-in">
       <button onclick="switchTab('indice')" id="nav-btn-indice" class="xn-btn xn-on"><i class="fa-solid fa-list-ul"></i><span>Índice</span></button>
       <button onclick="switchTab('album')" id="nav-btn-album" class="xn-btn"><i class="fa-solid fa-border-all"></i><span>Álbum</span></button>
+      <button onclick="switchTab('identificar')" id="nav-btn-identificar" class="xn-btn"><i class="fa-solid fa-camera"></i><span>Identificar</span></button>
       <button onclick="switchTab('explorar')" id="nav-btn-explorar" class="xn-btn"><i class="fa-solid fa-compass"></i><span>Explorar</span></button>
       <button onclick="switchTab('estadisticas')" id="nav-btn-estadisticas" class="xn-btn"><i class="fa-solid fa-chart-column"></i><span>Estadísticas</span></button>
     </div>
@@ -382,6 +390,15 @@
     </div>
   </div>
 
+  <!-- MODAL TEMAS -->
+  <div id="theme-modal" class="xe-overlay hidden" onclick="if(event.target===this)closeThemeModal()">
+    <div class="xe-sheet xe-mid">
+      <div class="xe-head"><h2 class="xe-title">Temas</h2><button type="button" onclick="closeThemeModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <p class="xe-note" style="margin:0 0 10px">Elige la paleta de colores de toda la aplicación. Se guarda en este dispositivo.</p>
+      <div id="theme-list" class="xt-list"></div>
+    </div>
+  </div>
+
   <!-- MODAL IMPORTAR CSV -->
   <div id="import-modal" class="xe-overlay hidden">
     <div class="xe-sheet xe-mid">
@@ -406,6 +423,9 @@
   <script src="js/views-album.js"></script>
   <script src="js/views-explore.js"></script>
   <script src="js/views-stats.js"></script>
+  <script src="js/identify.js"></script>
+  <script src="js/views-identify.js"></script>
+  <script src="js/stats-map.js"></script>
   <script src="js/modals.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/nav.js"></script>

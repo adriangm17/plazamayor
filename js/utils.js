@@ -96,26 +96,6 @@ function parseYearRange(rangeStr) {
   return null;   // "S/F" u otro texto sin años: no hay rango que aplicar
 }
 
-function renderDualProgressBar(normalPct, silverPct, hasSilver) {
-  if (hasSilver) {
-    return `
-      <div class="flex items-center gap-1.5 w-full h-1.5 mt-1.5">
-        <div class="w-[75%] bg-slate-900 rounded-full h-full overflow-hidden border border-slate-800 relative">
-          <div class="bg-amber-500 h-full rounded-full transition-all duration-300" style="width: ${normalPct}%;"></div>
-        </div>
-        <div class="w-[25%] bg-slate-900 rounded-full h-full overflow-hidden border border-slate-800 relative" title="Monedas de Plata">
-          <div class="silver-gradient-fill h-full rounded-full transition-all duration-300" style="width: ${silverPct}%;"></div>
-        </div>
-      </div>
-    `;
-  }
-  return `
-    <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800 relative mt-1.5">
-      <div class="bg-amber-500 h-full rounded-full transition-all duration-300" style="width: ${normalPct}%;"></div>
-    </div>
-  `;
-}
-
 /* ----- Ajusta la fuente de un texto al hueco disponible (p. ej. KM# muy largos en móvil) ----- */
 function fitText(el, minPx) {
   if (!el || !el.isConnected) return;
@@ -128,8 +108,15 @@ function fitText(el, minPx) {
   let guard = 40;
   while (over() && size > min && guard-- > 0) { size -= 0.5; el.style.fontSize = size + 'px'; }
 }
+// Burbuja "N VARIANTES": se ajusta al hueco; si aun así quedaría muy pequeña, se oculta el icono para dar sitio al texto
+function fitMulti(el) {
+  el.classList.remove('xc-noicon');
+  fitText(el, 7);
+  if ((parseFloat(el.style.fontSize) || 99) < 9) { el.classList.add('xc-noicon'); fitText(el, 7); }
+}
 function fitAllText() {
   document.querySelectorAll('.xc-km, .xc-rar, #modal-grid-km').forEach(el => fitText(el, 7));
+  document.querySelectorAll('.xc-multi').forEach(fitMulti);
 }
 let _fitQueued = false;
 function queueFitText() {

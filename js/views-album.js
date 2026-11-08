@@ -46,7 +46,7 @@ function renderTabs() {
     ? `<i class="fa-solid fa-chevron-left"></i>${flagChip(country, 66, 46)}<span>${esc(country.name)}</span>`
     : '';
   const bar = document.getElementById('period-bar');
-  if (bar && country) bar.style.background = `linear-gradient(90deg,rgba(61,26,84,.97) 0%,rgba(61,26,84,.88) 60%,rgba(61,26,84,.7) 100%),${flagLayers(country)}`;
+  if (bar && country) bar.style.background = `linear-gradient(90deg,rgba(var(--xp-plum-rgb),.97) 0%,rgba(var(--xp-plum-rgb),.88) 60%,rgba(var(--xp-plum-rgb),.7) 100%),${flagLayers(country)}`;
   if (!country) { closePeriodsOverlay(); return; }
   document.getElementById('btn-periods-open').innerHTML = `<span>ÉPOCAS</span><i class="fa-solid fa-chevron-down"></i>`;
   if (!document.getElementById('periods-overlay').classList.contains('hidden')) renderPeriodsOverlay();
@@ -419,7 +419,7 @@ function renderSections() {
 
 /* ----- Variantes de una misma moneda (KM# 12, 12a, 12.1, 12.2…) -----
    Se agrupan por país + número base del catálogo. Una ficha con 2 o más del mismo grupo lleva un círculo
-   dividido en tantas porciones como variantes (la original también cuenta); cada una conseguida se pinta de verde y cada hueco (las que faltan) en #ff6f6f, en todas las fichas del grupo. */
+   dividido en tantas porciones como variantes (la original también cuenta); cada una conseguida se pinta de verde y cada hueco (las que faltan) en rojo, en todas las fichas del grupo. */
 let variantCache = null;   // se reconstruye en cada pintado (se vacía al terminar la tarea actual)
 function kmKey(km) {
   const m = String(km ?? '').match(/^\s*([A-Za-zÀ-ÿ]*)\s*[#.]?\s*(\d+)(.*)$/);
@@ -496,7 +496,7 @@ function unionRange(g) {
 // Ficha base: las rarezas distintas del grupo cada una con su color y su letra, repartidas por igual en la casilla
 function groupRarityHtml(g) {
   const set = [...new Set(g.map(x => String(x.rarity || '').trim().toUpperCase()).filter(Boolean))];   // en el orden de KM del grupo
-  if (!set.length) return `<div class="xc-cell xc-rar w-[45%]" style="background:rgba(232,213,172,.16);color:#E8D5AC;">-</div>`;
+  if (!set.length) return `<div class="xc-cell xc-rar w-[45%]" style="background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);">-</div>`;
   const fs = set.length <= 1 ? 12 : set.length === 2 ? 11 : set.length === 3 ? 10 : 8.5;
   return `<div class="xc-cell xc-rar xc-rar-split w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="font-size:${fs}px">${set.map(r => `<span style="${getRarityStyle(r)}">${r === 'PLATA' ? 'AG' : esc(r)}</span>`).join('')}</div>`;
 }
@@ -516,7 +516,7 @@ function variantMarkHtml(c) {
     const [x1, y1] = pt(i), [x2, y2] = pt(i + 1);
     // Conseguida → verde; las que faltan → rojo (igual en todas las fichas del grupo)
     if (x.acquired) got++;
-    fills += n === 1 ? '' : `<path d="M12 12L${f(x1)} ${f(y1)}A12 12 0 0 0 ${f(x2)} ${f(y2)}Z" fill="${x.acquired ? '#0d9488' : '#ff6f6f'}"/>`;
+    fills += n === 1 ? '' : `<path d="M12 12L${f(x1)} ${f(y1)}A12 12 0 0 0 ${f(x2)} ${f(y2)}Z" style="fill:${x.acquired ? 'var(--xp-have)' : 'var(--xp-miss)'}"/>`;
     gaps += `M12 12L${f(x1)} ${f(y1)}`;
   });
   // Círculo plano sin contorno: las porciones se separan con un hueco del color de la ficha
@@ -549,8 +549,8 @@ function renderCoinCard(c, opts) {
   const cardBorderClass = (c.acquired
       ? ({ F: 'border-[#a3b84a] shadow-[0_0_10px_rgba(163,184,74,0.28)]',      // F: verde pálido amarillento
            TBD: 'border-[#8d8cb3] shadow-[0_0_10px_rgba(141,140,179,0.22)] ' }[bestGrade(c)]   // TBD: morado pálido grisáceo
-         || 'border-[#0d9488] shadow-[0_0_10px_rgba(13,148,136,0.25)]')
-      : (isPlata ? 'border-[#7f8aa3]/60' : 'border-[#e8d5ac]/20'));
+         || 'border-[color:var(--xp-have)] shadow-[0_0_10px_rgba(var(--xp-have-rgb),0.25)]')
+      : (isPlata ? 'border-[#7f8aa3]/60' : 'border-[color:rgba(var(--xp-sand-rgb),0.2)]'));
 
   // La ceca/variante siempre es libre; en las de plata, el valor calculado ocupa la casilla de rareza (mismo color de la etiqueta PLATA)
   const cecaOrValue = hasCeca ? esc(c.cecaMaterial) : '—';
@@ -617,7 +617,7 @@ function renderCoinCard(c, opts) {
           </div>
           ${isBase
             ? groupRarityHtml(opts.group)
-            : `<div class="xc-cell xc-rar w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(232,213,172,.16);color:#E8D5AC;'}">${rarityHtml}</div>`}
+            : `<div class="xc-cell xc-rar w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);'}">${rarityHtml}</div>`}
         </div>
 
         <div class="flex gap-1 w-full">

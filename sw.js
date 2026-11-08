@@ -1,13 +1,13 @@
 /* Plaza Mayor - service worker
    - Archivos propios: primero red (así ves siempre la última versión) y, si no hay conexión, la copia guardada.
-   - Recursos externos (Tailwind, iconos, fuentes, banderas): se guardan la primera vez y se reutilizan sin conexión.
+   - Recursos externos (iconos, fuentes, banderas): se guardan la primera vez y se reutilizan sin conexión.
    Si cambias de versión y algo se queda antiguo, sube el número de CACHE. */
-const CACHE = 'plaza-mayor-v72';
-const LOCAL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'img/numista.png', 'img/ucoin.png', 'css/style.css',
-  'js/utils.js', 'js/db.js', 'js/data.js', 'js/flags.js', 'js/silver.js', 'js/views-index.js',
-  'js/views-album.js', 'js/views-explore.js', 'js/views-stats.js', 'js/modals.js', 'js/backup.js', 'js/nav.js', 'js/app.js'];
+const CACHE = 'plaza-mayor-v79';
+const LOCAL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'img/numista.png', 'img/ucoin.png', 'css/style.css', 'css/tailwind.css',
+  'js/themes.js', 'js/utils.js', 'js/db.js', 'js/data.js', 'js/flags.js', 'js/silver.js', 'js/views-index.js',
+  'js/views-album.js', 'js/views-explore.js', 'js/views-stats.js', 'js/identify.js', 'js/views-identify.js', 'js/stats-map.js', 'js/modals.js', 'js/backup.js', 'js/nav.js', 'js/app.js'];
+const MAP_DATA = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json';
 const EXTERNAL = [
-  'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
@@ -16,6 +16,8 @@ self.addEventListener('install', e => {
     const c = await caches.open(CACHE);
     await c.addAll(LOCAL);
     await Promise.all(EXTERNAL.map(u => fetch(u, { mode: 'no-cors' }).then(r => c.put(u, r)).catch(() => {})));
+    // Fronteras del mapa de Estadísticas (con CORS, se leen con fetch): se guardan ya para que funcione sin conexión
+    await fetch(MAP_DATA).then(r => r.ok && c.put(MAP_DATA, r)).catch(() => {});
     self.skipWaiting();
   })());
 });
