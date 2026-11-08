@@ -27,6 +27,7 @@ function switchTab(tabName) {
 }
 
 function showTab(tabName) {
+  if (currentTab === 'identificar' && tabName !== 'identificar' && typeof identReset === 'function') identReset();   // las fotos de Identificación no se conservan al cambiar de pestaña
   currentTab = tabName;
   document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album' || tabName === 'identificar');
   ['album', 'indice', 'explorar', 'estadisticas', 'identificar'].forEach(t => {

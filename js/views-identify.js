@@ -19,6 +19,8 @@ let identRefine = null;      // resultado de "afinar con las imágenes del catá
 let identError = '';
 let identBuilt = false;
 let identManualText = '';
+let identTarget = null;      // posición de la foto que se está repitiendo (0 = primera, 1 = reverso)
+let identRunId = 0;          // invalida respuestas que llegan después de cambiar de pestaña
 
 /* ----- Almacenamiento local (todo con try/catch: puede estar bloqueado) ----- */
 function identLsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
@@ -351,35 +353,46 @@ async function identPrepareFile(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-async function identAddFiles(files) {
+async function identAddFiles(files, target) {
   const list = Array.from(files || []).filter(f => f && /^image\//.test(f.type || 'image/'));
   if (!list.length) return;
   identError = '';
+  const runId = identRunId;
   for (const f of list.slice(0, 2)) {
     try {
       const p = await identPrepareFile(f);
-      if (identPhotos.length >= 2) identPhotos[1] = p; else identPhotos.push(p);
+      if (runId !== identRunId) return;   // se ha cambiado de pestaña mientras se procesaba
+      if (Number.isInteger(target) && list.length === 1) identPhotos[Math.min(target, identPhotos.length)] = p;
+      else if (identPhotos.length >= 2) identPhotos[1] = p; else identPhotos.push(p);
     } catch (e) { identError = e.message || 'No se puede leer esa imagen.'; }
   }
   identExtract = null; identRefine = null;
   renderIdentificar();
 }
-function identPick(id) { const el = document.getElementById(id); if (el) { el.value = ''; el.click(); } }
-function identOnFiles(input) { const f = input.files; identAddFiles(f); }
-function identRemovePhoto(i) { identPhotos.splice(i, 1); identExtract = null; identRefine = null; identError = ''; renderIdentificar(); }
+function identPick(id, target) { identTarget = Number.isInteger(target) ? target : null; const el = document.getElementById(id); if (el) { el.value = ''; el.click(); } }
+function identOnFiles(input) { const t = identTarget; identTarget = null; identAddFiles(input.files, t); }
 function identClear() { identPhotos = []; identExtract = null; identRefine = null; identError = ''; renderIdentificar(); }
+// Al salir de la pestaña se borra todo (fotos, lectura, resultado y texto manual): al volver siempre está el botón de hacer foto
+function identReset() {
+  identRunId++;
+  identPhotos = []; identExtract = null; identRefine = null; identError = ''; identBusy = false; identLastMatch = null; identTarget = null; identManualText = '';
+  const m = document.getElementById('xid-manual'); if (m) m.value = '';
+  const st = document.getElementById('xid-settings'); if (st) st.classList.add('hidden');
+}
 
 /* ----- Acciones ----- */
 async function identRun() {
   if (identBusy || !identPhotos.length) return;
   if (!identKey()) { identToggleSettings(true); identError = identErrorText({ code: 'nokey' }); renderIdentificar(); return; }
   identBusy = true; identBusyMsg = 'Analizando la moneda…'; identError = ''; identExtract = null; identRefine = null;
+  const runId = identRunId;
   renderIdentificar();
   try {
     const parts = [{ text: identPrompt() }].concat(identPhotos.map(p => ({ inline_data: { mime_type: p.mime, data: p.b64 } })));
     const { data, model } = await identGenerate(parts, IDENT_SCHEMA);
+    if (runId !== identRunId) return;
     identExtract = identSanitize(data); identExtract.model = model;
-  } catch (e) { identError = identErrorText(e); }
+  } catch (e) { if (runId !== identRunId) return; identError = identErrorText(e); }
   identBusy = false;
   renderIdentificar(true);
 }
@@ -398,6 +411,7 @@ async function identRefineRun() {
   const m = identLastMatch;
   if (identBusy || !m || m.contenders.length < 2 || !identPhotos.length) return;
   identBusy = true; identBusyMsg = 'Comparando con las imágenes del catálogo…'; identError = '';
+  const runId = identRunId;
   renderIdentificar();
   try {
     const sent = m.contenders.slice(0, 6);
@@ -414,10 +428,11 @@ async function identRefineRun() {
     }
     const schema = { type: 'OBJECT', properties: { same_design_indices: { type: 'ARRAY', items: { type: 'INTEGER' } }, best_index: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING', nullable: true } }, required: ['same_design_indices'] };
     const { data } = await identGenerate(parts, schema);
+    if (runId !== identRunId) return;
     const idx = new Set((data.same_design_indices || []).filter(i => Number.isInteger(i) && i >= 0 && i < sent.length));
     if (Number.isInteger(data.best_index) && data.best_index >= 0 && data.best_index < sent.length) idx.add(data.best_index);
     identRefine = { sent: new Set(sent.map(g => g.key)), same: new Set([...idx].map(i => sent[i].key)), reason: data.reason || '' };
-  } catch (e) { identError = identErrorText(e); }
+  } catch (e) { if (runId !== identRunId) return; identError = identErrorText(e); }
   identBusy = false;
   renderIdentificar(true);
 }
@@ -669,10 +684,11 @@ function identCaptureHtml() {
           <span>Pulsa aquí, arrastra la imagen o pégala con Ctrl+V</span>
         </button>`;
   } else {
-    h += `<div class="xid-photos xid-p${identPhotos.length}">${identPhotos.map((p, i) => `<figure class="xid-ph"><img src="${p.src}" alt="Foto ${i + 1}"><button type="button" class="xid-x" onclick="identRemovePhoto(${i})" aria-label="Quitar esta foto"><i class="fa-solid fa-xmark"></i></button><figcaption>${identPhotos.length > 1 ? (i === 0 ? 'Cara 1' : 'Cara 2') : 'Tu foto'}</figcaption></figure>`).join('')}</div>
+    const cam = touch ? 'xid-file-cam' : 'xid-file-gal', n = identPhotos.length;
+    h += `<div class="xid-photos xid-p${n}">${identPhotos.map((p, i) => `<figure class="xid-ph"><img src="${p.src}" alt="Foto ${i + 1}"><figcaption>${n > 1 ? (i === 0 ? 'Anverso' : 'Reverso') : 'Tu foto'}</figcaption></figure>`).join('')}</div>
       <div class="xid-row xid-wrap">
-        ${identPhotos.length < 2 ? `<button type="button" class="xid-btn xid-soft" onclick="identPick('${touch ? 'xid-file-cam' : 'xid-file-gal'}')"><i class="fa-solid fa-plus"></i> Otra cara</button>` : ''}
-        <button type="button" class="xid-btn xid-soft" onclick="identClear()"><i class="fa-solid fa-trash-can"></i> Quitar</button>
+        <button type="button" class="xid-btn xid-soft" onclick="identPick('${cam}', ${n - 1})" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-rotate-left"></i> ${n > 1 ? 'Repetir reverso' : 'Repetir'}</button>
+        ${n < 2 ? `<button type="button" class="xid-btn xid-soft" onclick="identPick('${cam}', 1)" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-camera-rotate"></i> Foto al reverso</button>` : ''}
         <button type="button" class="xid-btn xid-big xid-grow" onclick="identRun()" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-magnifying-glass"></i> IDENTIFICAR</button>
       </div>`;
   }
