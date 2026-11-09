@@ -48,6 +48,51 @@ function applyZoneOrder(list) {
   return list.map((k, n) => [k, n]).sort((a, b) => (idx(a[0]) - idx(b[0])) || (a[1] - b[1])).map(x => x[0]);
 }
 
+/* ----- Continente de cada zona (para los 6 botones de arriba) -----
+   Se elige en "Editar zona". Si no se ha elegido: por el nombre de la zona (Europa del Este → Europa)
+   o, si no, por el continente en el que caen la mayoría de sus países. */
+const CONTINENTS = ['Europa', 'América', 'Asia', 'África', 'Oceanía', 'Extintos'];
+const CONTINENT_BTN_ICON = { 'Europa': 'earth-europe', 'América': 'earth-americas', 'Asia': 'earth-asia', 'África': 'earth-africa', 'Oceanía': 'earth-oceania', 'Extintos': 'landmark-dome' };
+let zoneContinents = (() => {
+  try { const o = JSON.parse(localStorage.getItem('numis_zone_continents') || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+  catch (e) { return {}; }
+})();
+function saveZoneContinents() { try { localStorage.setItem('numis_zone_continents', JSON.stringify(zoneContinents)); } catch (e) {} }
+
+function zoneContinent(zone) {
+  const ex = zoneContinents[zone];
+  if (CONTINENTS.includes(ex)) return ex;
+  if (CONTINENTS.includes(zone)) return zone;   // las zonas predefinidas son su propio continente
+  const n = normKey(zone);
+  if (/extint|desaparecid|historic/.test(n)) return 'Extintos';
+  if (/europ/.test(n)) return 'Europa';
+  if (/americ|caribe|amazon|andin/.test(n)) return 'América';
+  if (/afric/.test(n)) return 'África';
+  if (/oceani|pacifico/.test(n)) return 'Oceanía';
+  if (/asia|oriente|medio oriente|arabi|caucaso/.test(n)) return 'Asia';
+  // por mayoría de sus países
+  const votes = {};
+  countries.forEach(c => { if (c.continent === zone) { const k = autoContinent(c.name); if (CONTINENTS.includes(k)) votes[k] = (votes[k] || 0) + 1; } });
+  const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : '';
+}
+
+let exploreContinent = '';   // continente filtrado ('' = todos)
+function setExploreContinent(c) {
+  exploreContinent = (exploreContinent === c) ? '' : c;
+  renderExplorar();
+}
+function syncContinentButtons() {
+  document.querySelectorAll('#xp-conts .xp-cont').forEach(b => {
+    const on = b.dataset.cont === exploreContinent;
+    b.classList.toggle('xp-on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+function continentOptionsHtml(selected) {
+  return '<option value="">Automático</option>' + CONTINENTS.map(c => `<option value="${esc(c)}"${c === selected ? ' selected' : ''}>${esc(c)}</option>`).join('');
+}
+
 function allZones() {
   const z = [...BUILTIN_ZONES, ...customZones.filter(n => !BUILTIN_ZONES.includes(n))];
   countries.forEach(c => { if (c.continent && !z.includes(c.continent)) z.push(c.continent); });
@@ -73,6 +118,11 @@ function addZone() {
   if (!name) return;
   customZones.push(name);
   saveCustomZones();
+  const sel = document.getElementById('new-zone-continent');
+  const cont = (sel && sel.value) || '';
+  if (cont) zoneContinents[name] = cont;
+  else if (exploreContinent && zoneContinent(name) !== exploreContinent) zoneContinents[name] = exploreContinent;   // con un filtro activo, la zona nueva se queda visible
+  saveZoneContinents();
   input.value = '';
   toggleAddZoneRow();
   // La zona nueva sale al final de la lista: se abre su selector de países y se baja hasta ella
@@ -91,6 +141,7 @@ function addZone() {
 function openEditZoneModal(name) {
   document.getElementById('input-edit-zone-old').value = name;
   document.getElementById('input-edit-zone-name').value = name;
+  document.getElementById('input-edit-zone-continent').innerHTML = continentOptionsHtml(CONTINENTS.includes(zoneContinents[name]) ? zoneContinents[name] : '');
   document.getElementById('edit-zone-modal').classList.remove('hidden');
   setTimeout(() => { const i = document.getElementById('input-edit-zone-name'); if (i) { i.focus(); i.select(); } }, 50);
 }
@@ -101,8 +152,11 @@ function saveEditedZone() {
   const oldName = document.getElementById('input-edit-zone-old').value;
   const name = cleanZoneName(document.getElementById('input-edit-zone-name').value, oldName);
   if (!name) return;
+  const cont = document.getElementById('input-edit-zone-continent').value;
   closeEditZoneModal();
-  renameZone(oldName, name);
+  if (cont) zoneContinents[oldName] = cont; else delete zoneContinents[oldName];
+  saveZoneContinents();
+  renameZone(oldName, name);   // (también traslada el continente al nuevo nombre y repinta)
 }
 function deleteZoneFromModal() {
   const name = document.getElementById('input-edit-zone-old').value;
@@ -110,7 +164,9 @@ function deleteZoneFromModal() {
 }
 
 function renameZone(oldName, name) {
-  if (!name || name === oldName) return;
+  if (!name) return;
+  if (name === oldName) { renderExplorar(); return; }
+  if (zoneContinents[oldName]) { zoneContinents[name] = zoneContinents[oldName]; delete zoneContinents[oldName]; saveZoneContinents(); }
   const i = customZones.indexOf(oldName);
   if (i >= 0) customZones[i] = name; else customZones.push(name);
   countries.forEach(c => { if (c.continent === oldName) c.continent = name; });
@@ -123,6 +179,7 @@ function deleteZone(name) {
   const n = countries.filter(c => c.continent === name).length;
   if (!confirm(`¿Eliminar la zona "${name}"?` + (n ? ` Sus ${n} ${n === 1 ? 'país volverá' : 'países volverán'} a la clasificación automática.` : ''))) return false;
   customZones = customZones.filter(z => z !== name);
+  delete zoneContinents[name]; saveZoneContinents();
   countries.forEach(c => { if (c.continent === name) delete c.continent; });
   saveCustomZones();
   persistMeta();
@@ -167,7 +224,7 @@ function toggleAddZoneRow() {
   if (!row) return;
   const open = row.classList.toggle('xp-open');
   if (btn) btn.classList.toggle('xp-on', open);
-  if (open) { const i = document.getElementById('new-zone-name'); if (i) i.focus(); }
+  if (open) { const nc = document.getElementById('new-zone-continent'); if (nc) nc.value = exploreContinent || ''; const i = document.getElementById('new-zone-name'); if (i) i.focus(); }
 }
 
 function onExploreSearch(value) { exploreSearch = value; renderExplorar(); }
@@ -226,6 +283,9 @@ function renderExplorar() {
   const box = document.getElementById('explorar-content');
   if (!box) return;
   if (countries.length === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay países en la colección.</div>`; return; }
+  syncContinentButtons();
+  const nc = document.getElementById('new-zone-continent');
+  if (nc && !nc.options.length) nc.innerHTML = continentOptionsHtml('');
   box.innerHTML = renderContinents();
   hydrateImages(box);
 }
@@ -235,7 +295,9 @@ function renderContinents() {
   const groups = {};
   sortedCountries().forEach(c => { (groups[continentOf(c)] ||= []).push(c); });
   // Las zonas predefinidas vacías no se muestran; las propias sí, para poder llenarlas
-  const order = applyZoneOrder([...zones, UNCLASSIFIED].filter(k => groups[k] || !BUILTIN_ZONES.includes(k) && k !== UNCLASSIFIED));
+  let order = applyZoneOrder([...zones, UNCLASSIFIED].filter(k => groups[k] || !BUILTIN_ZONES.includes(k) && k !== UNCLASSIFIED));
+  // Filtro por continente: solo las zonas de ese continente (con filtro activo no sale "Sin clasificar")
+  if (exploreContinent) order = order.filter(k => k !== UNCLASSIFIED && zoneContinent(k) === exploreContinent);
 
   const q = normKey(exploreSearch);
   let shown = 0;
@@ -283,6 +345,7 @@ function renderContinents() {
           </div>`}
       </section>`;
   }).join('');
+  if (!q && shown === 0 && exploreContinent) return `<div class="xp-empty-msg">Aún no hay zonas de ${esc(exploreContinent)}.<br>Elige el continente en «Editar zona» (lápiz de la zona).</div>`;
   if (q && shown === 0) return `<div class="xp-empty-msg">Nada coincide con «${esc(exploreSearch.trim())}».</div>`;
   return html;
 }

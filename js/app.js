@@ -16,6 +16,7 @@ function resetAllFilters() {
   indiceSearchText = '';
   const is = document.getElementById('indice-search'); if (is) is.value = '';
   if (typeof exploreSearch !== 'undefined') exploreSearch = '';
+  if (typeof exploreContinent !== 'undefined') exploreContinent = '';
   const es = document.getElementById('explorar-search'); if (es) es.value = '';
 }
 

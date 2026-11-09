@@ -80,8 +80,17 @@
         <button type="button" class="xp-btn" onclick="collapseAllZones()" title="Contraer todo" aria-label="Contraer todo"><i class="fa-solid fa-angles-up"></i></button>
       </div>
       </div>
+      <div id="xp-conts" class="xp-conts" role="group" aria-label="Filtrar por continente">
+        <button type="button" class="xp-cont" data-cont="Europa" onclick="setExploreContinent('Europa')"><i class="fa-solid fa-earth-europe"></i><span>Europa</span></button>
+        <button type="button" class="xp-cont" data-cont="América" onclick="setExploreContinent('América')"><i class="fa-solid fa-earth-americas"></i><span>América</span></button>
+        <button type="button" class="xp-cont" data-cont="Asia" onclick="setExploreContinent('Asia')"><i class="fa-solid fa-earth-asia"></i><span>Asia</span></button>
+        <button type="button" class="xp-cont" data-cont="África" onclick="setExploreContinent('África')"><i class="fa-solid fa-earth-africa"></i><span>África</span></button>
+        <button type="button" class="xp-cont" data-cont="Oceanía" onclick="setExploreContinent('Oceanía')"><i class="fa-solid fa-earth-oceania"></i><span>Oceanía</span></button>
+        <button type="button" class="xp-cont" data-cont="Extintos" onclick="setExploreContinent('Extintos')"><i class="fa-solid fa-landmark-dome"></i><span>Extintos</span></button>
+      </div>
       <div id="xp-addzone" class="xp-addzone">
         <input type="text" id="new-zone-name" maxlength="40" placeholder="Nombre de la zona (Balcanes…)" onkeydown="if(event.key==='Enter')addZone()" aria-label="Nombre de la nueva zona">
+        <select id="new-zone-continent" aria-label="Continente de la nueva zona"></select>
         <button type="button" onclick="addZone()">Crear</button>
       </div>
       <div id="explorar-content"></div>
@@ -154,6 +163,8 @@
               <button type="button" id="btn-country-right" onclick="moveCountryInZone(1)" class="xe-ico" title="Mover después" aria-label="Mover después"><i class="fa-solid fa-arrow-right"></i></button>
               <span id="edit-country-pos" class="xe-note"></span>
             </div></div>
+          <div class="xe-f"><label>Períodos</label>
+            <div class="xe-row"><button type="button" onclick="addPeriodFromCountryModal()" class="xe-btn xe-soft"><i class="fa-solid fa-plus"></i> Añadir período</button></div></div>
           <div class="xe-f"><label>Bandera (código ISO, opcional)</label>
             <div class="xe-row">
               <input type="text" id="input-edit-country-flag" maxlength="6" placeholder="Automática · ej: es, fr, gb-sct" oninput="updateFlagPreview()" class="xe-in" style="flex:1;min-width:0">
@@ -194,6 +205,8 @@
       <input type="hidden" id="input-edit-zone-old">
       <div class="xe-f"><label>Nombre de la zona</label>
         <input type="text" id="input-edit-zone-name" maxlength="40" onkeydown="if(event.key==='Enter')saveEditedZone()" class="xe-in xe-strong"></div>
+      <div class="xe-f" style="margin-top:8px"><label>Continente</label>
+        <select id="input-edit-zone-continent" class="xe-in"></select></div>
       <div class="xe-foot">
         <button type="button" onclick="deleteZoneFromModal()" class="xe-btn xe-danger"><i class="fa-solid fa-trash"></i> Eliminar</button>
         <span class="xe-sp"></span>

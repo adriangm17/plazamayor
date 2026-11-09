@@ -28,6 +28,8 @@ function navSnap() {
     s.c = currentCountryId || ''; s.p = albumPeriodId || ''; s.g = albumGroup || '';
     s.f = [albumOnlyMissing, albumOnlyOwned, albumOnlySpecial].map(Number).join('') + '|' +
       Object.keys(periodOnlyMissing).filter(k => periodOnlyMissing[k]).sort().join(',');
+  } else if (currentTab === 'explorar') {
+    s.xc = (typeof exploreContinent !== 'undefined' && exploreContinent) || '';
   } else if (currentTab === 'estadisticas') {
     s.sg = statsGrade; s.st = statsType; s.sh = statsTypeHave;
   }
@@ -80,6 +82,8 @@ function navApply(S) {
       setFilterButtonState('btn-only-owned', albumOnlyOwned);
       setFilterButtonState('btn-only-special', albumOnlySpecial);
     }
+  } else if (S.t === 'explorar' && sameTab) {
+    exploreContinent = S.xc || '';
   } else if (S.t === 'estadisticas' && sameTab) {
     statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsGradePage = 1;
   }

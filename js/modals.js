@@ -180,6 +180,12 @@ function saveEditedCountryName() {
   render();
 }
 
+// Opción "Añadir período" dentro del menú Editar país (la ventana del país queda debajo con sus cambios sin guardar)
+function addPeriodFromCountryModal() {
+  if (!countryById(currentCountryId)) return;
+  openAddPeriodModal(currentCountryId);
+}
+
 /* ----- Eliminar un país por completo (con doble confirmación) ----- */
 async function deleteCurrentCountry() {
   const country = countryById(currentCountryId);

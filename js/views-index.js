@@ -49,8 +49,6 @@ function jumpToPeriod(periodId) {
   }, 100);
 }
 
-function addPeriodFromIndice(countryId) { currentCountryId = countryId; openAddPeriodModal(countryId); }
-function editCountryFromIndice(countryId) { currentCountryId = countryId; openEditCountryModal(); }
 function editPeriodFromIndice(periodId) {
   const p = periodById(periodId);
   if (!p) return;
@@ -87,6 +85,7 @@ function renderIndiceView() {
     const cTotal = normal.length;
     const cPct = cTotal > 0 ? Math.round((cAcquired / cTotal) * 100) : 0;
     const isCollapsed = isIndiceCollapsed(country.id);
+    const zoneLabel = continentOf(country);
     const flagBg = flagLayers(country).replace(/"/g, '&quot;');
 
     return `
@@ -97,10 +96,9 @@ function renderIndiceView() {
             <span class="xi-flag" style="background:${flagBg}" role="img" aria-label="Bandera de ${esc(country.name)}"></span>
             <div class="min-w-0">
               <h3 class="xi-name truncate">${esc(country.name)}</h3>
-              <p class="xi-sub">${cAcquired} de ${cTotal} monedas</p>
+              <div class="xi-subrow"><span class="xi-tag" title="Zona geográfica">${esc(zoneLabel)}</span></div>
             </div>
           </div>
-          <button onclick="editCountryFromIndice('${esc(country.id)}')" class="xi-btn" title="Editar país" aria-label="Editar país"><i class="fa-solid fa-pen"></i></button>
           <button onclick="toggleIndiceCountry('${esc(country.id)}')" class="xi-btn xi-go" aria-label="${isCollapsed ? 'Desplegar' : 'Contraer'}"><i class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'}"></i></button>
         </div>
 
@@ -127,7 +125,6 @@ function renderIndiceView() {
               </div>
             `;
           }).join('')}
-          ${`<button type="button" onclick="addPeriodFromIndice('${esc(country.id)}')" class="xi-addperiod"><i class="fa-solid fa-plus"></i> Añadir período</button>`}
         </div>
       </div>
     `;

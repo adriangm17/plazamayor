@@ -16,7 +16,7 @@ async function exportBackup() {
     }
     allCoins.push(copy);
   }
-  const backupData = { version: 2, date: new Date().toISOString(), countries, periods, zones: customZones, zoneOrder, coins: allCoins };
+  const backupData = { version: 2, date: new Date().toISOString(), countries, periods, zones: customZones, zoneOrder, zoneContinents, coins: allCoins };
 
   const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
   const blobUrl = URL.createObjectURL(blob);
@@ -72,6 +72,8 @@ function importBackup(event) {
       saveCustomZones();
       zoneOrder = Array.isArray(backup.zoneOrder) ? backup.zoneOrder.filter(x => typeof x === 'string' && x.trim()) : [];
       saveZoneOrder();
+      zoneContinents = (backup.zoneContinents && typeof backup.zoneContinents === 'object' && !Array.isArray(backup.zoneContinents)) ? backup.zoneContinents : {};
+      saveZoneContinents();
       const isV2 = Number(backup.version) >= 2 && Array.isArray(backup.countries) && Array.isArray(backup.periods);
       if (isV2) {
         countries = backup.countries; periods = backup.periods; coins = list;
