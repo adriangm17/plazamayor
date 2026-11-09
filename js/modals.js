@@ -382,6 +382,12 @@ function openCoinModal(id) {
   const coin = coins.find(c => c.id === id);
   if (!coin) return;
 
+  // Ficha sin fotos ni enlaces: no hay nada que ver, se abre directamente "Editar ficha"
+  if (!coin.hasFront && !coin.hasBack && !(coin.numistaUrl && coin.numistaUrl.trim()) && !(coin.ucoinUrl && coin.ucoinUrl.trim())) {
+    openAdvancedEditFromModal();
+    return;
+  }
+
   const periodName = coinPeriodName(coin);
   const displayRange = formatYearRange(coin.range);
   const country = countryById(coin.countryId);

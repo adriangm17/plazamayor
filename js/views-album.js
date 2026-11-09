@@ -550,7 +550,7 @@ function renderCoinCard(c, opts) {
       ? ({ F: 'border-[#a3b84a] shadow-[0_0_10px_rgba(163,184,74,0.28)]',      // F: verde pálido amarillento
            TBD: 'border-[#8d8cb3] shadow-[0_0_10px_rgba(141,140,179,0.22)] ' }[bestGrade(c)]   // TBD: morado pálido grisáceo
          || 'border-[color:var(--xp-have)] shadow-[0_0_10px_rgba(var(--xp-have-rgb),0.25)]')
-      : (isPlata ? 'border-[#7f8aa3]/60' : 'border-[color:rgba(var(--xp-sand-rgb),0.2)]'));
+      : 'xc-miss-brd');   // v7.01: las que faltan, borde #ff5757 (clase propia en style.css)
 
   // La ceca/variante siempre es libre; en las de plata, el valor calculado ocupa la casilla de rareza (mismo color de la etiqueta PLATA)
   const cecaOrValue = hasCeca ? esc(c.cecaMaterial) : '—';

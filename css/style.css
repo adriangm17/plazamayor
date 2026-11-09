@@ -363,6 +363,7 @@ body.theme-explorar { background-color: var(--xp-sand); }
 /* Ficha de moneda (Álbum y listas de Estadísticas) */
 .xc { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:space-between; width:100%; padding:10px 9px 11px; border-radius:20px;
   background:var(--xp-plum); border-width:3px; border-style:solid; box-shadow:0 6px 14px rgba(var(--xp-plum-rgb),.22); cursor:pointer; user-select:none; transition:transform .12s; }
+.xc.xc-miss-brd { border-color:#ff5757; }   /* v7.01: fichas de monedas que faltan */
 .xc:hover { border-color:var(--xp-orange); }
 .xc-denom { width:100%; padding:6px 6px; border-radius:10px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:center; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:15px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .xc-cell { display:flex; align-items:center; justify-content:center; min-height:28px; padding:5px 4px; border-radius:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:800; line-height:1.2; }

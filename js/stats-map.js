@@ -72,19 +72,30 @@ function buildWorld(topo) {
   });
   const minX = -XE, k = 1000 / (2 * XE), W = 1000, H = (maxY - minY) * k;
   const out = feats.map(f => {
-    let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity, d = '';
+    let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity, d = '', maxRing = 0, bigX = 0, bigY = 0;
     f.rings.forEach(({ pr, base }) => {
-      let last = '';
+      let last = '', rx0 = Infinity, rx1 = -Infinity, ry0 = Infinity, ry1 = -Infinity;
       const seg = [];
       pr.forEach(p => {
         const x = +((p[0] - minX) * k).toFixed(1), y = +((p[1] - minY) * k).toFixed(1), s = x + ',' + y;
+        if (base) {
+          const cx = Math.min(W, Math.max(0, x));
+          if (cx < bx0) bx0 = cx; if (cx > bx1) bx1 = cx; if (y < by0) by0 = y; if (y > by1) by1 = y;
+          if (cx < rx0) rx0 = cx; if (cx > rx1) rx1 = cx; if (y < ry0) ry0 = y; if (y > ry1) ry1 = y;
+        }
         if (s === last) return; last = s; seg.push(s);
-        if (base) { const cx = Math.min(W, Math.max(0, x)); if (cx < bx0) bx0 = cx; if (cx > bx1) bx1 = cx; if (y < by0) by0 = y; if (y > by1) by1 = y; }
       });
+      if (base && isFinite(rx0)) {   // la isla más grande del país
+        const ext = Math.max(rx1 - rx0, ry1 - ry0);
+        if (ext >= maxRing) { maxRing = ext; bigX = (rx0 + rx1) / 2; bigY = (ry0 + ry1) / 2; }
+      }
       if (seg.length > 2) d += 'M' + seg.join('L') + 'Z';
     });
-    return { key: f.key, name: f.name, d, cx: (bx0 + bx1) / 2, cy: (by0 + by1) / 2, size: Math.max(bx1 - bx0, by1 - by0) };
-  }).filter(f => f.d);
+    // tiny: todo el país son islas diminutas (Tonga, Fiyi, Maldivas…): se marca con un punto aunque su extensión total sea grande
+    const tiny = maxRing < 7;
+    // Países de islas diminutas: el punto va sobre su isla mayor (así Fiyi o Kiribati, que cruzan la línea de fecha, no caen en medio del Atlántico)
+    return { key: f.key, name: f.name, d, cx: tiny ? bigX : (bx0 + bx1) / 2, cy: tiny ? bigY : (by0 + by1) / 2, size: Math.max(bx1 - bx0, by1 - by0), tiny };
+  }).filter(f => isFinite(f.cx) && isFinite(f.cy));
   return { feats: out, W, H };
 }
 
@@ -108,10 +119,27 @@ function loadWorldMap() {
 }
 
 // Monedas por país del mapa: { clave: { n, ids: [idsDePaísDeLaApp] } } + los países que no se han podido ubicar
+// Uniones monetarias que agrupan varios países en una sola entrada de la colección
+// África Central (BEAC): Camerún, Gabón, Guinea Ecuatorial, Chad, República Centroafricana y República del Congo
+const MULTI_COUNTRY = [
+  { re: /(^|[^a-z])(africa central|africa ecuatorial|beac|cemac)([^a-z]|$)/, a2: ['CM', 'GA', 'GQ', 'TD', 'CF', 'CG'] },
+  // África Occidental (BCEAO): Benín, Burkina Faso, Costa de Marfil, Guinea-Bisáu, Malí, Níger, Senegal y Togo
+  { re: /(^|[^a-z])(africa occidental|bceao|uemoa|umoa)([^a-z]|$)/, a2: ['BJ', 'BF', 'CI', 'GW', 'ML', 'NE', 'SN', 'TG'] }
+];
+function multiCountryA2(name) {
+  const n = String(name ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-–—_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = MULTI_COUNTRY.find(e => e.re.test(n));
+  return m ? m.a2 : null;
+}
 function mapCountsByKey(byCountry) {
   const byKey = {}, unplaced = [];
   countries.forEach(c => {
     const n = byCountry[c.id] || 0;
+    const multi = multiCountryA2(c.name);
+    if (multi) {   // una entrada que equivale a varios países: todos se pintan con sus monedas
+      multi.forEach(a2 => { const e = (byKey[ISO_A22NUM[a2]] ||= { n: 0, ids: [] }); e.n += n; if (n) e.ids.push(c.id); });
+      return;
+    }
     let a2 = (typeof flagCode === 'function' ? flagCode(c) : '').slice(0, 2).toUpperCase();
     if (!a2 && typeof flagLookup === 'function') a2 = HISTORIC_TO_A2[flagLookup(c.name).key] || '';
     const key = a2 ? ISO_A22NUM[a2] : '';
@@ -148,7 +176,7 @@ function statsMapInner() {
     if (n > 0) {
       const fill = mapColor(mapT(n, max));
       paths += `<path class="xm-c${sel}" data-k="${esc(f.key)}" d="${f.d}" style="fill:${fill}"/>`;
-      if (f.size < 7) dots += `<circle class="xm-c xm-dot${sel}" data-k="${esc(f.key)}" cx="${f.cx.toFixed(1)}" cy="${f.cy.toFixed(1)}" r="5.5" style="fill:${fill}"/>`;   // países diminutos: un punto para que se vean
+      if (f.size < 7 || f.tiny) dots += `<circle class="xm-c xm-dot${sel}" data-k="${esc(f.key)}" cx="${f.cx.toFixed(1)}" cy="${f.cy.toFixed(1)}" r="5.5" style="fill:${fill}"/>`;   // países diminutos: un punto para que se vean
     } else paths += `<path class="xm-c xm-0${sel}" data-k="${esc(f.key)}" d="${f.d}"/>`;
   });
   const legend = `<div class="xm-legend"><span class="xm-sw0"></span><span>Sin monedas</span><span class="xm-sp"></span><span>1</span><i class="xm-bar" style="background:linear-gradient(90deg,${mapColor(mapT(1, max))},var(--xp-orange),var(--xp-plum))"></i><span>${fmtN(max, 0)}</span></div>`;
