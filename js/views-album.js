@@ -14,7 +14,7 @@ let albumGroup = '';   // (sin uso desde 4.10: ya no hay pestañas ni grupos de 
 // Todos los períodos del país se ven siempre; el desplegable "Épocas" solo lleva a la posición de cada uno
 function periodsInAlbumView() { return periodsOfCountry(currentCountryId); }
 function periodProgressText(p) {
-  const n = coinsOfPeriod(p.id).filter(c => !isSilverCoin(c));
+  const n = completionList(coinsOfPeriod(p.id)).filter(c => !isSilverCoin(c));
   return `${n.filter(c => c.acquired).length}/${n.length}`;
 }
 function validAlbumPeriod() { albumPeriodId = ''; albumGroup = ''; return ''; }
@@ -45,8 +45,9 @@ function renderTabs() {
   document.getElementById('album-country-title').innerHTML = country
     ? `<i class="fa-solid fa-chevron-left"></i>${flagChip(country, 66, 46)}<span>${esc(country.name)}</span>`
     : '';
+  // v7.09: la burbuja de la cabecera tiene fondo sólido (morado del proyecto, definido en style.css)
   const bar = document.getElementById('period-bar');
-  if (bar && country) bar.style.background = `linear-gradient(90deg,rgba(var(--xp-plum-rgb),.97) 0%,rgba(var(--xp-plum-rgb),.88) 60%,rgba(var(--xp-plum-rgb),.7) 100%),${flagLayers(country)}`;
+  if (bar) bar.style.background = '';
   if (!country) { closePeriodsOverlay(); return; }
   document.getElementById('btn-periods-open').innerHTML = `<span>ÉPOCAS</span><i class="fa-solid fa-chevron-down"></i>`;
   if (!document.getElementById('periods-overlay').classList.contains('hidden')) renderPeriodsOverlay();
@@ -370,11 +371,12 @@ function renderSections() {
     const periodCoins = allPeriodCoins.filter(c => matchesAlbumFilter(c) && !(onlyMissingHere && c.acquired)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     if (filterActive && periodCoins.length === 0 && !onlyMissingHere) return '';
 
-    const normalCoins = allPeriodCoins.filter(c => !isSilverCoin(c));
+    const cmpCoins = completionList(allPeriodCoins);   // v7.08: las variantes no cuentan (cada grupo = 1 moneda)
+    const normalCoins = cmpCoins.filter(c => !isSilverCoin(c));
     const acquiredCount = normalCoins.filter(c => c.acquired).length;
     const totalCount = normalCoins.length;
     const normalPct = totalCount > 0 ? Math.round((acquiredCount / totalCount) * 100) : 0;
-    const silverCoins = allPeriodCoins.filter(isSilverCoin);
+    const silverCoins = cmpCoins.filter(isSilverCoin);
     const silverPct = silverCoins.length > 0 ? Math.round((silverCoins.filter(c => c.acquired).length / silverCoins.length) * 100) : 0;
 
     const isCollapsed = periodIsCollapsed(p);
@@ -391,7 +393,6 @@ function renderSections() {
             ${ptp.date ? `<span class="xa-pdate">${esc(ptp.date)}</span>` : ''}
           </span>
           <span class="xa-tools" onclick="event.stopPropagation()">
-            <button onclick="openEditPeriodModal('${pid}')" class="xp-btn" title="Editar período" aria-label="Editar período"><i class="fa-solid fa-pen"></i></button>
             <button onclick="flipPeriodCoins('${pid}')" class="xp-btn" title="Girar todas las monedas del período" aria-label="Girar todas las monedas del período"><i class="fa-solid fa-rotate"></i></button>
             <button onclick="togglePeriodMissing('${pid}')" class="xp-btn ${onlyMissingHere ? 'xp-on' : ''}" title="Ver solo las que me faltan de este período" aria-label="Ver solo las que me faltan de este período"><i class="fa-solid fa-circle-exclamation"></i></button>
           </span>
@@ -413,6 +414,7 @@ function renderSections() {
     ? sectionsHtml
     : `<div class="xp-empty-msg">Ninguna moneda coincide con el filtro.</div>`;
   hydrateImages(container);
+  fitCardYears(container);
   updateTogglePeriodsButton();
   if (typeof navSync === 'function') navSync();
 }
@@ -465,6 +467,25 @@ function compactGroupsMap() {   // clave → variantes (2 o más) del mismo per�
   });
   return out;
 }
+/* v7.08: porcentajes de compleción. Cada grupo de variantes (mismo país + período + KM# base) cuenta como UNA moneda:
+   la ficha base, que se da por conseguida si se tiene alguna de sus variantes (igual que se ve en el álbum). */
+let _cmpCache = null;
+function completionList(list) {
+  if (!_cmpCache || _cmpCache.ref !== coins || _cmpCache.n !== coins.length) {
+    _cmpCache = { ref: coins, n: coins.length, map: compactGroupsMap() };
+    Promise.resolve().then(() => { _cmpCache = null; });
+  }
+  const out = [];
+  list.forEach(c => {
+    const key = compactGroupKey(c), g = key && _cmpCache.map.get(key);
+    if (!g) { out.push(c); return; }
+    if (c.id !== g[0].id) return;   // las variantes (no base) no cuentan
+    const any = g.some(x => x.acquired);
+    out.push(!!c.acquired === any ? c : Object.assign({}, c, { acquired: any }));
+  });
+  return out;
+}
+
 // De la lista de monedas visibles de un período devuelve una ficha por grupo (en la posición de su primera variante).
 // Solo se ve la ficha BASE del grupo.
 function buildAlbumCards(list) {
@@ -548,9 +569,9 @@ function renderCoinCard(c, opts) {
   const hasCeca = c.cecaMaterial && c.cecaMaterial.trim() !== '';
   const cardBorderClass = (c.acquired
       ? ({ F: 'border-[#a3b84a] shadow-[0_0_10px_rgba(163,184,74,0.28)]',      // F: verde pálido amarillento
-           TBD: 'border-[#8d8cb3] shadow-[0_0_10px_rgba(141,140,179,0.22)] ' }[bestGrade(c)]   // TBD: morado pálido grisáceo
+           TBD: 'xc-brd-tbd' }[bestGrade(c)]   // v7.08: TBD, borde #e8e240 (clase propia en style.css)
          || 'border-[color:var(--xp-have)] shadow-[0_0_10px_rgba(var(--xp-have-rgb),0.25)]')
-      : 'xc-miss-brd');   // v7.01: las que faltan, borde #ff5757 (clase propia en style.css)
+      : (isPlata ? 'xc-brd-silver' : 'xc-miss-brd'));   // las que faltan: #ff5757 (v7.01); las de rareza PLATA que faltan: #8f9cbc (v7.08)
 
   // La ceca/variante siempre es libre; en las de plata, el valor calculado ocupa la casilla de rareza (mismo color de la etiqueta PLATA)
   const cecaOrValue = hasCeca ? esc(c.cecaMaterial) : '—';
@@ -584,7 +605,7 @@ function renderCoinCard(c, opts) {
       ontouchmove="handleCoinTouchMove(event)"
       onclick="handleCoinClick(event, '${id}')"`}
       ${isBase ? `data-vkey="${esc(compactGroupKey(c))}" data-vok="${(opts.ok || []).map(esc).join(',')}"` : ''}
-      class="xc ${cardBorderClass}">
+      class="xc ${cardBorderClass}${c.acquired ? ' xc-own' : ''}">
 
       ${typeDot}
       ${topLeft}
@@ -612,7 +633,7 @@ function renderCoinCard(c, opts) {
         </div>
 
         <div class="flex gap-1 w-full">
-          <div class="xc-cell xc-soft w-[55%] tracking-wider">
+          <div class="xc-cell xc-soft xc-yr w-[55%]">
             ${esc(isBase ? unionRange(opts.group) : formatYearRange(c.range))}
           </div>
           ${isBase
@@ -688,3 +709,16 @@ function addVariantFromSheet() {
   km.value = baseKmLabel(first);
   setTimeout(() => { try { km.focus(); km.setSelectionRange(km.value.length, km.value.length); } catch (e) {} }, 60);
 }
+
+
+/* v7.11: los años de la ficha usan el mayor tamaño de letra que cabe en su casilla (se reduce solo si no entra) */
+function fitCardYears(root) {
+  (root || document).querySelectorAll('.xc-yr').forEach(el => {
+    if (!el.clientWidth) return;   // período contraído: se ajusta al desplegarlo
+    let fs = 15.5;
+    el.style.fontSize = fs + 'px';
+    while (el.scrollWidth > el.clientWidth && fs > 9) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+  });
+}
+window.addEventListener('resize', () => { const c = document.getElementById('album-sections'); if (c) fitCardYears(c); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { const c = document.getElementById('album-sections'); if (c) fitCardYears(c); });

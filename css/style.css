@@ -983,3 +983,61 @@ select.xe-in { cursor:pointer; }
 /* v7.07: en el Índice la zona geográfica es un subtítulo discreto (sin burbuja), por debajo del nombre del país */
 .xi-subrow { margin-top:3px; }
 .xi-tag { padding:0; border-radius:0; background:none; color:var(--xp-sand); opacity:.72; font-family:'Inter',sans-serif; font-style:normal; font-weight:600; font-size:11px; line-height:1.2; letter-spacing:.14em; }
+
+/* ===== v7.08 ===== */
+/* Fichas del Álbum: borde un poco más grueso */
+.xc { border-width:4.5px; }
+/* Estado TBD (conseguidas): borde #e8e240 */
+.xc.xc-brd-tbd { border-color:#e8e240; box-shadow:0 0 10px rgba(232,226,64,.28); }
+/* Rareza PLATA que aún no se tiene: borde #8f9cbc (en vez del rojo de las que faltan) */
+.xc.xc-brd-silver { border-color:#8f9cbc; }
+
+/* Cabecera del Álbum: una sola burbuja (fila 1: bandera · país · épocas; fila 2: buscador · editar · filtros) */
+.xa-bar.xa-bar2 { flex-direction:column; align-items:stretch; gap:10px; padding:11px; min-height:0; }
+.xa-r1 { display:flex; align-items:center; gap:10px; min-width:0; }
+.xa-r1 .xa-title { flex:1 1 0; min-width:0; }
+.xa-bar2 .xa-filters { margin-top:0; }
+.xa-bar2 .xa-filters .xp-btn { width:38px; height:38px; font-size:13px; }
+.xa-bar2 .xa-input { height:38px; background:rgba(var(--xp-plum-d-rgb),.55); }
+@media (max-width:420px) { .xa-bar2 .xa-filters .xp-btn { width:38px; height:38px; } .xa-bar2 .xa-filters { gap:5px; } }
+
+/* Botones de cada período: solo Girar y Faltantes, más grandes */
+.xa-tools { grid-template-columns:repeat(2,42px); gap:6px; }
+.xa-tools .xp-btn { width:42px; height:42px; font-size:16px; border-radius:13px; border-width:2px; }
+
+/* Explorar: zonas ordenables (solo con todas contraídas) */
+.xp-sortable .xp-head { cursor:grab; }
+.xp-sortable .xp-head:active { cursor:grabbing; }
+
+/* Editar país: lista de períodos */
+.xe-plist { display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto; scrollbar-width:thin; }
+.xe-prow { display:flex; align-items:center; gap:4px; }
+.xe-pn { flex:none; width:20px; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:11px; color:var(--xp-orange); }
+.xe-pin { flex:1; min-width:0; height:30px; font-size:12px; }
+.xe-ico-s { flex:none; width:28px; height:28px; font-size:10px; border-radius:9px; }
+.xe-ph { display:inline-block; }
+.xe-ico.xe-ico-del { background:transparent; color:#B3261E; box-shadow:inset 0 0 0 2px rgba(179,38,30,.4); }
+
+/* ===== v7.10: Opciones ===== */
+.xo-list { display:flex; flex-direction:column; gap:8px; }
+.xo-row { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; padding:12px 14px; border:0; border-radius:14px; background:rgba(var(--xp-plum-rgb),.10); text-align:left; color:var(--xp-plum); cursor:pointer; }
+.xo-row .xt-txt { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.xo-row b { font-size:14px; font-weight:800; }
+.xo-row small { font-size:11.5px; font-weight:600; color:rgba(var(--xp-plum-rgb),.65); }
+.xo-sw { flex:none; position:relative; width:46px; height:26px; border-radius:13px; background:rgba(var(--xp-plum-rgb),.3); transition:background .15s; }
+.xo-sw i { position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:transform .15s; }
+.xo-on .xo-sw { background:var(--xp-orange); }
+.xo-on .xo-sw i { transform:translateX(20px); }
+
+/* Opción 1: monedas sin difuminar (las que faltan se ven como las que se tienen) */
+.opt-nofade .coin-missing, .opt-nofade .xc .coin-front.coin-missing, .opt-nofade .xc .coin-back.coin-missing { opacity:1; filter:none; }
+
+/* Opción 2: marca visual — franja translúcida en diagonal (esquina sup. izquierda → inf. derecha) en las fichas de monedas que se tienen */
+.xc { --xc-mark:var(--xp-have-rgb); }
+.xc.xc-brd-tbd { --xc-mark:232,226,64; }
+.xc.border-\[\#a3b84a\] { --xc-mark:163,184,74; }
+.opt-mark .xc.xc-own::after { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; border-radius:16px;
+  background:linear-gradient(to top right, transparent calc(50% - 20px), rgba(var(--xc-mark),.5) calc(50% - 20px), rgba(var(--xc-mark),.5) calc(50% + 20px), transparent calc(50% + 20px)); }
+
+/* v7.11: años de la ficha más grandes y legibles (el tamaño exacto lo ajusta fitCardYears) */
+.xc-cell.xc-yr { font-family:'Inter',system-ui,sans-serif; font-weight:800; font-size:15.5px; letter-spacing:0; font-variant-numeric:tabular-nums lining-nums; text-overflow:clip; padding:3px 2px; }

@@ -13,7 +13,73 @@ function openEditCountryModal() {
   loadCardPhotoEditor(country.photo || '');
   updateCardPhotoPreview();
   updateCountryMoveUI();
+  pendingPeriodNames = {};
+  renderCountryPeriodsList();
   document.getElementById('edit-country-modal').classList.remove('hidden');
+}
+
+/* ----- v7.08: los períodos se editan desde "Editar país" (sustituye al botón de editar época del Álbum) ----- */
+let pendingPeriodNames = {};   // id de período → nombre escrito y aún sin guardar
+function setPendingPeriodName(pid, v) { pendingPeriodNames[pid] = v; }
+function renderCountryPeriodsList() {
+  const box = document.getElementById('edit-country-periods');
+  if (!box) return;
+  const list = periodsOfCountry(currentCountryId);
+  if (!list.length) { box.innerHTML = `<p class="xe-note">Este país aún no tiene períodos.</p>`; return; }
+  box.innerHTML = list.map((p, i) => {
+    const pid = jsArg(p.id), empty = coinsOfPeriod(p.id).length === 0;
+    const val = pendingPeriodNames[p.id] !== undefined ? pendingPeriodNames[p.id] : p.name;
+    return `<div class="xe-prow">
+      <span class="xe-pn">${String(i + 1).padStart(2, '0')}</span>
+      <input type="text" class="xe-in xe-pin" value="${esc(val)}" oninput="setPendingPeriodName('${pid}', this.value)" aria-label="Nombre del período">
+      <button type="button" class="xe-ico xe-ico-s" onclick="moveCountryPeriod('${pid}', -1)" ${i === 0 ? 'disabled' : ''} title="Subir período" aria-label="Subir período"><i class="fa-solid fa-arrow-up"></i></button>
+      <button type="button" class="xe-ico xe-ico-s" onclick="moveCountryPeriod('${pid}', 1)" ${i === list.length - 1 ? 'disabled' : ''} title="Bajar período" aria-label="Bajar período"><i class="fa-solid fa-arrow-down"></i></button>
+      <button type="button" class="xe-ico xe-ico-s" onclick="addCoinToPeriodFromCountryModal('${pid}')" title="Añadir moneda a este período" aria-label="Añadir moneda a este período"><i class="fa-solid fa-plus"></i></button>
+      ${empty
+        ? `<button type="button" class="xe-ico xe-ico-s xe-ico-del" onclick="deleteEmptyPeriodFromCountryModal('${pid}')" title="Eliminar período vacío" aria-label="Eliminar período vacío"><i class="fa-solid fa-trash"></i></button>`
+        : `<span class="xe-ico-s xe-ph" aria-hidden="true"></span>`}
+    </div>`;
+  }).join('');
+}
+function moveCountryPeriod(periodId, direction) {
+  movePeriod(periodId, direction);   // guarda y repinta
+  renderCountryPeriodsList();
+}
+function addCoinToPeriodFromCountryModal(periodId) {
+  if (!periodById(periodId)) return;
+  openCreateModal(periodId);   // la ficha nueva se abre por encima; esta ventana queda debajo con sus cambios
+}
+function deleteEmptyPeriodFromCountryModal(periodId) {
+  const p = periodById(periodId);
+  if (!p) return;
+  if (coinsOfPeriod(periodId).length > 0) { alert('Este período tiene monedas: solo se pueden eliminar períodos vacíos.'); return; }
+  if (!confirm(`¿Eliminar el período "${p.name}"? Está vacío.`)) return;
+  const owner = countryById(p.countryId);
+  periods = periods.filter(x => x.id !== periodId);
+  delete pendingPeriodNames[periodId];
+  if (owner && periodsOfCountry(owner.id).length === 0) owner.keep = true;   // el país se conserva (se elimina desde esta misma ventana)
+  if (albumPeriodId === periodId) albumPeriodId = '';
+  persistMeta();
+  render();
+  renderCountryPeriodsList();
+}
+// Valida los nombres de período escritos (no vacíos ni repetidos) y los aplica; false si hay algún error
+function applyPendingPeriodNames() {
+  const list = periodsOfCountry(currentCountryId);
+  const names = list.map(p => {
+    const raw = pendingPeriodNames[p.id];
+    return { p, name: raw === undefined ? p.name : String(raw).trim() };
+  });
+  if (names.some(x => !x.name)) { alert('Un período no puede quedarse sin nombre.'); return false; }
+  const seen = new Set();
+  for (const x of names) {
+    const k = normName(x.name);
+    if (seen.has(k)) { alert(`Hay dos períodos con el nombre «${x.name}» en este país.`); return false; }
+    seen.add(k);
+  }
+  names.forEach(x => { if (x.name !== x.p.name) x.p.name = x.name; });
+  pendingPeriodNames = {};
+  return true;
 }
 
 /* ----- Tarjeta del país en Explorar: foto ----- */
@@ -160,6 +226,7 @@ function saveEditedCountryName() {
 
   const flagVal = document.getElementById('input-edit-country-flag').value.trim().toLowerCase();
   if (flagVal && !FLAG_CODE_RE.test(flagVal)) { alert('Código de bandera no válido. Usa el código ISO de 2 letras (es, fr, de…) o déjalo vacío para que sea automática.'); return; }
+  if (!applyPendingPeriodNames()) return;   // v7.08: nombres de período editados en esta ventana
   if (flagVal) country.flag = flagVal; else delete country.flag;
   if (pendingFlagImage !== undefined) {
     if (pendingFlagImage) country.flagImage = pendingFlagImage; else delete country.flagImage;
@@ -313,6 +380,7 @@ function saveEditedPeriodName() {
     persistMeta();
     closeEditPeriodModal();
     render();
+    if (!document.getElementById('edit-country-modal').classList.contains('hidden')) renderCountryPeriodsList();   // lista de «Editar país»
     return;
   }
 

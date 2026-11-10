@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <script src="js/themes.js"></script>
+  <script src="js/options.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/tailwind.css">
@@ -43,6 +44,7 @@
             </label>
             <button onclick="closeSettingsMenu(); openImportModal();"><i class="fa-solid fa-file-csv"></i> CSV</button>
             <button onclick="closeSettingsMenu(); openThemeModal();"><i class="fa-solid fa-palette"></i> Temas</button>
+            <button onclick="closeSettingsMenu(); openOptionsModal();"><i class="fa-solid fa-sliders"></i> Opciones</button>
           </div>
         </div>
       </div>
@@ -107,28 +109,30 @@
     <!-- VISTA ÁLBUM -->
     <div id="view-album" class="xp hidden">
       <div class="xa-barwrap">
-      <div id="period-bar" class="xa-bar">
-        <button onclick="switchTab('indice')" id="album-country-title" class="xa-title" title="Volver al índice para cambiar de país"></button>
-        <button type="button" id="btn-periods-open" onclick="togglePeriodsOverlay()" class="xa-epo" aria-label="Ver épocas" aria-haspopup="true"></button>
-        <button onclick="openEditCountryModal()" class="xi-btn" title="Editar país" aria-label="Editar país"><i class="fa-solid fa-pen"></i></button>
+      <!-- v7.08: una sola burbuja. Fila 1: bandera · país · épocas. Fila 2: buscador · editar · filtros -->
+      <div id="period-bar" class="xa-bar xa-bar2">
+        <div class="xa-r1">
+          <button onclick="switchTab('indice')" id="album-country-title" class="xa-title" title="Volver al índice para cambiar de país"></button>
+          <button type="button" id="btn-periods-open" onclick="togglePeriodsOverlay()" class="xa-epo" aria-label="Ver épocas" aria-haspopup="true"></button>
+        </div>
+        <div class="xa-filters xa-r2" id="album-filters">
+          <div class="relative flex-1 min-w-0" id="country-search-wrap">
+            <input type="text" id="album-country-search" autocomplete="off" oninput="onCountrySearchInput(this.value)" onfocus="onCountrySearchInput(this.value)" onkeydown="onCountrySearchKey(event)" placeholder="País…" title="Ir a otro país" class="xa-input">
+            <div id="country-suggest" class="xa-suggest hidden"></div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+          <button onclick="openEditCountryModal()" title="Editar país" aria-label="Editar país" class="xp-btn"><i class="fa-solid fa-pen"></i></button>
+          <button id="btn-only-missing" onclick="toggleOnlyMissing()" title="Solo las que me faltan" aria-label="Solo las que me faltan" class="xp-btn"><i class="fa-solid fa-circle-exclamation"></i></button>
+          <button id="btn-only-owned" onclick="toggleOnlyOwned()" title="Solo las que tengo" aria-label="Solo las que tengo" class="xp-btn"><i class="fa-solid fa-circle-check"></i></button>
+          <button id="btn-only-special" onclick="toggleOnlySpecial()" title="Solo no circulantes (conmemorativas, colección, falsas de época…)" aria-label="Solo no circulantes" class="xp-btn"><i class="fa-solid fa-star"></i></button>
+          <button id="btn-toggle-periods" onclick="toggleAllPeriods()" title="Contraer períodos" aria-label="Contraer períodos" class="xp-btn"><i class="fa-solid fa-angles-up"></i></button>
+          </div>
+        </div>
       </div>
       <div id="periods-overlay" class="xa-ov hidden" role="menu" aria-label="Épocas">
         <div class="xa-ovback" onclick="closePeriodsOverlay()"></div>
         <div id="periods-ov-list" class="xa-ovpanel"></div>
       </div>
-      </div>
-
-      <div class="xa-filters" id="album-filters">
-        <div class="relative flex-1 min-w-0" id="country-search-wrap">
-          <input type="text" id="album-country-search" autocomplete="off" oninput="onCountrySearchInput(this.value)" onfocus="onCountrySearchInput(this.value)" onkeydown="onCountrySearchKey(event)" placeholder="País…" title="Ir a otro país" class="xa-input">
-          <div id="country-suggest" class="xa-suggest hidden"></div>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-        <button id="btn-only-missing" onclick="toggleOnlyMissing()" title="Solo las que me faltan" aria-label="Solo las que me faltan" class="xp-btn"><i class="fa-solid fa-circle-exclamation"></i></button>
-        <button id="btn-only-owned" onclick="toggleOnlyOwned()" title="Solo las que tengo" aria-label="Solo las que tengo" class="xp-btn"><i class="fa-solid fa-circle-check"></i></button>
-        <button id="btn-only-special" onclick="toggleOnlySpecial()" title="Solo no circulantes (conmemorativas, colección, falsas de época…)" aria-label="Solo no circulantes" class="xp-btn"><i class="fa-solid fa-star"></i></button>
-        <button id="btn-toggle-periods" onclick="toggleAllPeriods()" title="Contraer períodos" aria-label="Contraer períodos" class="xp-btn"><i class="fa-solid fa-angles-up"></i></button>
-        </div>
       </div>
 
       <div id="album-sections"></div>
@@ -163,8 +167,9 @@
               <button type="button" id="btn-country-right" onclick="moveCountryInZone(1)" class="xe-ico" title="Mover después" aria-label="Mover después"><i class="fa-solid fa-arrow-right"></i></button>
               <span id="edit-country-pos" class="xe-note"></span>
             </div></div>
-          <div class="xe-f"><label>Períodos</label>
-            <div class="xe-row"><button type="button" onclick="addPeriodFromCountryModal()" class="xe-btn xe-soft"><i class="fa-solid fa-plus"></i> Añadir período</button></div></div>
+          <div class="xe-f"><label>Períodos (nombre, orden, añadir moneda, eliminar vacío)</label>
+            <div id="edit-country-periods" class="xe-plist"></div>
+            <div class="xe-row" style="margin-top:6px"><button type="button" onclick="addPeriodFromCountryModal()" class="xe-btn xe-soft"><i class="fa-solid fa-plus"></i> Añadir período</button></div></div>
           <div class="xe-f"><label>Bandera (código ISO, opcional)</label>
             <div class="xe-row">
               <input type="text" id="input-edit-country-flag" maxlength="6" placeholder="Automática · ej: es, fr, gb-sct" oninput="updateFlagPreview()" class="xe-in" style="flex:1;min-width:0">
@@ -408,6 +413,15 @@
       <div class="xe-head"><h2 class="xe-title">Temas</h2><button type="button" onclick="closeThemeModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="xe-note" style="margin:0 0 10px">Elige la paleta de colores de toda la aplicación. Se guarda en este dispositivo.</p>
       <div id="theme-list" class="xt-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL OPCIONES -->
+  <div id="options-modal" class="xe-overlay hidden" onclick="if(event.target===this)closeOptionsModal()">
+    <div class="xe-sheet xe-mid">
+      <div class="xe-head"><h2 class="xe-title">Opciones</h2><button type="button" onclick="closeOptionsModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <p class="xe-note" style="margin:0 0 10px">Se guardan en este dispositivo.</p>
+      <div id="options-list" class="xo-list"></div>
     </div>
   </div>
 

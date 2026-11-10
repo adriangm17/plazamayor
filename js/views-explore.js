@@ -230,7 +230,7 @@ function toggleAddZoneRow() {
 function onExploreSearch(value) { exploreSearch = value; renderExplorar(); }
 
 function countryStats(c) {
-  const normal = coinsOfCountry(c.id).filter(x => !isSilverCoin(x));
+  const normal = completionList(coinsOfCountry(c.id)).filter(x => !isSilverCoin(x));   // v7.08: las variantes no cuentan
   const a = normal.filter(x => x.acquired).length;
   return { a, t: normal.length, pct: normal.length ? Math.round(a / normal.length * 100) : 0 };
 }
@@ -256,7 +256,7 @@ function dotsLayout(n) {
   return { s, g: Math.round(s * k * 10) / 10, cols, shown: Math.min(n, DOTS_MAX_ROWS * DOTS_MAX_COLS) };   // (más de 15 períodos: se dibujan los 15 primeros)
 }
 function periodPctOf(p) {
-  const all = coinsOfPeriod(p.id), normal = all.filter(x => !isSilverCoin(x)), list = normal.length ? normal : all;   // un período solo de plata se mide con sus monedas de plata
+  const all = completionList(coinsOfPeriod(p.id)), normal = all.filter(x => !isSilverCoin(x)), list = normal.length ? normal : all;   // un período solo de plata se mide con sus monedas de plata
   return list.length ? Math.round(list.filter(x => x.acquired).length / list.length * 100) : 0;
 }
 
@@ -300,6 +300,8 @@ function renderContinents() {
   if (exploreContinent) order = order.filter(k => k !== UNCLASSIFIED && zoneContinent(k) === exploreContinent);
 
   const q = normKey(exploreSearch);
+  // v7.08: las zonas solo se ordenan (y el lápiz de editar zona solo sale) cuando están TODAS contraídas
+  const allCollapsed = !q && order.length > 0 && order.every(k => exploreClosed[k]);
   let shown = 0;
   const html = order.map((cont, idx) => {
     const all = (groups[cont] || []).map(c => ({ c, s: countryStats(c) }));
@@ -319,11 +321,11 @@ function renderContinents() {
     const zid = jsArg(cont);
     const n = all.length;
     return `
-      <section data-zone="${esc(cont)}" class="xp-zone">
-        <div class="xp-head" onpointerdown="zoneDragStart(event)" onclick="toggleExploreContinent('${zid}')" role="button" aria-expanded="${!closed}" aria-label="${esc(cont)}">
+      <section data-zone="${esc(cont)}" class="xp-zone${allCollapsed ? ' xp-sortable' : ''}">
+        <div class="xp-head" ${allCollapsed ? 'onpointerdown="zoneDragStart(event)"' : ''} onclick="toggleExploreContinent('${zid}')" role="button" aria-expanded="${!closed}" aria-label="${esc(cont)}">
           <span class="xp-num">${num}</span>
           <span class="xp-title">${esc(cont)}</span>
-          ${(!isBuiltin && !isUncl) ? `
+          ${(!isBuiltin && !isUncl && allCollapsed) ? `
             <button type="button" class="xp-mini" onclick="event.stopPropagation(); openEditZoneModal('${zid}')" title="Editar zona" aria-label="Editar zona"><i class="fa-solid fa-pen text-[11px]"></i></button>` : ''}
           <span class="xp-count">${n} ${n === 1 ? 'País' : 'Países'}</span>
         </div>
@@ -457,7 +459,12 @@ function zoneDragEnd(e) {
   zoneDragSuppressClick = true;
   setTimeout(() => { zoneDragSuppressClick = false; }, 350);
   const names = [...document.querySelectorAll('#explorar-content [data-zone]')].map(el => el.dataset.zone);
-  zoneOrder = names;
+  // Con un filtro de continente solo se ven algunas zonas: se recolocan solo esas, en los huecos que ya ocupaban, y las demás no se mueven
+  const full = applyZoneOrder([...allZones(), UNCLASSIFIED]);
+  const slots = full.map((k, i) => names.includes(k) ? i : -1).filter(i => i >= 0);
+  const merged = full.slice();
+  slots.forEach((slot, n) => { merged[slot] = names[n]; });
+  zoneOrder = merged;
   saveZoneOrder();
   renderExplorar();
 }
