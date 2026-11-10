@@ -715,8 +715,24 @@ function openCreateModal(periodId) {
     if (owner) document.getElementById('new-country').value = owner.name;
     document.getElementById('new-period').value = preset.name;
   }
+  document.getElementById('new-km').value = 'KM#';   // v7.13: ya sale escrito (se puede borrar para poner N#, Y#…)
+  resetLinkFields();
   document.getElementById('create-modal').classList.remove('hidden');
 }
+
+/* v7.13: campo KM# sin espacios y enlaces solo de Numista / Ucoin */
+function cleanKmValue(v) { return String(v || '').replace(/\s+/g, ''); }
+function cleanKmField(el) {
+  const pos = el.selectionStart, before = el.value.slice(0, pos).replace(/\s+/g, '').length;
+  const v = cleanKmValue(el.value);
+  if (v !== el.value) { el.value = v; try { el.setSelectionRange(before, before); } catch (e) {} }
+}
+function checkLinkField(el, okFn) {
+  const bad = el.value.trim() !== '' && !okFn(el.value);
+  el.style.boxShadow = bad ? 'inset 0 0 0 2px #d92d20' : '';
+  return !bad;
+}
+function resetLinkFields() { ['new-numista-url', 'new-ucoin-url'].forEach(id => { const e = document.getElementById(id); if (e) e.style.boxShadow = ''; }); }
 
 async function openAdvancedEditFromModal() {
   closeModal();
@@ -731,7 +747,8 @@ async function openAdvancedEditFromModal() {
   document.getElementById('new-period').value = coinPeriodName(coin);
   document.getElementById('new-denom').value = coin.denom;
   document.getElementById('new-ceca-material').value = coin.cecaMaterial || '';
-  document.getElementById('new-km').value = coin.km || '';
+  document.getElementById('new-km').value = cleanKmValue(coin.km) || 'KM#';
+  resetLinkFields();
   document.getElementById('new-rarity').value = coin.rarity || 'C';
   document.getElementById('new-range').value = coin.range || '';
   document.getElementById('new-type').value = coinType(coin);
@@ -987,15 +1004,20 @@ async function handleSaveCoin(e) {
   const countryName = document.getElementById('new-country').value.trim();
   const periodName = document.getElementById('new-period').value.trim() || 'General';
   if (!countryName) return;
+  const numVal = document.getElementById('new-numista-url').value.trim(), ucoVal = document.getElementById('new-ucoin-url').value.trim();
+  if (numVal && !numistaUrlOk(numVal)) { checkLinkField(document.getElementById('new-numista-url'), numistaUrlOk); alert('El enlace de Numista tiene que ser de numista.com (por ejemplo https://en.numista.com/…).'); document.getElementById('new-numista-url').focus(); return; }
+  if (ucoVal && !ucoinUrlOk(ucoVal)) { checkLinkField(document.getElementById('new-ucoin-url'), ucoinUrlOk); alert('El enlace de Ucoin tiene que ser de ucoin.net (por ejemplo https://en.ucoin.net/…).'); document.getElementById('new-ucoin-url').focus(); return; }
+  let kmVal = cleanKmValue(document.getElementById('new-km').value);
+  if (!/\d/.test(kmVal)) kmVal = '';   // solo el prefijo («KM#») = sin número
   const fields = {
     denom: document.getElementById('new-denom').value,
     cecaMaterial: document.getElementById('new-ceca-material').value,
-    km: document.getElementById('new-km').value,
+    km: kmVal,
     rarity: document.getElementById('new-rarity').value,
     type: coinType({ type: document.getElementById('new-type').value }),
     range: document.getElementById('new-range').value || 'S/F',
-    numistaUrl: document.getElementById('new-numista-url').value,
-    ucoinUrl: document.getElementById('new-ucoin-url').value
+    numistaUrl: numVal,
+    ucoinUrl: ucoVal
   };
   const imgFront = document.getElementById('new-img-front').value;
   const imgBack = document.getElementById('new-img-back').value;

@@ -614,6 +614,7 @@ function renderCoinCard(c, opts) {
 
       <div class="relative w-full flex justify-center">
       ${gradeMark}
+      ${linkWarnHtml(c, opts)}
       ${variantMarkHtml(c)}
       <div class="w-28 h-28 sm:w-32 sm:h-32 my-0.5 coin-perspective" onclick="flipGridCoin(event, '${id}')">
         <div id="grid-coin-inner-${id}" class="coin-inner">
@@ -715,10 +716,32 @@ function addVariantFromSheet() {
 function fitCardYears(root) {
   (root || document).querySelectorAll('.xc-yr').forEach(el => {
     if (!el.clientWidth) return;   // período contraído: se ajusta al desplegarlo
-    let fs = 15.5;
+    let fs = 14.5;
     el.style.fontSize = fs + 'px';
     while (el.scrollWidth > el.clientWidth && fs > 9) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
   });
 }
 window.addEventListener('resize', () => { const c = document.getElementById('album-sections'); if (c) fitCardYears(c); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { const c = document.getElementById('album-sections'); if (c) fitCardYears(c); });
+
+
+/* v7.13: enlaces. Numista solo acepta numista.com y Ucoin solo ucoin.net; si falta alguno o no es válido, la ficha lleva un «!» */
+function linkHostOk(url, domain) {
+  try { const u = new URL(String(url).trim()); return /^https?:$/.test(u.protocol) && (u.hostname === domain || u.hostname.endsWith('.' + domain)); } catch (e) { return false; }
+}
+function numistaUrlOk(url) { return linkHostOk(url, 'numista.com'); }
+function ucoinUrlOk(url) { return linkHostOk(url, 'ucoin.net'); }
+function coinLinkProblems(c) {
+  const out = [];
+  if (!c) return out;
+  const n = String(c.numistaUrl || '').trim(), u = String(c.ucoinUrl || '').trim();
+  if (!n) out.push('Falta el enlace a Numista'); else if (!numistaUrlOk(n)) out.push('El enlace de Numista no es de numista.com');
+  if (!u) out.push('Falta el enlace a Ucoin'); else if (!ucoinUrlOk(u)) out.push('El enlace de Ucoin no es de ucoin.net');
+  return out;
+}
+function linkWarnHtml(c, opts) {
+  const list = (opts && opts.group && opts.group.length > 1) ? opts.group : [c];
+  const probs = [...new Set(list.flatMap(coinLinkProblems))];
+  if (!probs.length) return '';
+  return `<span class="xc-warn" title="${esc(probs.join(' · '))}"><i class="fa-solid fa-exclamation"></i></span>`;
+}

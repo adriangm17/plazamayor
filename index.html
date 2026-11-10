@@ -344,7 +344,7 @@
           <div class="xe-f xe-c4"><label>Ceca / variante</label>
             <input type="text" id="new-ceca-material" placeholder="Ej: Variante A" class="xe-in"></div>
           <div class="xe-f xe-c4"><label>KM#</label>
-            <input type="text" id="new-km" placeholder="Ej: KM# 677" class="xe-in"></div>
+            <input type="text" id="new-km" placeholder="Ej: KM#677" class="xe-in" autocomplete="off" oninput="cleanKmField(this)"></div>
           <div class="xe-f xe-c4"><label>Rareza</label>
             <select id="new-rarity" class="xe-in">
               <option value="A">A</option>
@@ -374,9 +374,9 @@
               <span id="edit-coin-pos" class="xe-note"></span>
             </div></div>
           <div class="xe-f xe-c6"><label>Enlace Numista</label>
-            <input type="url" id="new-numista-url" placeholder="https://en.numista.com/..." class="xe-in"></div>
+            <input type="url" id="new-numista-url" placeholder="https://en.numista.com/..." class="xe-in" oninput="checkLinkField(this, numistaUrlOk)"></div>
           <div class="xe-f xe-c6"><label>Enlace Ucoin</label>
-            <input type="url" id="new-ucoin-url" placeholder="https://en.ucoin.net/..." class="xe-in"></div>
+            <input type="url" id="new-ucoin-url" placeholder="https://en.ucoin.net/..." class="xe-in" oninput="checkLinkField(this, ucoinUrlOk)"></div>
           <div class="xe-c6"><div class="xe-f"><label>Anverso</label>
             <div class="xe-drop">
               <i class="fa-solid fa-cloud-arrow-up"></i>

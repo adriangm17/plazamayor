@@ -36,3 +36,5 @@ v7.08: Compleción: las variantes (KM# con sufijo) ya no cuentan en los porcenta
 v7.09: borde de las fichas 4,5 px; TBD #e8e240; cabecera del país con fondo sólido (sin foto).
 v7.11: años de las fichas del Álbum al mayor tamaño que cabe (Inter), con ajuste automático.
 v7.12: años de las fichas un 20% más pequeños (15,5 px máx.).
+v7.13: más margen en el año; KM# sin espacios y con «KM#» por defecto; enlaces solo numista.com / ucoin.net (aviso «!» en la ficha si falta o no es válido).
+v7.14: año de la ficha con los márgenes de la v7.12 y fuente algo menor (14,5 px).
