@@ -38,3 +38,5 @@ v7.11: años de las fichas del Álbum al mayor tamaño que cabe (Inter), con aju
 v7.12: años de las fichas un 20% más pequeños (15,5 px máx.).
 v7.13: más margen en el año; KM# sin espacios y con «KM#» por defecto; enlaces solo numista.com / ucoin.net (aviso «!» en la ficha si falta o no es válido).
 v7.14: año de la ficha con los márgenes de la v7.12 y fuente algo menor (14,5 px).
+v7.15: Identificación: el límite de tiempo ahora cubre también la lectura de la respuesta (antes podía quedarse cargando sin fin); si un modelo de Gemini no responde a tiempo se prueba el siguiente; se pide poco «razonamiento» a los modelos Flash (más rápido); el catálogo adjunto a la petición se omite si es enorme. Cache sw: plaza-mayor-v92.
+v7.16: Identificación (móvil): «Hacer foto» abre la cámara dentro de la app con un círculo de guía; la foto se recorta justo al círculo (la moneda ocupa más y se lee mejor). Si el navegador no da acceso a la cámara, se usa la cámara normal del sistema. Cache sw: plaza-mayor-v93.

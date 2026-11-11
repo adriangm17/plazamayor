@@ -1044,3 +1044,18 @@ select.xe-in { cursor:pointer; }
 
 /* v7.13: aviso «!» de enlaces (Numista / Ucoin ausentes o no válidos) */
 .xc-warn { position:absolute; right:2px; top:22px; z-index:10; pointer-events:none; display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#ffb020; color:#3a1a00; font-size:12px; box-shadow:0 0 0 2px var(--xp-plum); }
+
+/* ===== Cámara de Identificación con círculo de guía ===== */
+.xcam { position:fixed; inset:0; z-index:100000; background:#000; overflow:hidden; }
+.xcam.hidden { display:none; }
+.xcam video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.xcam-ring { position:absolute; border-radius:50%; border:3px solid rgba(255,255,255,.95); box-shadow:0 0 0 200vmax rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.25); pointer-events:none; }
+.xcam-ring::before, .xcam-ring::after { content:''; position:absolute; background:rgba(255,255,255,.45); }
+.xcam-ring::before { left:50%; top:calc(50% - 10px); width:1px; height:20px; }
+.xcam-ring::after { top:50%; left:calc(50% - 10px); height:1px; width:20px; }
+.xcam-top { position:absolute; left:0; right:0; top:0; padding:calc(env(safe-area-inset-top,0px) + 16px) 16px 0; text-align:center; color:#fff; font:600 15px/1.3 'Inter',sans-serif; text-shadow:0 1px 6px rgba(0,0,0,.8); }
+.xcam-bar { position:absolute; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:space-around; padding:18px 24px calc(env(safe-area-inset-bottom,0px) + 26px); }
+.xcam-shot { width:76px; height:76px; border-radius:50%; border:5px solid #fff; background:rgba(255,255,255,.25); box-shadow:inset 0 0 0 5px rgba(0,0,0,.0); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.xcam-shot:active { background:#fff; }
+.xcam-side { width:52px; height:52px; border-radius:50%; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:21px; cursor:pointer; }
+html.xcam-open, html.xcam-open body { overflow:hidden; }

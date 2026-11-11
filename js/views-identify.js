@@ -10,6 +10,7 @@ const IDENT_USAGE_LS = 'plaza-gemini-usage';
 // Los modelos de Google cambian a menudo: se prueban por orden y se pueden editar o detectar desde la propia pestaña
 const IDENT_DEFAULT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
 const IDENT_API = 'https://generativelanguage.googleapis.com/v1beta/';
+const IDENT_CAT_MAX = 80000;  // caracteres máx. del catálogo que se adjunta a la petición (más = más lenta)
 const IDENT_MAX_DIM = 1536;   // lado mayor de la foto enviada (permite leer años y leyendas gastadas sin pesar demasiado)
 
 let identPhotos = [];        // [{ src (dataURL de vista previa), b64, mime }] · máx. 2 (anverso y reverso)
@@ -249,10 +250,13 @@ function identCatalogueText() {
     identCatMap.push(c.id);
     lines.push(`${identCatMap.length - 1}|${co.name}|${String(c.denom).replace(/\s+/g, ' ')}|${c.range || ''}`);
   }));
-  return lines.join('\n');
+  const txt = lines.join('\n');
+  if (txt.length > IDENT_CAT_MAX) { identCatMap = []; return ''; }   // catálogo enorme: no se envía (el cruce local funciona igual)
+  return txt;
 }
 
 function identPrompt() {
+  const CAT = identCatalogueText();
   const known = countries.map(c => c.name).join(', ') || '(none)';
   return `You are an expert numismatist. The attached image(s) show ONE coin (obverse and/or reverse). Identify what can be read on it.
 Rules:
@@ -268,9 +272,8 @@ Rules:
 - confidence: 0 to 1.
 - year_legible: false if the year is worn, partly hidden or you are not sure of every digit (then year may be your best guess or null).
 - notes: one short sentence only if something matters (worn, partial view, doubt about the year...).
-- catalogue_index: AFTER reading the coin on its own merits (never let the list below bias what you read), the index of the catalogue entry that is clearly the same coin type: same country, same face value and the same series/portrait/design for that year. Use null if no entry clearly matches: the coin may well be missing from the catalogue.
-CATALOGUE (index|country|denomination|years):
-${identCatalogueText()}`;
+- catalogue_index: ${CAT ? '' : 'always null (no catalogue is attached). '}AFTER reading the coin on its own merits (never let the list below bias what you read), the index of the catalogue entry that is clearly the same coin type: same country, same face value and the same series/portrait/design for that year. Use null if no entry clearly matches: the coin may well be missing from the catalogue.
+${CAT ? 'CATALOGUE (index|country|denomination|years):\n' + CAT : ''}`;
 }
 
 function identApiError(status, body, raw) {
@@ -287,26 +290,36 @@ function identApiError(status, body, raw) {
   return e;
 }
 
+// El temporizador sigue activo hasta haber leído TODA la respuesta (antes se apagaba al llegar las cabeceras y, si la conexión
+// se quedaba a medias, la pantalla giraba para siempre). Devuelve { r, raw }.
 async function identFetch(url, init, ms) {
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), ms || 60000);
-  try { return await fetch(url, Object.assign({}, init, { signal: ctl.signal })); }
-  catch (err) { const e = new Error(String(err && err.message || err)); e.code = (err && err.name === 'AbortError') ? 'timeout' : 'net'; throw e; }
+  const timer = setTimeout(() => ctl.abort(), ms || 45000);
+  try {
+    const r = await fetch(url, Object.assign({}, init, { signal: ctl.signal }));
+    const raw = await r.text();
+    return { r, raw };
+  } catch (err) { const e = new Error(String(err && err.message || err)); e.code = (err && err.name === 'AbortError') ? 'timeout' : 'net'; throw e; }
   finally { clearTimeout(timer); }
 }
 
-// Prueba los modelos por orden: si uno no existe, no tiene cuota o está saturado, pasa al siguiente
-async function identGenerate(parts, schema) {
+// Prueba los modelos por orden: si uno no existe, no tiene cuota, está saturado o NO RESPONDE a tiempo, pasa al siguiente
+async function identGenerate(parts, schema, ms) {
   const key = identKey();
   if (!key) { const e = new Error('nokey'); e.code = 'nokey'; throw e; }
-  const body = { contents: [{ parts }], generationConfig: { responseMimeType: 'application/json', responseSchema: schema } };
+  const mk = think => JSON.stringify({ contents: [{ parts }], generationConfig: Object.assign({ responseMimeType: 'application/json', responseSchema: schema }, think ? { thinkingConfig: { thinkingLevel: 'low' } } : {}) });
+  const models = identModels();
   let last = null;
-  for (const model of identModels()) {
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    if (i > 0 && identBusy) { identBusyMsg = 'Google no responde con ' + models[i - 1] + ': probando ' + model + '…'; renderIdentificar(); }
     try {
-      const r = await identFetch(IDENT_API + 'models/' + encodeURIComponent(model) + ':generateContent', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body)
-      }, 60000);
-      const raw = await r.text();
+      const url = IDENT_API + 'models/' + encodeURIComponent(model) + ':generateContent';
+      const init = body => ({ method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body });
+      // Los modelos Flash piensan antes de contestar (lento): se pide poco razonamiento. Si el modelo no admite ese ajuste, se repite sin él.
+      const think = !/lite/.test(model);
+      let { r, raw } = await identFetch(url, init(mk(think)), ms || 45000);
+      if (think && r.status === 400 && /think/i.test(raw)) ({ r, raw } = await identFetch(url, init(mk(false)), ms || 45000));
       let j = null; try { j = JSON.parse(raw); } catch (e) {}
       if (!r.ok) throw identApiError(r.status, j, raw.slice(0, 200));
       const cand = j && j.candidates && j.candidates[0];
@@ -316,7 +329,9 @@ async function identGenerate(parts, schema) {
       identBumpUsage();
       return { data: JSON.parse(txt), model };
     } catch (e) {
+      e.model = model;
       last = e;
+      if (e.code === 'timeout' || e.code === 'net') e.next = true;   // un modelo colgado no debe bloquear a los demás
       if (e.next) continue;
       throw e;
     }
@@ -335,7 +350,7 @@ function identErrorText(e) {
   if (c === 'nomodel') return 'Ninguno de los modelos configurados existe ya. Pulsa la llave y «Detectar modelos».';
   if (c === 'server') return 'Los servidores de Google están saturados. Inténtalo de nuevo en un momento.';
   if (c === 'net') return 'No hay conexión con Google. Comprueba tu conexión a internet.';
-  if (c === 'timeout') return 'Google tarda demasiado en responder. Inténtalo de nuevo.';
+  if (c === 'timeout') return 'Google tarda demasiado en responder' + (e.model ? ' (último modelo probado: ' + e.model + ')' : '') + '. Inténtalo de nuevo; si se repite, pulsa la llave y «Detectar modelos».';
   if (c === 'blocked') return 'Google no ha querido analizar esa imagen' + (e.detail ? ' (' + e.detail + ')' : '') + '. Prueba con otra foto.';
   if (c === 'empty') return 'La respuesta de Gemini ha llegado vacía. Inténtalo de nuevo.';
   return 'No se ha podido identificar: ' + ((e && e.message) || 'error desconocido').slice(0, 160);
@@ -390,12 +405,94 @@ async function identAddFiles(files, target) {
   identExtract = null; identRefine = null;
   renderIdentificar();
 }
+function identPlacePhoto(p, target) {
+  if (Number.isInteger(target)) identPhotos[Math.min(target, identPhotos.length)] = p;
+  else if (identPhotos.length >= 2) identPhotos[1] = p; else identPhotos.push(p);
+  identExtract = null; identRefine = null; identError = '';
+  renderIdentificar();
+}
+
+/* ----- Cámara propia con guía circular (móvil) -----
+   El selector de cámara del sistema no permite dibujar encima, así que se abre la cámara dentro de la app (getUserMedia, necesita https)
+   con un círculo de guía. Se recorta justo el cuadrado del círculo (la moneda llena más foto = se leen mejor año y leyendas).
+   Si el navegador no da la cámara, se usa la cámara normal del sistema. */
+let identCamStream = null, identCamTarget = null, identCamEl = null;
+function identCamBuild() {
+  if (identCamEl) return identCamEl;
+  const d = document.createElement('div');
+  d.id = 'xcam'; d.className = 'xcam hidden';
+  d.innerHTML = `<video id="xcam-video" playsinline muted autoplay></video>
+    <div class="xcam-ring" id="xcam-ring"></div>
+    <div class="xcam-top"><span id="xcam-hint">Centra la moneda en el círculo</span></div>
+    <div class="xcam-bar">
+      <button type="button" class="xcam-side" onclick="identCamGallery()" aria-label="Elegir de la galería"><i class="fa-solid fa-image"></i></button>
+      <button type="button" class="xcam-shot" onclick="identCamShot()" aria-label="Hacer foto"></button>
+      <button type="button" class="xcam-side" onclick="identCamClose()" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+    </div>`;
+  document.body.appendChild(d);
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && identCamStream) identCamClose(); });
+  window.addEventListener('resize', identCamLayout);
+  identCamEl = d;
+  return d;
+}
+// Diámetro y posición del círculo (en píxeles de pantalla)
+function identCamGeom() {
+  const W = window.innerWidth, H = window.innerHeight;
+  const D = Math.round(Math.min(W * 0.86, H * 0.62));
+  return { W, H, D, cx: W / 2, cy: H * 0.46 };
+}
+function identCamLayout() {
+  const ring = document.getElementById('xcam-ring'); if (!ring) return;
+  const g = identCamGeom();
+  ring.style.width = ring.style.height = g.D + 'px';
+  ring.style.left = (g.cx - g.D / 2) + 'px'; ring.style.top = (g.cy - g.D / 2) + 'px';
+}
+async function identCamOpen(target) {
+  identCamTarget = Number.isInteger(target) ? target : null;
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return identPick('xid-file-cam', target);
+  const el = identCamBuild();
+  try {
+    identCamStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1920 } } });
+  } catch (e) { identCamStream = null; return identPick('xid-file-cam', target); }   // permiso denegado o sin cámara: cámara del sistema
+  const v = document.getElementById('xcam-video');
+  v.srcObject = identCamStream;
+  const side = identCamTarget === 1 ? 'reverso' : (identCamTarget === 0 ? 'anverso' : (identPhotos.length ? 'reverso' : 'anverso'));
+  document.getElementById('xcam-hint').textContent = 'Centra el ' + side + ' de la moneda en el círculo';
+  el.classList.remove('hidden');
+  document.documentElement.classList.add('xcam-open');
+  identCamLayout();
+  try { await v.play(); } catch (e) {}
+}
+function identCamClose() {
+  if (identCamStream) { identCamStream.getTracks().forEach(t => t.stop()); identCamStream = null; }
+  const v = document.getElementById('xcam-video'); if (v) v.srcObject = null;
+  if (identCamEl) identCamEl.classList.add('hidden');
+  document.documentElement.classList.remove('xcam-open');
+}
+function identCamGallery() { const t = identCamTarget; identCamClose(); identPick('xid-file-gal', t); }
+function identCamShot() {
+  const v = document.getElementById('xcam-video');
+  if (!v || !v.videoWidth) return;
+  const g = identCamGeom(), vw = v.videoWidth, vh = v.videoHeight;
+  // el vídeo se ve con object-fit: cover → se pasa del círculo en pantalla a píxeles del vídeo
+  const k = Math.max(g.W / vw, g.H / vh), ox = (g.W - vw * k) / 2, oy = (g.H - vh * k) / 2;
+  const side = Math.min(vw, vh, (g.D * 1.06) / k);   // un 6 % de margen alrededor del círculo
+  const sx = Math.max(0, Math.min(vw - side, (g.cx - ox) / k - side / 2)), sy = Math.max(0, Math.min(vh - side, (g.cy - oy) / k - side / 2));
+  const out = Math.max(1, Math.round(Math.min(side, IDENT_MAX_DIM)));
+  const cv = document.createElement('canvas'); cv.width = cv.height = out;
+  cv.getContext('2d').drawImage(v, sx, sy, side, side, 0, 0, out, out);
+  const src = cv.toDataURL('image/jpeg', 0.88);
+  const t = identCamTarget;
+  identCamClose();
+  identPlacePhoto({ src, b64: src.slice(src.indexOf(',') + 1), mime: 'image/jpeg' }, t);
+}
+
 function identPick(id, target) { identTarget = Number.isInteger(target) ? target : null; const el = document.getElementById(id); if (el) { el.value = ''; el.click(); } }
 function identOnFiles(input) { const t = identTarget; identTarget = null; identAddFiles(input.files, t); }
 function identClear() { identPhotos = []; identExtract = null; identRefine = null; identError = ''; renderIdentificar(); }
 // Al salir de la pestaña se borra todo (fotos, lectura, resultado y texto manual): al volver siempre está el botón de hacer foto
 function identReset() {
-  identRunId++;
+  identRunId++; identCamClose();
   identPhotos = []; identExtract = null; identRefine = null; identError = ''; identBusy = false; identLastMatch = null; identTarget = null; identManualText = '';
   const m = document.getElementById('xid-manual'); if (m) m.value = '';
   const st = document.getElementById('xid-settings'); if (st) st.classList.add('hidden');
@@ -449,7 +546,7 @@ async function identRefineCore(m) {
     }
   }
   const schema = { type: 'OBJECT', properties: { same_design_indices: { type: 'ARRAY', items: { type: 'INTEGER' } }, best_index: { type: 'INTEGER', nullable: true }, reason: { type: 'STRING', nullable: true } }, required: ['same_design_indices'] };
-  const { data } = await identGenerate(parts, schema);
+  const { data } = await identGenerate(parts, schema, 60000);
   const idx = new Set((data.same_design_indices || []).filter(i => Number.isInteger(i) && i >= 0 && i < sent.length));
   if (Number.isInteger(data.best_index) && data.best_index >= 0 && data.best_index < sent.length) idx.add(data.best_index);
   return { sent: new Set(sent.map(g => g.key)), same: new Set([...idx].map(i => sent[i].key)), reason: data.reason || '' };
@@ -504,9 +601,9 @@ async function identDetectModels() {
   if (!k) { identSetMsg('Primero pega tu clave.', true); return; }
   identSetMsg('Consultando a Google…');
   try {
-    const r = await identFetch(IDENT_API + 'models?pageSize=200', { headers: { 'x-goog-api-key': k } }, 20000);
-    const j = await r.json().catch(() => null);
-    if (!r.ok) throw identApiError(r.status, j, '');
+    const { r, raw } = await identFetch(IDENT_API + 'models?pageSize=200', { headers: { 'x-goog-api-key': k } }, 20000);
+    let j = null; try { j = JSON.parse(raw); } catch (e2) {}
+    if (!r.ok) throw identApiError(r.status, j, raw.slice(0, 200));
     const ver = id => { const m = id.match(/(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
     const list = (j.models || []).filter(m => /flash/.test(m.name) && (m.supportedGenerationMethods || []).includes('generateContent') && !/tts|image|live|audio|embed|thinking|preview|exp|robot|computer|native|learn/.test(m.name))
       .map(m => m.name.replace(/^models\//, ''))
@@ -709,7 +806,7 @@ function identCaptureHtml() {
   if (!identPhotos.length) {
     h += touch
       ? `<div class="xid-take">
-          <button type="button" class="xid-cam" onclick="identPick('xid-file-cam')"><i class="fa-solid fa-camera"></i><span>HACER FOTO</span></button>
+          <button type="button" class="xid-cam" onclick="identCamOpen()"><i class="fa-solid fa-camera"></i><span>HACER FOTO</span></button>
           <button type="button" class="xid-btn xid-soft xid-full" onclick="identPick('xid-file-gal')"><i class="fa-solid fa-image"></i> Elegir de la galería</button>
         </div>`
       : `<button type="button" class="xid-drop" onclick="identPick('xid-file-gal')">
@@ -717,11 +814,11 @@ function identCaptureHtml() {
           <span>Pulsa aquí, arrastra la imagen o pégala con Ctrl+V</span>
         </button>`;
   } else {
-    const cam = touch ? 'xid-file-cam' : 'xid-file-gal', n = identPhotos.length;
+    const n = identPhotos.length, pick = t => touch ? `identCamOpen(${t})` : `identPick('xid-file-gal', ${t})`;
     h += `<div class="xid-photos xid-p${n}">${identPhotos.map((p, i) => `<figure class="xid-ph"><img src="${p.src}" alt="Foto ${i + 1}"><figcaption>${n > 1 ? (i === 0 ? 'Anverso' : 'Reverso') : 'Tu foto'}</figcaption></figure>`).join('')}</div>
       <div class="xid-row xid-wrap">
-        <button type="button" class="xid-btn xid-soft" onclick="identPick('${cam}', ${n - 1})" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-rotate-left"></i> ${n > 1 ? 'Repetir reverso' : 'Repetir'}</button>
-        ${n < 2 ? `<button type="button" class="xid-btn xid-soft" onclick="identPick('${cam}', 1)" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-camera-rotate"></i> Foto al reverso</button>` : ''}
+        <button type="button" class="xid-btn xid-soft" onclick="${pick(n - 1)}" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-rotate-left"></i> ${n > 1 ? 'Repetir reverso' : 'Repetir'}</button>
+        ${n < 2 ? `<button type="button" class="xid-btn xid-soft" onclick="${pick(1)}" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-camera-rotate"></i> Foto al reverso</button>` : ''}
         <button type="button" class="xid-btn xid-big xid-grow" onclick="identRun()" ${identBusy ? 'disabled' : ''}><i class="fa-solid fa-magnifying-glass"></i> IDENTIFICAR</button>
       </div>`;
   }
