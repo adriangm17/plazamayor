@@ -598,7 +598,9 @@ select.xe-in { cursor:pointer; }
 .xh-brand { display:flex; align-items:center; gap:9px; flex:none; }
 .xh-logo { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--xp-orange); color:var(--xp-plum-d); font-size:14px; }
 .xh-name { margin:0; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:17px; line-height:1; color:var(--xp-sand-l); white-space:nowrap; }
-.xh-status { flex:1; min-width:0; text-align:center; font-size:10px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(var(--xp-sand-rgb),.75); }
+.xh-mid { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px; }
+.xh-ver { flex:none; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; border:1px solid rgba(var(--xp-sand-rgb),.35); color:rgba(var(--xp-sand-rgb),.8); letter-spacing:.3px; }
+.xh-status { flex:0 1 auto; min-width:0; text-align:center; font-size:10px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(var(--xp-sand-rgb),.75); }
 .xh-status.xh-bad { color:#FF9D8A; } .xh-status.xh-warn { color:#F5C26B; } .xh-status.xh-ok { color:#9BE3B4; }
 .xh-actions { display:flex; align-items:center; gap:7px; flex:none; }
 .xh-add, .xh-set { height:34px; display:flex; align-items:center; gap:6px; padding:0 13px; border:0; border-radius:12px; font-size:12px; font-weight:800; cursor:pointer; font-family:'Inter',system-ui,sans-serif; }
@@ -612,7 +614,7 @@ select.xe-in { cursor:pointer; }
 .xh-menu button:hover, .xh-menu label:hover { background:rgba(var(--xp-orange-rgb),.16); }
 .xh-menu i { width:16px; text-align:center; color:var(--xp-orange); }
 .xh-menu input { display:none; }
-@media (max-width:480px) { .xh-brand .xh-name { font-size:15px; } .xh-add, .xh-set { padding:0 10px; } .xh-status { display:none; } }
+@media (max-width:480px) { .xh-brand .xh-name { font-size:15px; } .xh-add, .xh-set { padding:0 10px; } .xh-mid { display:none; } }
 
 .xn-bar { position:fixed; left:0; right:0; bottom:0; z-index:40; background:var(--xp-plum-d); border-radius:0; border-top:2px solid rgba(var(--xp-orange-rgb),.55); box-shadow:0 -4px 12px rgba(var(--xp-plum-d-rgb),.3); padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px)); }
 .xn-in { max-width:34rem; margin:0 auto; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; }
@@ -1005,9 +1007,13 @@ select.xe-in { cursor:pointer; }
 .xa-tools { grid-template-columns:repeat(2,42px); gap:6px; }
 .xa-tools .xp-btn { width:42px; height:42px; font-size:16px; border-radius:13px; border-width:2px; }
 
-/* Explorar: zonas ordenables (solo con todas contraídas) */
+/* Explorar: zonas ordenables (las contraídas; v8.02) */
 .xp-sortable .xp-head { cursor:grab; }
 .xp-sortable .xp-head:active { cursor:grabbing; }
+/* Mientras se arrastra una zona, las demás se pliegan visualmente */
+.xp-dragmode .xp-zone:not(.xp-dragging) .xp-row,
+.xp-dragmode .xp-zone:not(.xp-dragging) .xp-picker,
+.xp-dragmode .xp-zone:not(.xp-dragging) .xp-note { display:none; }
 
 /* Editar país: lista de períodos */
 .xe-plist { display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto; scrollbar-width:thin; }

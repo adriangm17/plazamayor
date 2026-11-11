@@ -300,7 +300,8 @@ function renderContinents() {
   if (exploreContinent) order = order.filter(k => k !== UNCLASSIFIED && zoneContinent(k) === exploreContinent);
 
   const q = normKey(exploreSearch);
-  // v7.08: las zonas solo se ordenan (y el lápiz de editar zona solo sale) cuando están TODAS contraídas
+  // v7.08: el lápiz de editar zona solo sale cuando están TODAS contraídas
+  // v8.02: cualquier zona contraída se puede arrastrar para ordenarla, aunque haya otras desplegadas
   const allCollapsed = !q && order.length > 0 && order.every(k => exploreClosed[k]);
   let shown = 0;
   const html = order.map((cont, idx) => {
@@ -321,8 +322,8 @@ function renderContinents() {
     const zid = jsArg(cont);
     const n = all.length;
     return `
-      <section data-zone="${esc(cont)}" class="xp-zone${allCollapsed ? ' xp-sortable' : ''}">
-        <div class="xp-head" ${allCollapsed ? 'onpointerdown="zoneDragStart(event)"' : ''} onclick="toggleExploreContinent('${zid}')" role="button" aria-expanded="${!closed}" aria-label="${esc(cont)}">
+      <section data-zone="${esc(cont)}" class="xp-zone${(!q && closed) ? ' xp-sortable' : ''}">
+        <div class="xp-head" ${(!q && closed) ? 'onpointerdown="zoneDragStart(event)"' : ''} onclick="toggleExploreContinent('${zid}')" role="button" aria-expanded="${!closed}" aria-label="${esc(cont)}">
           <span class="xp-num">${num}</span>
           <span class="xp-title">${esc(cont)}</span>
           ${(!isBuiltin && !isUncl && allCollapsed) ? `
@@ -378,6 +379,13 @@ function zoneDragActivate() {
   if (!zoneDrag) return;
   const d = zoneDrag;
   d.active = true;
+  // v8.02: durante el arrastre las demás zonas se pliegan (solo visualmente) para poder ordenar entre ellas;
+  // se mantiene la tarjeta bajo el dedo compensando el salto de altura
+  const topBefore = d.card.getBoundingClientRect().top;
+  const box = document.getElementById('explorar-content');
+  if (box) box.classList.add('xp-dragmode');
+  const topAfter = d.card.getBoundingClientRect().top;
+  d.startY = d.y - (topBefore - topAfter);
   d.card.style.transition = 'none';
   d.card.style.position = 'relative';
   d.card.style.zIndex = '40';
@@ -479,6 +487,8 @@ function zoneDragCleanup() {
     s.transition = s.position = s.zIndex = s.transform = s.boxShadow = s.touchAction = '';
     d.card.classList.remove('xp-dragging');
     try { d.card.releasePointerCapture(d.pointerId); } catch (err) {}
+    const box = document.getElementById('explorar-content');
+    if (box) box.classList.remove('xp-dragmode');
   }
   window.removeEventListener('pointermove', zoneDragMove);
   window.removeEventListener('pointerup', zoneDragEnd);

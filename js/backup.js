@@ -33,6 +33,8 @@ async function exportBackup() {
 }
 
 function updateBackupStatus() {
+  const ver = document.getElementById('app-version');
+  if (ver) ver.textContent = 'v' + APP_VERSION;
   const el = document.getElementById('backup-status');
   if (!el) return;
   let last = null;
@@ -42,12 +44,15 @@ function updateBackupStatus() {
     el.className = 'xh-status xh-bad';
     return;
   }
-  const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+  const when = new Date(last);
+  const days = Math.floor((Date.now() - when.getTime()) / 86400000);
+  // v8.02: fecha y hora de la última copia (dd/mm/aaaa hh:mm)
+  const fecha = isNaN(when.getTime()) ? '' : ' · ' + when.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + when.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   if (days >= 14) {
-    el.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Copia hace ${days}d`;
+    el.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Copia hace ${days}d${fecha}`;
     el.className = 'xh-status xh-warn';
   } else {
-    el.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> Copia: ${days === 0 ? 'hoy' : 'hace ' + days + 'd'}`;
+    el.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> Copia: ${days === 0 ? 'hoy' : 'hace ' + days + 'd'}${fecha}`;
     el.className = 'xh-status xh-ok';
   }
 }
