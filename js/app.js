@@ -71,6 +71,7 @@ window.addEventListener('DOMContentLoaded', () => {
   updateBackupStatus();
   setupImageDropzones();
   switchTab('indice');
-  Promise.resolve(loadData()).catch(() => {}).then(() => navInit());
+  const startApp = () => Promise.resolve(loadData()).catch(() => {}).then(() => navInit());
+  if (typeof PMSync !== 'undefined' && PMSync.enabled) PMSync.boot(startApp); else startApp();   // v8.03: con la nube configurada, primero el acceso con cuenta
   setupPWA();
 });

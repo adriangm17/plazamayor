@@ -20,6 +20,9 @@ js/stats-map.js     mapa mundial de Estadísticas (fronteras de world-atlas, se 
 js/modals.js        ventanas: país, período, ficha, crear/editar, CSV
 js/backup.js        exportar / importar copias (formato v2; acepta v1)
 js/nav.js            botón "atrás" del móvil: historial de fichas, filtros, país/período y pestañas
+js/config.js        datos de la nube (URL y clave pública de Supabase)
+js/vendor/supabase.js  librería de Supabase (copia local, no hace falta internet para cargarla)
+js/sync.js          cuenta y sincronización con la nube (login, subir, bajar, fotos, permisos)
 js/app.js           arranque y navegación
 
 Abre index.html desde un servidor (p. ej. GitHub Pages). Mantén la carpeta tal cual.
@@ -42,3 +45,5 @@ v7.15: Identificación: el límite de tiempo ahora cubre también la lectura de 
 v7.16: Identificación (móvil): «Hacer foto» abre la cámara dentro de la app con un círculo de guía; la foto se recorta justo al círculo (la moneda ocupa más y se lee mejor). Si el navegador no da acceso a la cámara, se usa la cámara normal del sistema. Cache sw: plaza-mayor-v93.
 
 v8.02: Explorar: cualquier zona contraída se puede ordenar arrastrándola (mantener pulsado), aunque haya otras desplegadas (durante el arrastre las demás se pliegan solas). Cabecera: el aviso de copia de seguridad muestra fecha y hora de la última copia y, a su lado, el número de versión (APP_VERSION en js/utils.js, se sube en cada iteración). Cache sw: plaza-mayor-v94.
+
+v8.03: Nube (Supabase). Al abrir la app pide correo y contraseña (la sesión se queda guardada en el dispositivo). El catálogo (zonas, países, períodos, fichas y fotos) lo sube solo el administrador; las monedas que marcas (ejemplares) las suben y las ven los dos usuarios; el padre (miembro) no puede editar el catálogo. Sigue funcionando sin conexión: los cambios se suben solos al volver. Las fotos van a un almacén privado y se descargan al verlas. Primera vez en un dispositivo con datos: si la nube ya tiene catálogo, pregunta antes de sustituir (y descarga antes una copia). Si borras muchas cosas de golpe pide confirmación antes de borrarlas de la nube. Ajustes: estado de la cuenta, «Sincronizar» y «Cerrar sesión»; el puntito junto a Ajustes indica el estado (verde sincronizado, naranja trabajando, amarillo pendiente, gris sin conexión, rojo error). Nueva base de datos local v4 (almacén 'sync'). Cache sw: plaza-mayor-v95 (la nube nunca pasa por la caché).

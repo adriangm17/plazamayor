@@ -246,7 +246,8 @@ async function loadData() {
   try { seeded = localStorage.getItem('numis_seeded') === '1'; } catch (e) {}
   let prefs = null, needSave = false;
 
-  if (coins.length === 0 && countries.length === 0 && !seeded) {
+  const cloudOn = (typeof PMSync !== 'undefined' && PMSync.enabled);   // v8.03: con cuenta en la nube no se siembran monedas de ejemplo
+  if (coins.length === 0 && countries.length === 0 && !seeded && !cloudOn) {
     coins = JSON.parse(JSON.stringify(defaultInitialCoins));
     prefs = DEFAULT_LEGACY_PREFS;
     needSave = true;

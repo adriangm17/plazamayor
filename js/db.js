@@ -1,7 +1,7 @@
 /* ===== BASE DE DATOS (IndexedDB) E IMÁGENES =====
-   Almacenes: coins, images (Blob), countries, periods */
+   Almacenes: coins, images (Blob), countries, periods, sync (v8.03: estado de la sincronización con la nube) */
 const DB_NAME = 'NumismaticaDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 let db = null;
 
 function initDB() {
@@ -14,6 +14,7 @@ function initDB() {
       if (!instance.objectStoreNames.contains('images')) instance.createObjectStore('images');
       if (!instance.objectStoreNames.contains('countries')) instance.createObjectStore('countries', { keyPath: 'id' });
       if (!instance.objectStoreNames.contains('periods')) instance.createObjectStore('periods', { keyPath: 'id' });
+      if (!instance.objectStoreNames.contains('sync')) instance.createObjectStore('sync');
     };
     request.onsuccess = (e) => { db = e.target.result; db.onversionchange = () => { db.close(); db = null; }; resolve(db); };
     request.onerror = (e) => reject(e.target.error);

@@ -38,9 +38,11 @@
         <button onclick="openCreateModal()" class="xh-add"><i class="fa-solid fa-plus"></i> Añadir</button>
 
         <div class="relative">
-          <button onclick="toggleSettingsMenu(event)" class="xh-set"><i class="fa-solid fa-gear"></i> Ajustes <i class="fa-solid fa-chevron-down xh-chev"></i></button>
+          <button onclick="toggleSettingsMenu(event)" class="xh-set"><i class="fa-solid fa-gear"></i> Ajustes <span id="sync-dot" class="xs-dot xs-off" title="Sin sesión"></span> <i class="fa-solid fa-chevron-down xh-chev"></i></button>
 
           <div id="settings-dropdown" class="xh-menu hidden">
+            <div id="sync-info" class="xs-info hidden"></div>
+            <button onclick="closeSettingsMenu(); PMSync.enabled && PMSync.syncNow({ pullToo: true });"><i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar</button>
             <button onclick="closeSettingsMenu(); exportBackup();"><i class="fa-solid fa-download"></i> Exportar</button>
             <label><i class="fa-solid fa-upload"></i> Importar
               <input type="file" accept=".json" onchange="closeSettingsMenu(); importBackup(event)" class="hidden">
@@ -48,6 +50,7 @@
             <button onclick="closeSettingsMenu(); openImportModal();"><i class="fa-solid fa-file-csv"></i> CSV</button>
             <button onclick="closeSettingsMenu(); openThemeModal();"><i class="fa-solid fa-palette"></i> Temas</button>
             <button onclick="closeSettingsMenu(); openOptionsModal();"><i class="fa-solid fa-sliders"></i> Opciones</button>
+            <button onclick="closeSettingsMenu(); PMSync.enabled && PMSync.logout();"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button>
           </div>
         </div>
       </div>
@@ -443,6 +446,19 @@
     </div>
   </div>
 
+  <!-- ACCESO (v8.03): sin sesión no se ve la colección -->
+  <div id="login-overlay" class="xs-login hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+    <form class="xs-card" onsubmit="PMSync.login(event)" autocomplete="on">
+      <img src="logo-coin.png" alt="" width="56" height="56">
+      <h2 id="login-title">Plaza Mayor</h2>
+      <p>Entra con tu cuenta para abrir la colección.</p>
+      <input type="email" id="login-email" name="username" autocomplete="username" inputmode="email" placeholder="Correo" aria-label="Correo" required>
+      <input type="password" id="login-pass" name="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña" required>
+      <div id="login-error" class="xs-err" role="alert"></div>
+      <button type="submit" id="login-btn">Entrar</button>
+    </form>
+  </div>
+
     <script src="js/utils.js"></script>
   <script src="js/db.js"></script>
   <script src="js/data.js"></script>
@@ -457,6 +473,9 @@
   <script src="js/modals.js"></script>
   <script src="js/backup.js"></script>
   <script src="js/nav.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
