@@ -9,7 +9,7 @@
   const CFG = (typeof PM_CLOUD !== 'undefined') ? PM_CLOUD : null;
   const API = {
     enabled: !!(CFG && typeof supabase !== 'undefined' && supabase.createClient),
-    boot, syncNow, login, logout, role: () => role, user: () => user, status: () => status,
+    boot, syncNow, login, logout, role: () => role, user: () => user, status: () => status, client: () => sb,
     _test: {}
   };
   window.PMSync = API;
@@ -109,6 +109,7 @@
     const dot = document.getElementById('sync-dot');
     if (dot) { dot.className = 'xs-dot xs-' + status.state; dot.title = status.text; }
     const acct = document.getElementById('xm-acct'), st = document.getElementById('xm-sync');
+    const nvb = document.getElementById('xm-nv'); if (nvb) nvb.classList.toggle('hidden', role !== 'admin');
     if (acct) acct.innerHTML = user ? `<b>${esc(user.email || '')}</b>${role ? ` <span class="xs-role">${role === 'admin' ? 'admin' : 'miembro'}</span>` : ''}` : 'Sin sesión';
     if (st) {
       let when = '';

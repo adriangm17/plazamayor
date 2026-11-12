@@ -176,6 +176,22 @@ function renderErrorsPage(box) {
 function toggleStatsRank() { statsRankAll = !statsRankAll; renderEstadisticas(); }
 function resetStatsZoom() { statsRange = null; renderEstadisticas(); }
 
+/* v8.21: valor orientativo de la colección (Numista): suma de la mediana de cada ejemplar, en su estado si Numista lo tiene */
+function nvSection(sec) {
+  if (!window.NumistaValor) return '';
+  NumistaValor.load();
+  const t = NumistaValor.collectionTotal();
+  if (!t.items) return '';
+  const admin = NumistaValor.isAdmin();
+  const falta = t.items - t.withValue;
+  const hint = 'Suma de la mediana de todos los precios de Numista (todos los años y estados) de cada ejemplar tuyo; si Numista tiene precios en su estado, se usa ese. Es una orientación, no una tasación.';
+  const inner = t.withValue
+    ? `<div class="xs-stat" style="margin-bottom:10px"><div class="xs-stat-label"><i class="fa-solid fa-chart-line"></i>Valor orientativo</div><div class="xs-stat-value">${fmtN(t.total, 0)} €</div><div class="xs-stat-sub">${t.withValue} de ${t.items} ${t.items === 1 ? 'ejemplar' : 'ejemplares'} con valor${falta ? ` · ${falta} sin valor` : ''}</div></div>`
+    : `<p class="xs-hint">Todavía no hay valores calculados.</p>`;
+  const btn = admin ? `<button onclick="NumistaValor.startBatch(true)" class="xs-btn2 w-full"><i class="fa-solid fa-calculator mr-1"></i>Calcular los que faltan (mis monedas)</button>` : '';
+  return sec('07', 'Valor orientativo', hint, inner + btn);
+}
+
 function renderEstadisticas() {
   if (typeof navSync === 'function') navSync();
   const box = document.getElementById('estadisticas-content'); if (!box) return;
@@ -185,7 +201,7 @@ function renderEstadisticas() {
   const nErr = coinsWithLinkErrors().length;
   const errSection = nErr ? `
     <section class="xs-sec">
-      <div class="xp-head" style="cursor:default"><span class="xp-num">07</span><span class="xp-title" style="font-size:20px">Errores en enlaces</span></div>
+      <div class="xp-head" style="cursor:default"><span class="xp-num">08</span><span class="xp-title" style="font-size:20px">Errores en enlaces</span></div>
       <p class="xs-hint">Fichas a las que les falta el enlace de Numista o Ucoin, o no es válido (salen con «!» en el Álbum). Toca para verlas todas.</p>
       <div class="xs-panel">
         <button onclick="pickStatsErrors()" class="xs-warn w-full flex items-center justify-between gap-2 text-left" style="margin:0">
@@ -282,7 +298,7 @@ function renderEstadisticas() {
           <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${s.noYear} ${s.noYear === 1 ? 'moneda sin año' : 'monedas sin año'} (no ${s.noYear === 1 ? 'aparece' : 'aparecen'} en el gráfico)</span>
           <i class="fa-solid fa-chevron-${statsNoYearOpen ? 'up' : 'down'} text-[10px]"></i>
         </button>
-        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}${errSection}`;
+        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}${nvSection(sec)}${errSection}`;
   attachStatsChart();
   ensureWorldMap();
 }

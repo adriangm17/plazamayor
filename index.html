@@ -51,6 +51,7 @@
             <button type="button" class="xm-row" onclick="toggleSetSub('data', event)" aria-expanded="false"><i class="fa-solid fa-database"></i><span>Datos</span><i class="fa-solid fa-chevron-down xm-ch"></i></button>
             <div id="xm-sub-data" class="xm-sub hidden">
               <button type="button" class="xm-item" onclick="closeSettingsMenu(); PMSync.enabled && PMSync.syncNow({ pullToo: true });"><i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar</button>
+              <button type="button" id="xm-nv" class="xm-item hidden" onclick="closeSettingsMenu(); NumistaValor.startBatch(false);"><i class="fa-solid fa-chart-line"></i> Calcular valores Numista</button>
               <button type="button" class="xm-item" onclick="closeSettingsMenu(); exportBackup();"><i class="fa-solid fa-download"></i> Exportar</button>
               <label class="xm-item"><i class="fa-solid fa-upload"></i> Importar
                 <input type="file" accept=".json" onchange="closeSettingsMenu(); importBackup(event)" class="hidden">
@@ -332,6 +333,7 @@
           <button type="button" id="modal-btn-ucoin" onclick="openUcoinLink()" class="xp-lk" title="Ucoin" aria-label="Ucoin">U</button>
           <button type="button" id="modal-btn-numista" onclick="openNumistaLink()" class="xp-lk" title="Numista" aria-label="Numista">N</button>
         </div>
+        <div id="nv-box" class="xf-nv hidden"></div>
         <div id="silver-valuation-container" class="xf-silver hidden">
           <div class="xf-silver-head">
             <span class="xf-silver-title"><i class="fa-solid fa-scale-balanced"></i> VALOR PLATA</span>
@@ -500,6 +502,7 @@
   <script src="js/config.js"></script>
   <script src="js/vendor/supabase.js"></script>
   <script src="js/sync.js"></script>
+  <script src="js/numista.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

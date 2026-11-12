@@ -795,6 +795,7 @@ function openVariantsSheet(key, okStr) {
         <div class="xv-r3">
           ${rar ? `<span class="xv-rar" style="${silver ? getRarityStyle('PLATA') : getRarityStyle(rar)}">${esc(rar)}</span>` : ''}
           ${silver ? `<span class="xv-price">${esc(price || '0,00 €')}</span>` : ''}
+          ${(() => { const nv = window.NumistaValor && NumistaValor.estimate(x, bestGrade(x)); return nv ? `<span class="xv-price xv-nv" title="Valor orientativo (Numista)">≈ ${esc(NumistaValor.fmt(nv.value))}</span>` : ''; })()}
           ${grade ? `<span class="xv-grade">${esc(grade)}</span>` : ''}
         </div>
       </div>
