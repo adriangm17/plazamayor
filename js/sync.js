@@ -110,7 +110,7 @@
     if (dot) { dot.className = 'xs-dot xs-' + status.state; dot.title = status.text; }
     const acct = document.getElementById('xm-acct'), st = document.getElementById('xm-sync');
     const nvb = document.getElementById('xm-nv'); if (nvb) nvb.classList.toggle('hidden', !user);
-    if (acct) acct.innerHTML = user ? `<b>${esc(user.email || '')}</b>${role ? ` <span class="xs-role">${role === 'admin' ? 'admin' : 'miembro'}</span>` : ''}` : 'Sin sesión';
+    if (acct) acct.innerHTML = user ? `<b>${esc(user.email || '')}</b>${role ? ` <span class="xs-role xs-role-${role === 'admin' ? 'admin' : 'miembro'}">${role === 'admin' ? 'admin' : 'miembro'}</span>` : ''}` : 'Sin sesión';
     if (st) {
       let when = '';
       if (lastOkAt) { const d = new Date(lastOkAt); const hoy = d.toDateString() === new Date().toDateString(); when = '<br>Última: ' + (hoy ? '' : d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ') + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); }

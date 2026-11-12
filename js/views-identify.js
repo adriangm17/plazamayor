@@ -297,6 +297,7 @@ async function identFetch(url, init, ms) {
   const timer = setTimeout(() => ctl.abort(), ms || 45000);
   try {
     const r = await fetch(url, Object.assign({}, init, { signal: ctl.signal }));
+    if (/:generateContent/.test(String(url)) && window.PMTokens) PMTokens.countGoogle();   // v8.24: cuenta para Ajustes → Tokens
     const raw = await r.text();
     return { r, raw };
   } catch (err) { const e = new Error(String(err && err.message || err)); e.code = (err && err.name === 'AbortError') ? 'timeout' : 'net'; throw e; }

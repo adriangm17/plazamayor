@@ -104,7 +104,8 @@
     }
     return data;
   }
-  function note(res) { if (res && res.usadas != null) usage = { usadas: res.usadas, limite: res.limite }; }
+  function note(res) { if (res && res.usadas != null) { usage = { usadas: res.usadas, limite: res.limite }; if (window.PMTokens) PMTokens.noteNumista(usage); } }
+  async function fetchUsage() { const u = await call({ accion: 'uso' }); note(u); return { usadas: u.usadas, limite: u.limite }; }
 
   async function computeOne(coin, force) {
     const id = idOf(coin);
@@ -215,7 +216,7 @@
     bar(`${stop || 'Terminado.'} Calculados ${done}${noPrice ? ` (${noPrice} sin precios en Numista)` : ''}${skipped ? ` · saltados ${skipped}` : ''}${usage ? ` · ${usage.usadas}/${usage.limite} peticiones este mes` : ''}`, false);
   }
 
-  window.NumistaValor = { cardValue, groupValue, toggleBox, close() { open = false; }, idOf, load, rowOf, estimate, collectionTotal, renderModal, computeFromModal, startBatch, cancelBatch, fmt: eur, isAdmin, usage: () => usage, pending: pendingList };
+  window.NumistaValor = { fetchUsage, cardValue, groupValue, toggleBox, close() { open = false; }, idOf, load, rowOf, estimate, collectionTotal, renderModal, computeFromModal, startBatch, cancelBatch, fmt: eur, isAdmin, usage: () => usage, pending: pendingList };
 })();
 
 /* Cuando cambian los valores se repinta lo que esté a la vista (con repaint=true también el álbum, que lleva el valor en la casilla de rareza) */

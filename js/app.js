@@ -9,7 +9,7 @@ function toggleSettingsMenu(event) {
 // Ajustes: Información y Datos se despliegan dentro del propio menú
 function toggleSetSub(which, event) {
   if (event) event.stopPropagation();
-  ['info', 'data'].forEach(k => {
+  ['info', 'data', 'tokens'].forEach(k => {
     const sub = document.getElementById('xm-sub-' + k), btn = sub && sub.previousElementSibling;
     const open = k === which && sub.classList.contains('hidden');
     sub.classList.toggle('hidden', !open);
