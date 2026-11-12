@@ -133,8 +133,8 @@ function makeAlphaRail(cfg) {
   const railEl = () => document.getElementById(cfg.rail), bubbleEl = () => document.getElementById(cfg.bubble);
   function geom() {
     const rail = railEl(); if (!rail || !rail.children.length) return null;
-    const spans = [...rail.children], first = spans[0].offsetTop, last = spans[spans.length - 1];
-    return { rail, spans, first, slot: (last.offsetTop + last.offsetHeight - first) / spans.length || 1 };
+    const spans = [...rail.children];
+    return { rail, spans, cs: spans.map(sp => sp.offsetTop + sp.offsetHeight / 2) };   // centro de cada letra (la ☆ puede ocupar más hueco)
   }
   function apply() {
     const g = geom(); if (!g) return;
@@ -145,7 +145,8 @@ function makeAlphaRail(cfg) {
     const b = bubbleEl(); if (!b) return;
     const r = g.rail.getBoundingClientRect(), sp0 = g.spans[0];
     const x = r.left + sp0.offsetLeft + sp0.offsetWidth / 2 - AMP * S.amp - GAP;   // a la izquierda del punto más saliente del arco
-    const y = r.top + g.first + (S.cur + 0.5) * g.slot;
+    const cs = g.cs, j = Math.max(0, Math.min(cs.length - 2, Math.floor(S.cur)));
+    const y = r.top + (cs.length < 2 ? cs[0] : cs[j] + (S.cur - j) * (cs[j + 1] - cs[j]));
     b.style.transform = `translate3d(${(x - 22).toFixed(1)}px, ${(y - 22).toFixed(1)}px, 0)`;
   }
   function loop() {
@@ -157,7 +158,13 @@ function makeAlphaRail(cfg) {
     S.raf = requestAnimationFrame(loop);
   }
   const kick = () => { if (!S.raf) S.raf = requestAnimationFrame(loop); };
-  const fracOf = (g, e) => Math.max(0, Math.min(g.spans.length - 1, (e.clientY - g.rail.getBoundingClientRect().top - g.first) / g.slot - 0.5));
+  const fracOf = (g, e) => {
+    const y = e.clientY - g.rail.getBoundingClientRect().top, c = g.cs, n = c.length;
+    if (n < 2 || y <= c[0]) return 0;
+    if (y >= c[n - 1]) return n - 1;
+    let j = 0; while (j < n - 2 && y >= c[j + 1]) j++;
+    return j + (y - c[j]) / (c[j + 1] - c[j]);
+  };
   function pick(e) {
     const g = geom(); if (!g) return;
     const f = fracOf(g, e);
@@ -206,7 +213,7 @@ function alphaLettersOf(list) {
 
 // Buscador de país del Álbum: al elegir letra se filtran los países por esa inicial
 const albumRail = makeAlphaRail({
-  rail: 'country-ov-rail', bubble: 'country-ov-bubble',
+  rail: 'country-ov-rail', bubble: 'country-ov-bubble', arc: false, gap: 58,   // igual que el de la pestaña Índice
   onLetter(l) {
     const inp = document.getElementById('country-ov-input'); if (inp) inp.value = l;
     renderCountryOverlay();
@@ -230,8 +237,9 @@ function renderCountryOverlay() {
   box.innerHTML = list.length === 0
     ? `<div class="xc-none">Ningún país empieza por «${esc(value.trim())}»</div>`
     : list.map(c => `
-      <button type="button" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="xc-item ${c.id === currentCountryId ? 'xc-cur' : ''}">
-        ${flagChip(c, 30, 21)}<span class="xc-name"><b>${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span>
+      <button type="button" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="xi-card xc-card ${c.id === currentCountryId ? 'xc-cur' : ''}">
+        <span class="xi-head"><span class="xi-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}" role="img" aria-label="Bandera de ${esc(c.name)}"></span>
+        <span class="xi-name xc-name"><b>${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span></span>
       </button>`).join('');
 }
 function onCountryOverlayKey(e) {

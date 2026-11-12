@@ -77,3 +77,7 @@ v8.16: índice de letras igual que el vídeo de referencia: columna recta en rep
 v8.17: letras del índice más grandes y sin barras de scroll. Pestaña Índice: las fichas llegan hasta el final de la barra de búsqueda y en la columna de la derecha hay un índice de letras (mismo estilo: arco + burbuja) que baja hasta el primer país con esa inicial. Cache sw: plaza-mayor-v109.
 
 v8.18: índice de letras de la pestaña Índice: letras fijas con fondo de color, con burbuja, y al elegir letra se filtran los países que empiezan por ella. Cache sw: plaza-mayor-v110.
+
+v8.19: Índice: el botón expandir/contraer se mantiene al hacer scroll; la ☆ del menú de letras lleva un círculo. Álbum: el buscador de país usa fichas del estilo del Índice (solo bandera y nombre) y el mismo menú lateral de letras (fijo, con fondo y burbuja). Cache sw: plaza-mayor-v111.
+
+v8.20: la ☆ del menú de letras queda dentro de la barra morada con espacio respecto a las letras. Cache sw: plaza-mayor-v112.

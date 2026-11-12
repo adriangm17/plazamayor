@@ -1262,3 +1262,28 @@ body.xp-scrolled #view-indice .xp-tools { display:flex; visibility:hidden; opaci
 /* v8.18: índice de letras de la pestaña Índice: fondo de color y letras fijas (la burbuja sí sale) */
 .xc-rail.xi-rail, .xc-rail.xi-rail.xc-on { background:var(--xp-plum); border-radius:27px; box-shadow:0 4px 12px rgba(var(--xp-plum-rgb),.3); padding:6px 0; }
 .xi-rail .xc-rl, .xi-rail.xc-on .xc-rl { color:var(--xp-orange); text-shadow:none; font-size:19px; }
+
+/* v8.19 */
+/* 1. Índice: el botón expandir/contraer se mantiene al hacer scroll */
+body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer-events:auto; }
+/* 2. La ☆ del índice de letras (arriba del todo) destaca con un círculo */
+.xi-rail .xc-rl { position:relative; z-index:0; }
+.xi-rail .xc-rl:first-child { font-size:22px; color:var(--xp-plum-d); }
+.xi-rail .xc-rl:first-child::before { content:''; position:absolute; left:50%; top:50%; width:34px; height:34px; margin:-17px 0 0 -17px; border-radius:50%; background:var(--xp-orange); z-index:-1; box-shadow:0 0 0 2px rgba(var(--xp-sand-rgb),.35); }
+/* 3. Buscador de país del Álbum: fichas del estilo de la pestaña Índice, resumidas (bandera y nombre), y menú lateral igual */
+.xc-top { padding:12px 12px 8px; }
+.xc-close { width:54px !important; }
+.xc-list { display:flex; flex-direction:column; gap:6px; padding:6px 76px calc(16px + env(safe-area-inset-bottom,0px)) 12px; }
+.xc-card { display:block; width:100%; text-align:left; border:2px solid transparent; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.xc-card:active { transform:scale(.985); }
+.xc-card.xc-cur { border-color:var(--xp-orange); }
+.xc-card .xi-head { min-width:0; }
+.xc-card .xc-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xc-card .xc-name b { color:var(--xp-orange); font-weight:800; }
+.xc-none { padding:30px 10px; }
+#country-ov-rail.xc-rail.xi-rail { position:absolute; right:12px; left:auto; width:54px; top:calc(env(safe-area-inset-top,0px) + 82px); bottom:calc(14px + env(safe-area-inset-bottom,0px)); height:auto; }
+
+/* v8.20: la ☆ queda dentro de la barra morada, con aire respecto a las letras */
+.xc-rail.xi-rail, .xc-rail.xi-rail.xc-on { padding:12px 0 8px; }
+.xi-rail .xc-rl:first-child { flex:0 0 44px; width:34px; margin:0; align-items:flex-start; padding-top:6px; box-sizing:border-box; }
+.xi-rail .xc-rl:first-child::before { top:17px; }
