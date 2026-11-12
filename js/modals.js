@@ -499,7 +499,7 @@ function openCoinModal(id) {
 
   renderCoinItems();
   toggleSilverValuation(coin.rarity);
-  if (window.NumistaValor) { NumistaValor.renderModal(coin); NumistaValor.load(); }
+  if (window.NumistaValor) { NumistaValor.close(); NumistaValor.renderModal(coin); NumistaValor.load(); }
 
   // Las dos caras a la vez (sin girar)
   const mat = (coin.cecaMaterial || '').toLowerCase();

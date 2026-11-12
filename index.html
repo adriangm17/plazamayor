@@ -330,10 +330,10 @@
       <div class="xf-card xf-bar">
         <div class="xf-r xf-r-add">
           <button type="button" onclick="addCoinItem()" class="xf-add"><i class="fa-solid fa-plus"></i> MONEDA</button>
+          <button type="button" id="modal-btn-nv" onclick="NumistaValor.toggleBox()" class="xp-lk" title="Valor orientativo" aria-label="Valor orientativo"><i class="fa-solid fa-chart-line" style="font-style:normal;font-size:17px"></i></button>
           <button type="button" id="modal-btn-ucoin" onclick="openUcoinLink()" class="xp-lk" title="Ucoin" aria-label="Ucoin">U</button>
           <button type="button" id="modal-btn-numista" onclick="openNumistaLink()" class="xp-lk" title="Numista" aria-label="Numista">N</button>
         </div>
-        <div id="nv-box" class="xf-nv hidden"></div>
         <div id="silver-valuation-container" class="xf-silver hidden">
           <div class="xf-silver-head">
             <span class="xf-silver-title"><i class="fa-solid fa-scale-balanced"></i> VALOR PLATA</span>
@@ -349,6 +349,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Valor orientativo (Numista): se abre con el botón de la gráfica -->
+      <div id="nv-box" class="xf-card xf-nv hidden"></div>
 
       <div class="xf-foot">
         <button type="button" onclick="openAdvancedEditFromModal()" class="xf-edit">EDITAR FICHA</button>

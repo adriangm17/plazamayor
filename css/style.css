@@ -1289,16 +1289,20 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xi-rail .xc-rl:first-child::before { top:17px; }
 
 /* ===== v8.21 · valor orientativo (Numista) ===== */
-.xf-nv { display:flex; flex-direction:column; gap:5px; padding-top:9px; border-top:2px solid rgba(var(--xp-plum-rgb),.16); }
+:root { --xf-teal:#0F766E; }
+.xf-nv { display:flex; flex-direction:column; gap:7px; }
 .xf-nv.hidden { display:none !important; }
 .nv-head { display:flex; align-items:center; gap:6px; font-family:'Poppins',sans-serif; font-weight:800; font-size:11px; letter-spacing:.06em; color:var(--xp-plum); }
 .nv-head span { margin-left:auto; padding:3px 9px; border-radius:999px; background:rgba(var(--xp-plum-rgb),.12); font-size:10px; letter-spacing:0; }
-.nv-main { display:flex; align-items:baseline; gap:8px; min-height:30px; }
-.nv-val { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:24px; line-height:1; color:var(--xf-teal); }
-.nv-sub, .nv-meta { font-size:11px; font-weight:600; color:rgba(var(--xp-plum-rgb),.7); }
+.nv-main { display:flex; align-items:center; gap:10px; min-height:40px; }
+.nv-val { flex:none; display:inline-flex; align-items:center; height:40px; padding:0 14px; border-radius:14px; background:var(--xf-teal); color:var(--xp-sand-l); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:22px; line-height:1; white-space:nowrap; }
+.nv-sub { min-width:0; font-size:11px; font-weight:700; color:rgba(var(--xp-plum-rgb),.78); line-height:1.25; }
+.nv-meta { font-size:11px; font-weight:600; color:rgba(var(--xp-plum-rgb),.7); }
+.nv-meta b { color:var(--xf-teal); font-weight:800; }
 .nv-none { font-size:12px; font-weight:700; color:rgba(var(--xp-plum-rgb),.6); }
-.nv-btn { margin-left:auto; align-self:center; height:30px; min-width:34px; padding:0 12px; border:2px solid var(--xp-plum); border-radius:10px; background:var(--xp-sand-l); color:var(--xp-plum); font-weight:800; font-size:12px; cursor:pointer; }
+.nv-btn { margin-left:auto; flex:none; align-self:center; height:34px; min-width:38px; padding:0 12px; border:2px solid var(--xp-plum); border-radius:11px; background:var(--xp-sand-l); color:var(--xp-plum); font-weight:800; font-size:12px; cursor:pointer; }
 .xf-nv.nv-busy { opacity:.55; pointer-events:none; }
+.xf-bar .xp-lk.nv-on { background:var(--xf-teal); color:var(--xp-sand-l); }
 .xv-nv { border-color:var(--xf-teal); color:var(--xf-teal); }
 #nv-progress { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:9999; max-width:min(92vw,520px); display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:16px; background:var(--xp-plum); color:var(--xp-sand-l); font-size:13px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,.35); }
 #nv-progress button { flex:none; padding:6px 12px; border:0; border-radius:10px; background:var(--xp-orange); color:#fff; font-weight:800; cursor:pointer; }

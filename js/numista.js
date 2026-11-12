@@ -7,7 +7,7 @@
   const LS_KEY = 'pm_numista_valores';
   const GKEY = { F: 'f', VF: 'vf', XF: 'xf', AU: 'au', UNC: 'unc' };   // estado de la app → estado de Numista
   const map = new Map();       // numista_id → fila
-  let loaded = false, loading = null, usage = null, batch = null;
+  let loaded = false, loading = null, usage = null, batch = null, open = false;
 
   const sb = () => (window.PMSync && PMSync.enabled && PMSync.client) ? PMSync.client() : null;
   const isAdmin = () => !!(window.PMSync && PMSync.role && PMSync.role() === 'admin');
@@ -46,7 +46,7 @@
         }
         map.clear(); fresh.forEach((v, k) => map.set(k, v));
         loaded = true; saveLocal();
-        if (typeof refreshNumistaViews === 'function') refreshNumistaViews();
+        if (typeof refreshNumistaViews === 'function') refreshNumistaViews(true);
       } catch (e) { /* sin conexión o tabla sin crear: se usa la copia local */ }
       finally { loading = null; }
     })();
@@ -63,6 +63,19 @@
     const pe = g && r.por_estado && r.por_estado[g];
     if (pe && Number(pe.mediana) > 0) return { value: Number(pe.mediana), scope: 'estado', n: pe.n, row: r };
     return { value: Number(r.mediana), scope: 'general', n: r.n, row: r };
+  }
+
+  /* Valor general (mediana de todos los años y estados) para la casilla de rareza de las fichas del álbum */
+  function cardValue(coin) {
+    const r = rowOf(coin);
+    return (r && r.estado === 'ok' && Number(r.mediana) > 0) ? Number(r.mediana) : null;
+  }
+  // Valor de un grupo de variantes: la mediana de los valores de las variantes que lo tienen
+  function groupValue(list) {
+    const v = (list || []).map(cardValue).filter(x => x != null).sort((a, b) => a - b);
+    if (!v.length) return null;
+    const m = Math.floor(v.length / 2);
+    return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
   }
 
   /* ---- total de la colección (cada ejemplar con estado cuenta; usa su estado si Numista lo tiene) ---- */
@@ -120,11 +133,17 @@
   }
 
   /* ---- ficha (ventana de la moneda) ---- */
+  function toggleBox() {
+    const coin = coins.find(x => x.id === activeCoinId); if (!coin) return;
+    if (!idOf(coin)) { alert('Esta ficha no tiene un enlace de Numista válido, así que no hay valor orientativo.'); return; }
+    open = !open; renderModal(coin); load();
+  }
   function renderModal(coin) {
-    const box = document.getElementById('nv-box'); if (!box) return;
+    const box = document.getElementById('nv-box'), tab = document.getElementById('modal-btn-nv'); if (!box) return;
     box.classList.remove('nv-busy');
     const id = idOf(coin);
-    if (!id) { box.classList.add('hidden'); return; }
+    if (tab) { tab.classList.toggle('xp-lk-off', !id); tab.classList.toggle('nv-on', !!(open && id)); }
+    if (!id || !open) { box.classList.add('hidden'); if (typeof fitCoinSheet === 'function') fitCoinSheet(); return; }
     box.classList.remove('hidden');
     const r = map.get(id);
     const btn = isAdmin() ? `<button type="button" class="nv-btn" onclick="NumistaValor.computeFromModal()">${r ? '<i class="fa-solid fa-rotate"></i>' : 'Calcular'}</button>` : '';
@@ -142,6 +161,7 @@
         <div class="nv-meta">${r.n} ${r.n === 1 ? 'precio' : 'precios'} · ${r.emisiones} ${r.emisiones === 1 ? 'emisión' : 'emisiones'}${mine && mine.scope === 'estado' ? ` · <b>en ${esc(best)}: ${eur(mine.value)}</b>` : ''}</div>`;
     }
     box.innerHTML = `<div class="nv-head"><i class="fa-solid fa-chart-line"></i> VALOR ORIENTATIVO <span>Numista</span></div>${html}`;
+    if (typeof fitCoinSheet === 'function') fitCoinSheet();
   }
 
   /* ---- cálculo por tandas (solo administrador) ---- */
@@ -192,15 +212,26 @@
     bar(`${stop || 'Terminado.'} Calculados ${done}${noPrice ? ` (${noPrice} sin precios en Numista)` : ''}${skipped ? ` · saltados ${skipped}` : ''}${usage ? ` · ${usage.usadas}/${usage.limite} peticiones este mes` : ''}`, false);
   }
 
-  window.NumistaValor = { idOf, load, rowOf, estimate, collectionTotal, renderModal, computeFromModal, startBatch, cancelBatch, fmt: eur, isAdmin, usage: () => usage, pending: pendingList };
+  window.NumistaValor = { cardValue, groupValue, toggleBox, close() { open = false; }, idOf, load, rowOf, estimate, collectionTotal, renderModal, computeFromModal, startBatch, cancelBatch, fmt: eur, isAdmin, usage: () => usage, pending: pendingList };
 })();
 
-/* Cuando cambian los valores se repinta lo que esté a la vista */
-function refreshNumistaViews() {
+/* Cuando cambian los valores se repinta lo que esté a la vista (con repaint=true también el álbum, que lleva el valor en la casilla de rareza) */
+function refreshNumistaViews(repaint) {
   try {
+    if (repaint && typeof render === 'function' && typeof coins !== 'undefined' && coins.length) render();
     const m = document.getElementById('coin-modal');
     if (m && !m.classList.contains('hidden') && activeCoinId) { const c = coins.find(x => x.id === activeCoinId); if (c) NumistaValor.renderModal(c); }
     const st = document.getElementById('estadisticas-content');
     if (st && st.offsetParent !== null && typeof renderEstadisticas === 'function') renderEstadisticas();
   } catch (e) {}
 }
+
+/* Carga automática de los valores al abrir la app (cuando ya hay sesión en la nube) */
+(function () {
+  let tries = 0;
+  const t = setInterval(() => {
+    tries++;
+    if (window.PMSync && PMSync.enabled && PMSync.client && PMSync.client()) { clearInterval(t); NumistaValor.load(); }
+    else if (tries > 30) clearInterval(t);
+  }, 2000);
+})();
