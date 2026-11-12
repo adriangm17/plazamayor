@@ -625,16 +625,11 @@ function unionRange(g) {
   return formatYearRange(lo === hi ? String(lo) : `${lo}-${hi}`);
 }
 // Ficha base: las rarezas distintas del grupo cada una con su color y su letra, repartidas por igual en la casilla
-function rarFontSize(len) { return len <= 9 ? 12 : len <= 11 ? 11 : len <= 13 ? 10 : len <= 15 ? 9 : 8; }
 function groupRarityHtml(g) {
   const set = [...new Set(g.map(x => String(x.rarity || '').trim().toUpperCase()).filter(Boolean))];   // en el orden de KM del grupo
   if (!set.length) return `<div class="xc-cell xc-rar w-[45%]" style="background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);">-</div>`;
-  let fs = set.length <= 1 ? 12 : set.length === 2 ? 11 : set.length === 3 ? 10 : 8.5;
-  // v8.22: con una sola rareza en el grupo, se añade el valor orientativo (mediana del de sus variantes); con varias no hay hueco
-  let val = null;
-  if (set.length === 1 && set[0] !== 'PLATA' && window.NumistaValor) { const v = NumistaValor.groupValue(g); if (v != null) val = NumistaValor.fmt(v); }
-  if (val) { const txt = `${set[0]} · ${val}`; fs = rarFontSize(txt.length); }
-  return `<div class="xc-cell xc-rar xc-rar-split w-[45%]" title="${val ? 'Rareza · valor orientativo (Numista)' : 'Rarezas: ' + esc(set.join(', '))}" style="font-size:${fs}px">${set.map(r => `<span style="${getRarityStyle(r)}">${r === 'PLATA' ? 'AG' : esc(r)}${val ? ' · ' + esc(val) : ''}</span>`).join('')}</div>`;
+  const fs = set.length <= 1 ? 12 : set.length === 2 ? 11 : set.length === 3 ? 10 : 8.5;
+  return `<div class="xc-cell xc-rar xc-rar-split w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="font-size:${fs}px">${set.map(r => `<span style="${getRarityStyle(r)}">${r === 'PLATA' ? 'AG' : esc(r)}</span>`).join('')}</div>`;
 }
 function baseKmLabel(c) {   // KM# del que parten las variantes (sin sufijo): KM# 26.1 → KM# 26
   const k = kmKey(c && c.km);
@@ -690,12 +685,7 @@ function renderCoinCard(c, opts) {
 
   // La ceca/variante siempre es libre; en las de plata, el valor calculado ocupa la casilla de rareza (mismo color de la etiqueta PLATA)
   const cecaOrValue = hasCeca ? esc(c.cecaMaterial) : '—';
-  // v8.22: junto a la rareza, el valor orientativo de Numista («RRR · 2,14 €»); en las de plata sigue el valor de la plata
-  const nvVal = (!isPlata && window.NumistaValor) ? NumistaValor.cardValue(c) : null;
-  const rarLabel = c.rarity ? esc(c.rarity) : '';
-  const rarText = nvVal != null ? (rarLabel ? `${rarLabel} · ${NumistaValor.fmt(nvVal)}` : NumistaValor.fmt(nvVal)) : (rarLabel || '-');
-  const rarityHtml = isPlata ? `<span class="xc-price">${computeCoinSilverValue(c) || '0,00 €'}</span>` : rarText;
-  const rarFs = nvVal != null ? rarFontSize(rarText.length) : 12;
+  const rarityHtml = isPlata ? `<span class="xc-price">${computeCoinSilverValue(c) || '0,00 €'}</span>` : esc(c.rarity || '-');
 
   const id = esc(c.id);
   const denom = esc(c.denom);
@@ -759,7 +749,7 @@ function renderCoinCard(c, opts) {
           </div>
           ${isBase
             ? groupRarityHtml(opts.group)
-            : `<div class="xc-cell xc-rar w-[45%]" ${nvVal != null ? `title="Rareza · valor orientativo (Numista)"` : ''} style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);'}${nvVal != null ? `font-size:${rarFs}px;` : ''}">${rarityHtml}</div>`}
+            : `<div class="xc-cell xc-rar w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);'}">${rarityHtml}</div>`}
         </div>
 
         <div class="flex gap-1 w-full">

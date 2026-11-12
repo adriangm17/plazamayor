@@ -10,7 +10,7 @@
   let loaded = false, loading = null, usage = null, batch = null, open = false;
 
   const sb = () => (window.PMSync && PMSync.enabled && PMSync.client) ? PMSync.client() : null;
-  const isAdmin = () => !!(window.PMSync && PMSync.role && PMSync.role() === 'admin');
+  const isAdmin = () => !!(window.PMSync && PMSync.enabled && PMSync.user && PMSync.user());   // v8.23: pueden calcular los dos usuarios (admin y miembro)
   const eur = v => (v >= 100 ? Math.round(v) : v >= 10 ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100).toLocaleString('es-ES') + ' €';
 
   /* ---- N# a partir del enlace: numista.com/12345 · numista.com/catalogue/pieces12345.html ---- */
@@ -136,14 +136,17 @@
   function toggleBox() {
     const coin = coins.find(x => x.id === activeCoinId); if (!coin) return;
     if (!idOf(coin)) { alert('Esta ficha no tiene un enlace de Numista válido, así que no hay valor orientativo.'); return; }
+    if (map.has(idOf(coin))) { renderModal(coin); return; }   // ya calculado: la burbuja es fija
     open = !open; renderModal(coin); load();
   }
   function renderModal(coin) {
     const box = document.getElementById('nv-box'), tab = document.getElementById('modal-btn-nv'); if (!box) return;
     box.classList.remove('nv-busy');
     const id = idOf(coin);
-    if (tab) { tab.classList.toggle('xp-lk-off', !id); tab.classList.toggle('nv-on', !!(open && id)); }
-    if (!id || !open) { box.classList.add('hidden'); if (typeof fitCoinSheet === 'function') fitCoinSheet(); return; }
+    if (tab) tab.classList.toggle('xp-lk-off', !id);
+    const calculated = !!(id && map.has(id));   // v8.23: si ya hay valor calculado, la burbuja queda fija
+    if (tab) tab.classList.toggle('nv-on', !!(id && (open || calculated)));
+    if (!id || !(open || calculated)) { box.classList.add('hidden'); if (typeof fitCoinSheet === 'function') fitCoinSheet(); return; }
     box.classList.remove('hidden');
     const r = map.get(id);
     const btn = isAdmin() ? `<button type="button" class="nv-btn" onclick="NumistaValor.computeFromModal()">${r ? '<i class="fa-solid fa-rotate"></i>' : 'Calcular'}</button>` : '';
@@ -184,7 +187,7 @@
   function cancelBatch() { if (batch) batch.cancel = true; }
 
   async function startBatch(onlyOwned) {
-    if (!isAdmin()) { alert('Solo el administrador puede calcular valores.'); return; }
+    if (!isAdmin()) { alert('Entra con tu cuenta para calcular valores.'); return; }
     if (batch) { alert('Ya hay un cálculo en marcha.'); return; }
     await load(true);
     const list = pendingList(onlyOwned);
@@ -218,7 +221,6 @@
 /* Cuando cambian los valores se repinta lo que esté a la vista (con repaint=true también el álbum, que lleva el valor en la casilla de rareza) */
 function refreshNumistaViews(repaint) {
   try {
-    if (repaint && typeof render === 'function' && typeof coins !== 'undefined' && coins.length) render();
     const m = document.getElementById('coin-modal');
     if (m && !m.classList.contains('hidden') && activeCoinId) { const c = coins.find(x => x.id === activeCoinId); if (c) NumistaValor.renderModal(c); }
     const st = document.getElementById('estadisticas-content');
