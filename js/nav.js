@@ -4,7 +4,7 @@
    Así, "atrás" deshace el último paso en vez de cerrar la app; solo se sale de la app desde el Índice.
    Funciona por "fotos" del estado: cuando la foto cambia se añade una entrada al historial; si vuelve a ser
    igual que la anterior (p. ej. se cierra la ficha con su botón) se retrocede una entrada en vez de añadir otra. */
-const NAV_MODALS = ['periods-overlay', 'coin-modal', 'variants-modal', 'create-modal', 'edit-period-modal', 'edit-zone-modal', 'edit-country-modal', 'import-modal', 'theme-modal', 'options-modal'];
+const NAV_MODALS = ['periods-overlay', 'coin-modal', 'variants-modal', 'create-modal', 'edit-period-modal', 'edit-zone-modal', 'edit-country-modal', 'import-modal', 'theme-modal', 'options-modal', 'country-overlay'];
 const NAV_CLOSERS = {
   'periods-overlay': () => closePeriodsOverlay(),
   'coin-modal': () => closeModal(),
@@ -15,7 +15,8 @@ const NAV_CLOSERS = {
   'edit-country-modal': () => closeEditCountryModal(),
   'import-modal': () => closeImportModal(),
   'theme-modal': () => closeThemeModal(),
-  'options-modal': () => closeOptionsModal()
+  'options-modal': () => closeOptionsModal(),
+  'country-overlay': () => closeCountryOverlay()
 };
 let navReady = false, navSnaps = [], navIdx = 0, navPending = 0, navTimer = 0, navPendingTimer = 0;
 
@@ -70,7 +71,7 @@ function navApply(S) {
   // 1) cierra las ventanas que la foto no tiene abiertas
   navOpenModals().forEach(id => { if (!S.m.includes(id)) NAV_CLOSERS[id](); });
   const sameTab = S.t === currentTab;
-  if (!sameTab) resetAllFilters();
+  if (!sameTab) { resetAllFilters(); window.scrollTo(0, 0); }   // v8.10: al cambiar de pestaña se empieza arriba del todo
   // 2) recoloca país / período / filtros / estado abierto
   if (S.t === 'album') {
     currentCountryId = S.c || null; albumPeriodId = S.p || ''; albumGroup = S.g || ''; movingCoinId = null;
@@ -90,6 +91,7 @@ function navApply(S) {
   }
   showTab(S.t);
   render();
+  if (!sameTab) window.scrollTo(0, 0);
   // 3) una entrada que pedía una ventana que ya no está abierta no se puede reconstruir: se sigue hacia atrás
   if (S.m.some(id => !navOpenModals().includes(id))) history.back();
 }

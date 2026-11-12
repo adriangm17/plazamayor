@@ -102,6 +102,7 @@ function resetBarScroll() {
 function onBarScroll() {
   const y = Math.max(0, window.scrollY || 0), dy = y - BarScroll.y;
   BarScroll.y = y;
+  document.body.classList.toggle('xp-scrolled', y > 40);   // v8.10: Índice, al desplazar solo queda la barra de búsqueda
   if (y <= 4) { setHeaderHidden(false); setAlbumCompact(false); BarScroll.up = 0; return; }
   if (dy > 0) {
     BarScroll.up = 0;
@@ -136,9 +137,11 @@ function resetViewFolds(tabName) {
 function switchTab(tabName) {
   if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = false; }   // tocar de nuevo la pestaña vuelve al resumen
   if (tabName !== currentTab) resetAllFilters();   // al cambiar de pestaña no se mantiene ningún filtro
-  if (tabName !== currentTab) { resetBarScroll(); resetViewFolds(tabName); }    // v8.04: al cambiar de pestaña la cabecera vuelve a verse
+  const changed = tabName !== currentTab;
+  if (changed) { window.scrollTo(0, 0); resetBarScroll(); resetViewFolds(tabName); }    // v8.04: al cambiar de pestaña la cabecera vuelve a verse
   showTab(tabName);
   render();
+  if (changed) { window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); }   // v8.10: cada pestaña empieza siempre arriba del todo
 }
 
 function showTab(tabName) {
@@ -181,6 +184,12 @@ function setupPWA() {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 }
+
+/* v8.10: sin zoom con los dedos (la pantalla del móvil no se amplía ni se reduce). El mapa de Estadísticas gestiona su propio zoom */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => {
+  if (e.touches && e.touches.length > 1 && e.cancelable && !(e.target.closest && e.target.closest('#stats-map-box'))) e.preventDefault();
+}, { passive: false });
 
 window.addEventListener('click', closeSettingsMenu);
 window.addEventListener('DOMContentLoaded', () => {

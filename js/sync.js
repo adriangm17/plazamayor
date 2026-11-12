@@ -415,6 +415,8 @@
       const k = 'catalogo:' + r.id;
       const h = r.eliminado ? 'x' : hashParts(r.tipo, r.padre_id, r.datos);
       if (r.eliminado ? !syn[k] && !existsLocal(r, coinMap) : same(k, h)) { continue; }
+      // v8.10: si las zonas (orden, zonas propias) se han cambiado aquí y aún no se han subido, no se pisan con lo de la nube
+      if (r.tipo === 'zona' && !r.eliminado && syn[k]) { const le = localCatalog().get(k); if (le && syn[k][0] !== hashEntry(le)) continue; }
       touchedKeys.push([k, r.eliminado ? null : h, r]);
       if (r.tipo === 'zona') {
         if (!r.eliminado) { const d = r.datos || {}; customZones = Array.isArray(d.custom) ? d.custom : []; zoneOrder = Array.isArray(d.order) ? d.order : []; zoneContinents = (d.continents && typeof d.continents === 'object') ? d.continents : {}; zonesChanged = true; }

@@ -23,6 +23,22 @@ function collapseAllIndice() {
   renderIndiceView();
 }
 
+// v8.10: un solo botón. Si algún país del listado está desplegado, contrae todos; si están todos contraídos, los despliega
+function indiceVisibleCountries() {
+  const s = indiceNorm(indiceSearchText);
+  return countries.filter(c => !s || indiceNorm(c.name).startsWith(s));
+}
+function toggleAllIndice() {
+  if (indiceVisibleCountries().some(c => !isIndiceCollapsed(c.id))) collapseAllIndice(); else expandAllIndice();
+}
+function updateIndiceToggle() {
+  const btn = document.getElementById('indice-toggle'); if (!btn) return;
+  const anyOpen = indiceVisibleCountries().some(c => !isIndiceCollapsed(c.id));
+  const t = anyOpen ? 'Contraer todo' : 'Expandir todo';
+  btn.title = t; btn.setAttribute('aria-label', t);
+  btn.innerHTML = `<i class="fa-solid fa-angles-${anyOpen ? 'up' : 'down'}"></i>`;
+}
+
 function toggleIndiceCountry(countryId) {
   indiceCollapsedCountries[countryId] = !isIndiceCollapsed(countryId);
   renderIndiceView();
@@ -69,6 +85,7 @@ function renderIndiceView() {
 
   if (list.length === 0) {
     container.innerHTML = `<div class="xp-empty-msg">No hay datos en el índice.</div>`;
+    updateIndiceToggle();
     return;
   }
 
@@ -132,4 +149,5 @@ function renderIndiceView() {
   }).filter(Boolean).join('');
 
   container.innerHTML = html !== '' ? html : `<div class="xp-empty-msg">No se encontraron datos coincidentes.</div>`;
+  updateIndiceToggle();
 }

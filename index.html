@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Plaza Mayor - Mi Álbum Numismático</title>
 
   <!-- Configuración PWA Nativa -->
@@ -79,8 +79,7 @@
         <input type="search" id="indice-search" oninput="onIndiceSearchInput(this.value)" placeholder="Buscar país..." aria-label="Buscar país" autocomplete="off">
       </div>
       <div class="xp-tools">
-        <button type="button" class="xp-btn" onclick="expandAllIndice()" title="Expandir todo" aria-label="Expandir todo"><i class="fa-solid fa-angles-down"></i></button>
-        <button type="button" class="xp-btn" onclick="collapseAllIndice()" title="Contraer todo" aria-label="Contraer todo"><i class="fa-solid fa-angles-up"></i></button>
+        <button type="button" id="indice-toggle" class="xp-btn" onclick="toggleAllIndice()" title="Expandir todo" aria-label="Expandir todo"><i class="fa-solid fa-angles-down"></i></button>
       </div>
       </div>
       <div id="indice-countries-container" class="xi-list"></div>
@@ -91,11 +90,10 @@
       <div class="xp-top">
       <div class="xp-search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-        <input type="search" id="explorar-search" oninput="onExploreSearch(this.value)" placeholder="Buscador: países, zonas geográficas,..." aria-label="Buscar países o zonas geográficas" autocomplete="off">
+        <input type="search" id="explorar-search" oninput="onExploreSearch(this.value)" placeholder="Zona o país..." aria-label="Buscar zona geográfica o país" autocomplete="off">
       </div>
       <div class="xp-tools">
-        <button type="button" class="xp-btn" onclick="expandAllZones()" title="Desplegar todo" aria-label="Desplegar todo"><i class="fa-solid fa-angles-down"></i></button>
-        <button type="button" class="xp-btn" onclick="collapseAllZones()" title="Contraer todo" aria-label="Contraer todo"><i class="fa-solid fa-angles-up"></i></button>
+        <button type="button" id="explorar-toggle" class="xp-btn" onclick="toggleAllZones()" title="Desplegar todo" aria-label="Desplegar todo"><i class="fa-solid fa-angles-down"></i></button>
       </div>
       </div>
       <div id="xp-conts" class="xp-conts" role="group" aria-label="Filtrar por continente">
@@ -134,8 +132,7 @@
         </div>
         <div class="xa-filters xa-r2" id="album-filters">
           <div class="relative flex-1 min-w-0" id="country-search-wrap">
-            <input type="text" id="album-country-search" autocomplete="off" oninput="onCountrySearchInput(this.value)" onfocus="onCountrySearchInput(this.value)" onkeydown="onCountrySearchKey(event)" placeholder="País…" title="Ir a otro país" class="xa-input">
-            <div id="country-suggest" class="xa-suggest hidden"></div>
+            <input type="text" id="album-country-search" readonly autocomplete="off" onclick="openCountryOverlay()" onfocus="openCountryOverlay()" placeholder="Buscar país…" title="Ir a otro país" aria-label="Buscar país" class="xa-input">
           </div>
           <div class="flex items-center gap-1.5 shrink-0 xa-fbtns">
           <button id="btn-only-missing" onclick="toggleOnlyMissing()" title="Solo las que me faltan" aria-label="Solo las que me faltan" class="xp-btn"><i class="fa-solid fa-circle-exclamation"></i></button>
@@ -155,14 +152,26 @@
 
   </main>
 
+  <!-- BUSCADOR DE PAÍS DEL ÁLBUM (pantalla completa, dos columnas) -->
+  <div id="country-overlay" class="xc-ov hidden" role="dialog" aria-label="Elegir país">
+    <div class="xc-top">
+      <div class="xp-search xc-search">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input type="text" id="country-ov-input" oninput="renderCountryOverlay()" onkeydown="onCountryOverlayKey(event)" placeholder="Buscar país…" aria-label="Buscar país" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <button type="button" class="xp-btn xc-close" onclick="closeCountryOverlay()" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="country-ov-list" class="xc-list"></div>
+  </div>
+
   <!-- BOTTOM NAVIGATION -->
   <nav class="xn-bar">
     <div class="xn-in">
       <button onclick="switchTab('indice')" id="nav-btn-indice" class="xn-btn xn-on"><i class="fa-solid fa-list-ul"></i><span>Índice</span></button>
       <button onclick="switchTab('album')" id="nav-btn-album" class="xn-btn"><i class="fa-solid fa-border-all"></i><span>Álbum</span></button>
+      <button onclick="switchTab('identificar')" id="nav-btn-identificar" class="xn-btn" aria-label="Identificación" title="Identificación"><i class="fa-solid fa-camera"></i><span>Identificación</span></button>
       <button onclick="switchTab('explorar')" id="nav-btn-explorar" class="xn-btn"><i class="fa-solid fa-compass"></i><span>Explorar</span></button>
       <button onclick="switchTab('estadisticas')" id="nav-btn-estadisticas" class="xn-btn"><i class="fa-solid fa-chart-column"></i><span>Estadísticas</span></button>
-      <button onclick="switchTab('identificar')" id="nav-btn-identificar" class="xn-btn"><i class="fa-solid fa-camera"></i><span>Identificación</span></button>
     </div>
   </nav>
 

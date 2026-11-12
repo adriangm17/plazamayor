@@ -104,47 +104,53 @@ function alphaCountries() {
 }
 
 function countrySuggestions(query) {
-  const q = normKey(query.replace(/^\s+/, ''));
-  return alphaCountries().filter(c => normKey(c.name).startsWith(q));
+  const q = normKey(String(query || '').replace(/^\s+/, ''));
+  return alphaCountries().filter(c => normKey(c.name).startsWith(q));   // solo países que EMPIEZAN por lo escrito
 }
 
-function onCountrySearchInput(value) {
-  const box = document.getElementById('country-suggest');
+/* v8.10: al pulsar el buscador se abre una pantalla completa con los países en dos columnas;
+   al escribir van desapareciendo los que no empiezan por esas letras */
+function openCountryOverlay() {
+  const el = document.getElementById('country-overlay');
+  if (!el || !el.classList.contains('hidden')) return;
+  const bar = document.getElementById('album-country-search'); if (bar) bar.blur();
+  const inp = document.getElementById('country-ov-input'); if (inp) inp.value = '';
+  el.classList.remove('hidden');
+  document.body.classList.add('xc-lock');
+  renderCountryOverlay();
+  const list = document.getElementById('country-ov-list'); if (list) list.scrollTop = 0;
+  if (inp) inp.focus();
+}
+function closeCountryOverlay() {
+  const el = document.getElementById('country-overlay');
+  if (el) el.classList.add('hidden');
+  document.body.classList.remove('xc-lock');
+  const inp = document.getElementById('country-ov-input'); if (inp) inp.blur();
+}
+function renderCountryOverlay() {
+  const inp = document.getElementById('country-ov-input'), box = document.getElementById('country-ov-list');
+  if (!box) return;
+  const value = inp ? inp.value.replace(/^\s+/, '') : '';
   const list = countrySuggestions(value);
-  const n = value.replace(/^\s+/, '').length;
+  const n = value.length;
   box.innerHTML = list.length === 0
-    ? `<div class="xa-none">Ningún país empieza por "${esc(value.trim())}"</div>`
+    ? `<div class="xc-none">Ningún país empieza por «${esc(value.trim())}»</div>`
     : list.map(c => `
-      <button onmousedown="event.preventDefault()" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="xa-sug ${c.id === currentCountryId ? 'xa-cur' : ''}">
-        <span class="flex items-center gap-2">${flagChip(c, 20, 14)}<span><b>${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span></span>
+      <button type="button" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="xc-item ${c.id === currentCountryId ? 'xc-cur' : ''}">
+        ${flagChip(c, 30, 21)}<span class="xc-name"><b>${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span>
       </button>`).join('');
-  box.classList.remove('hidden');
 }
-
-function closeCountrySuggest() {
-  const box = document.getElementById('country-suggest');
-  if (box) box.classList.add('hidden');
-}
-
-function pickCountrySuggestion(countryId) {
-  const input = document.getElementById('album-country-search');
-  if (input) { input.value = ''; input.blur(); }
-  closeCountrySuggest();
-  selectCountry(countryId);
-}
-
-function onCountrySearchKey(e) {
-  if (e.key === 'Escape') { closeCountrySuggest(); e.target.blur(); }
+function onCountryOverlayKey(e) {
+  if (e.key === 'Escape') closeCountryOverlay();
   else if (e.key === 'Enter') {
     const first = countrySuggestions(e.target.value)[0];
     if (first) pickCountrySuggestion(first.id);
   }
 }
-
-window.addEventListener('click', e => {
-  const wrap = document.getElementById('country-search-wrap');
-  if (wrap && !wrap.contains(e.target)) closeCountrySuggest();
-});
+function pickCountrySuggestion(countryId) {
+  closeCountryOverlay();
+  selectCountry(countryId);
+}
 
 function selectCountry(countryId) {
   resetAlbumFilters();

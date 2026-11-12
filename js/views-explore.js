@@ -206,6 +206,17 @@ let exploreAddZone = '';   // zona cuyo selector de países está abierto
 let exploreSearch = '';
 const exploreClosed = {};
 
+// v8.10: un solo botón. Si alguna zona está desplegada, contrae todas; si están todas contraídas, las despliega
+function toggleAllZones() {
+  if ([...allZones(), UNCLASSIFIED].some(k => !exploreClosed[k])) collapseAllZones(); else expandAllZones();
+}
+function updateExploreToggle() {
+  const btn = document.getElementById('explorar-toggle'); if (!btn) return;
+  const anyOpen = [...allZones(), UNCLASSIFIED].some(k => !exploreClosed[k]);
+  const t = anyOpen ? 'Contraer todo' : 'Desplegar todo';
+  btn.title = t; btn.setAttribute('aria-label', t);
+  btn.innerHTML = `<i class="fa-solid fa-angles-${anyOpen ? 'up' : 'down'}"></i>`;
+}
 function expandAllZones() { Object.keys(exploreClosed).forEach(k => delete exploreClosed[k]); renderExplorar(); }
 function collapseAllZones() { [...allZones(), UNCLASSIFIED].forEach(k => { exploreClosed[k] = true; }); renderExplorar(); }
 function toggleAddCountry(zone) {
@@ -290,12 +301,13 @@ function countryCardHtml(c) {
 function renderExplorar() {
   const box = document.getElementById('explorar-content');
   if (!box) return;
-  if (countries.length === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay países en la colección.</div>`; return; }
+  if (countries.length === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay países en la colección.</div>`; updateExploreToggle(); return; }
   syncContinentButtons();
   const nc = document.getElementById('new-zone-continent');
   if (nc && !nc.options.length) nc.innerHTML = continentOptionsHtml('');
   box.innerHTML = renderContinents();
   hydrateImages(box);
+  updateExploreToggle();
 }
 
 function renderContinents() {
@@ -307,7 +319,7 @@ function renderContinents() {
   // Filtro por continente: solo las zonas de ese continente (con filtro activo no sale "Sin clasificar")
   if (exploreContinent) order = order.filter(k => k !== UNCLASSIFIED && zoneContinent(k) === exploreContinent);
 
-  const q = normKey(exploreSearch);
+  const q = normKey(exploreSearch.replace(/^\s+/, '').replace(/\s+$/, ''));   // v8.10: texto predictivo por inicial
   // v7.08: el lápiz de editar zona solo sale cuando están TODAS contraídas
   // v8.02: cualquier zona contraída se puede arrastrar para ordenarla, aunque haya otras desplegadas
   const allCollapsed = !q && order.length > 0 && order.every(k => exploreClosed[k]);
@@ -316,8 +328,8 @@ function renderContinents() {
     const all = (groups[cont] || []).map(c => ({ c, s: countryStats(c) }));
     let list = all;
     if (q) {
-      const zoneHit = normKey(cont).includes(q);
-      if (!zoneHit) list = all.filter(({ c }) => normKey(c.name).includes(q) || periodsOfCountry(c.id).some(p => normKey(p.name).includes(q)));
+      const zoneHit = normKey(cont).startsWith(q);   // zonas que EMPIEZAN por lo escrito (se ven con todos sus países)
+      if (!zoneHit) list = all.filter(({ c }) => normKey(c.name).startsWith(q));   // o países que empiezan por lo escrito
       if (list.length === 0) return '';
     }
     shown++;

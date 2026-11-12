@@ -59,3 +59,7 @@ v8.07: monedas con agujero: el fondo blanco del centro se muestra transparente (
 v8.08: Mapa de Estadísticas: el Sáhara Occidental (soberanía reconocida, pendiente de descolonización) se separa de Marruecos cortando el contorno por la frontera (paralelo 27°40' N) y es una entrada propia. Estadísticas: nueva sección «Errores en enlaces» al final (solo si hay fichas con enlace que falta o no válido; el número lleva a una página con todas, como Estados y Tipos). Cache sw: plaza-mayor-v100.
 
 v8.09: Mapa de Estadísticas: Ceuta y Melilla se pintan como España (puntos con su color). Cache sw: plaza-mayor-v101.
+
+v8.10: Índice y Explorar: buscador más grande y un único botón expandir/contraer en la misma fila (también en móvil); en el Índice, al desplazar solo queda la barra de búsqueda. Explorar: buscador por inicial (zonas y países que empiezan por lo escrito). Álbum: barra compacta más grande y con texto mayor; al pulsar el buscador se abre una pantalla completa con los países en dos columnas que se filtran por inicial. Sin zoom táctil (el mapa de Estadísticas mantiene el suyo). Cada pestaña empieza arriba del todo. Orden de zonas: los cambios locales sin subir ya no los pisa la nube. Orden de pestañas: Índice, Álbum, Identificación, Explorar, Estadísticas. Cache sw: plaza-mayor-v102.
+
+v8.11: el botón Identificación es solo el icono de la cámara en una burbuja circular centrada, de otro color y algo más pequeña que el resto. Cache sw: plaza-mayor-v103.
