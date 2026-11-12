@@ -102,6 +102,7 @@ function resetBarScroll() {
 function onBarScroll() {
   const y = Math.max(0, window.scrollY || 0), dy = y - BarScroll.y;
   BarScroll.y = y;
+  if (typeof layoutIndiceRail === 'function' && currentTab === 'indice') layoutIndiceRail();
   document.body.classList.toggle('xp-scrolled', y > 40);   // v8.10: Índice, al desplazar solo queda la barra de búsqueda
   if (y <= 4) { setHeaderHidden(false); setAlbumCompact(false); BarScroll.up = 0; return; }
   if (dy > 0) {

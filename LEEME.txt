@@ -63,3 +63,17 @@ v8.09: Mapa de Estadísticas: Ceuta y Melilla se pintan como España (puntos con
 v8.10: Índice y Explorar: buscador más grande y un único botón expandir/contraer en la misma fila (también en móvil); en el Índice, al desplazar solo queda la barra de búsqueda. Explorar: buscador por inicial (zonas y países que empiezan por lo escrito). Álbum: barra compacta más grande y con texto mayor; al pulsar el buscador se abre una pantalla completa con los países en dos columnas que se filtran por inicial. Sin zoom táctil (el mapa de Estadísticas mantiene el suyo). Cada pestaña empieza arriba del todo. Orden de zonas: los cambios locales sin subir ya no los pisa la nube. Orden de pestañas: Índice, Álbum, Identificación, Explorar, Estadísticas. Cache sw: plaza-mayor-v102.
 
 v8.11: el botón Identificación es solo el icono de la cámara en una burbuja circular centrada, de otro color y algo más pequeña que el resto. Cache sw: plaza-mayor-v103.
+
+v8.12: buscador de país del Álbum: no abre el teclado en móvil; índice lateral de letras semiescondido (desliza de arriba abajo) que filtra los países por inicial; ★ = todos. Cache sw: plaza-mayor-v104.
+
+v8.13: índice de letras del buscador de país siempre visible (letras naranja sobre fondo oscuro, la elegida resaltada), sin burbuja. Cache sw: plaza-mayor-v105.
+
+v8.14: índice de letras sin fondo, más grande y con curva pronunciada (arco hacia la letra elegida). Cache sw: plaza-mayor-v106.
+
+v8.15: índice de letras con arco continuo y suavizado que sigue al dedo (animación tipo lanzador de Android). Cache sw: plaza-mayor-v107.
+
+v8.16: índice de letras igual que el vídeo de referencia: columna recta en reposo; al tocar se forma el arco que sigue al dedo, con burbuja a su izquierda; al soltar el arco se relaja y la burbuja desaparece. Cache sw: plaza-mayor-v108.
+
+v8.17: letras del índice más grandes y sin barras de scroll. Pestaña Índice: las fichas llegan hasta el final de la barra de búsqueda y en la columna de la derecha hay un índice de letras (mismo estilo: arco + burbuja) que baja hasta el primer país con esa inicial. Cache sw: plaza-mayor-v109.
+
+v8.18: índice de letras de la pestaña Índice: letras fijas con fondo de color, con burbuja, y al elegir letra se filtran los países que empiezan por ella. Cache sw: plaza-mayor-v110.

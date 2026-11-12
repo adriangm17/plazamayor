@@ -1210,3 +1210,55 @@ body.xc-lock { overflow:hidden; }
 #nav-btn-identificar i { font-size:19px; }
 #nav-btn-identificar:hover { color:var(--xp-plum-d); }
 #nav-btn-identificar.xn-on { background:var(--xp-sand-l); color:var(--xp-plum-d); box-shadow:0 0 0 3px var(--xp-orange), 0 2px 8px rgba(0,0,0,.28); }
+
+/* v8.12: índice lateral de letras (semiescondido) en el buscador de país del Álbum */
+.xc-list { padding-right:30px; }
+.xc-rail { position:absolute; right:0; top:50%; transform:translate(16px,-50%); z-index:3; width:36px; max-height:78vh; display:flex; flex-direction:column; align-items:flex-start; padding:8px 0 8px 7px; border-radius:18px 0 0 18px; background:rgba(var(--xp-plum-rgb),.14); touch-action:none; user-select:none; -webkit-user-select:none; transition:transform .22s, background .2s; -webkit-tap-highlight-color:transparent; }
+.xc-rail.xc-on { transform:translate(0,-50%); background:rgba(var(--xp-plum-rgb),.88); }
+.xc-rl { flex:0 1 28px; min-height:0; display:flex; align-items:center; justify-content:center; width:22px; font:800 15px/1 'Inter',sans-serif; color:var(--xp-plum); opacity:.75; transition:transform .12s, color .2s; pointer-events:none; }
+.xc-rail.xc-on .xc-rl { color:var(--xp-sand); opacity:1; }
+.xc-bubble { position:fixed; right:70px; width:68px; height:68px; border-radius:50%; display:none; align-items:center; justify-content:center; background:var(--xp-orange); color:var(--xp-plum-d); font:800 32px/1 'Inter',sans-serif; box-shadow:0 6px 18px rgba(0,0,0,.35); z-index:4; pointer-events:none; }
+.xc-bubble.xc-show { display:flex; }
+
+/* v8.13: índice de letras siempre visible, letras en naranja sobre fondo oscuro, sin burbuja */
+.xc-rail, .xc-rail.xc-on { transform:translate(0,-50%); width:34px; padding:8px 0 8px 5px; background:var(--xp-plum); box-shadow:-2px 0 10px rgba(0,0,0,.25); }
+.xc-rl, .xc-rail.xc-on .xc-rl { color:var(--xp-orange); opacity:1; font-size:16px; }
+.xc-rl.xc-sel { background:var(--xp-orange); color:var(--xp-plum-d) !important; border-radius:50%; height:24px; flex-basis:28px; }
+.xc-bubble { display:none !important; }
+
+/* v8.14: sin fondo, letras más grandes y curva más pronunciada */
+.xc-list { padding-right:62px; }
+.xc-rail, .xc-rail.xc-on { width:40px; padding:8px 8px 8px 0; align-items:flex-end; background:transparent; box-shadow:none; max-height:84vh; }
+.xc-rl, .xc-rail.xc-on .xc-rl { flex:0 1 36px; width:30px; font-size:23px; font-weight:800; color:var(--xp-orange); text-shadow:0 0 2px var(--xp-sand-l), 0 0 4px var(--xp-sand-l); transition:transform .1s; }
+.xc-rl.xc-sel { height:32px; flex-basis:36px; font-size:24px; background:var(--xp-orange); color:var(--xp-plum-d) !important; text-shadow:none; }
+
+/* v8.15: la animación la mueve el JS fotograma a fotograma */
+.xc-rl, .xc-rail.xc-on .xc-rl { transition:none; transform-origin:right center; will-change:transform; font-size:20px; }
+.xc-rl.xc-sel { font-size:20px; }
+
+/* v8.16: índice de letras como en el vídeo: columna recta en reposo, arco + burbuja al tocar */
+.xc-list { padding-right:44px; }
+.xc-rail, .xc-rail.xc-on { width:36px; padding:6px 8px 6px 0; align-items:flex-end; background:transparent; box-shadow:none; max-height:84vh; }
+.xc-rl, .xc-rail.xc-on .xc-rl { flex:0 1 23px; width:20px; font-size:16px; font-weight:800; color:var(--xp-orange); text-shadow:0 0 2px var(--xp-sand-l), 0 0 4px var(--xp-sand-l); transition:none; transform-origin:right center; will-change:transform; }
+.xc-rl.xc-sel { background:none; border-radius:0; height:auto; color:var(--xp-orange) !important; font-size:16px; }
+.xc-bubble { display:flex !important; position:fixed; left:0; top:0; width:44px; height:44px; border-radius:50%; align-items:center; justify-content:center; background:var(--xp-orange); color:#fff; font:800 24px/1 'Inter',sans-serif; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:4; pointer-events:none; opacity:0; scale:.55; transition:opacity .14s ease, scale .16s ease; will-change:transform; }
+.xc-bubble.xc-show { opacity:1; scale:1; }
+
+/* v8.17: letras más grandes, sin barras de scroll; índice de letras también en la pestaña Índice */
+.xc-list, .xc-rail { scrollbar-width:none; -ms-overflow-style:none; }
+.xc-list::-webkit-scrollbar, .xc-rail::-webkit-scrollbar { display:none; width:0; height:0; }
+.xc-rail { overflow:visible; }
+.xc-rail, .xc-rail.xc-on { width:40px; }
+.xc-rl, .xc-rail.xc-on .xc-rl { flex:0 1 28px; width:26px; font-size:21px; }
+.xc-rl.xc-sel { font-size:21px; }
+
+/* Índice: las fichas llegan hasta el final de la barra de búsqueda; a la derecha queda la columna del índice de letras */
+#view-indice .xi-list { margin-right:64px; }
+body.xp-scrolled #view-indice .xp-tools { display:flex; visibility:hidden; opacity:0; pointer-events:none; }   /* el botón se esconde pero la búsqueda conserva su ancho */
+.xc-rail.xi-rail, .xc-rail.xi-rail.xc-on { position:fixed; right:auto; top:0; width:54px; max-height:none; transform:none; align-items:center; padding:0; z-index:37; }
+.xi-rail .xc-rl { width:30px; flex:0 1 28px; }
+.xc-bubble.xi-bubble { z-index:60; }
+
+/* v8.18: índice de letras de la pestaña Índice: fondo de color y letras fijas (la burbuja sí sale) */
+.xc-rail.xi-rail, .xc-rail.xi-rail.xc-on { background:var(--xp-plum); border-radius:27px; box-shadow:0 4px 12px rgba(var(--xp-plum-rgb),.3); padding:6px 0; }
+.xi-rail .xc-rl, .xi-rail.xc-on .xc-rl { color:var(--xp-orange); text-shadow:none; font-size:19px; }

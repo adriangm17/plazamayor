@@ -86,6 +86,7 @@ function renderIndiceView() {
   if (list.length === 0) {
     container.innerHTML = `<div class="xp-empty-msg">No hay datos en el índice.</div>`;
     updateIndiceToggle();
+    buildIndiceRail();
     return;
   }
 
@@ -107,7 +108,7 @@ function renderIndiceView() {
     const flagBg = flagLayers(country).replace(/"/g, '&quot;');
 
     return `
-      <div class="xi-card">
+      <div class="xi-card" data-n="${esc(indiceNorm(country.name))}">
         <div class="xi-head">
           <div class="xi-main" onclick="jumpToCountry('${esc(country.id)}')">
             <div class="xi-donut" style="--progress: ${cPct}%;"><div>${cPct}%</div></div>
@@ -150,4 +151,35 @@ function renderIndiceView() {
 
   container.innerHTML = html !== '' ? html : `<div class="xp-empty-msg">No se encontraron datos coincidentes.</div>`;
   updateIndiceToggle();
+  buildIndiceRail();
 }
+
+/* v8.17: índice de letras a la derecha (mismo estilo que el buscador de país del Álbum). Al elegir una letra se baja hasta el primer país con esa inicial */
+let _indiceRail = null;   // se crea al usarlo (makeAlphaRail está en views-album.js, que se carga después)
+const indiceRailObj = () => _indiceRail || (_indiceRail = makeAlphaRail({
+  rail: 'indice-rail', bubble: 'indice-bubble', arc: false, gap: 58,   // letras fijas (sin arco), con fondo; la burbuja sale a su izquierda
+  onLetter(l) {   // filtra los países que empiezan por esa letra (☆ = todos)
+    indiceSearchText = l;
+    const inp = document.getElementById('indice-search'); if (inp) inp.value = l;
+    renderIndiceView();
+    window.scrollTo(0, 0);
+  }
+}));
+function buildIndiceRail() {
+  indiceRailObj().build(alphaLettersOf(countries));   // siempre todas las letras: la columna no cambia al filtrar
+  layoutIndiceRail();
+}
+// El índice ocupa la columna estrecha de la derecha (bajo el botón expandir/contraer), entre la barra de búsqueda y la barra inferior
+function layoutIndiceRail() {
+  const rail = document.getElementById('indice-rail'); if (!rail || currentTab !== 'indice') return;
+  const s = document.querySelector('#view-indice .xp-search'), top = document.querySelector('#view-indice .xp-top'), nav = document.querySelector('.xn-bar');
+  if (!s || !top || !nav) return;
+  const sr = s.getBoundingClientRect(), tr = top.getBoundingClientRect(), nr = nav.getBoundingClientRect();
+  if (!sr.width) return;
+  const t = Math.max(0, tr.bottom + 2), b = nr.top - 8;
+  rail.style.left = (sr.right + 10) + 'px';
+  rail.style.top = t + 'px';
+  rail.style.height = Math.max(120, b - t) + 'px';
+}
+const indiceRailDown = e => indiceRailObj().down(e), indiceRailMove = e => indiceRailObj().move(e), indiceRailUp = e => indiceRailObj().up(e);
+window.addEventListener('resize', layoutIndiceRail);

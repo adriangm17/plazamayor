@@ -83,6 +83,9 @@
       </div>
       </div>
       <div id="indice-countries-container" class="xi-list"></div>
+      <div id="indice-bubble" class="xc-bubble xi-bubble" aria-hidden="true"></div>
+      <div id="indice-rail" class="xc-rail xi-rail" aria-label="Índice de letras"
+           onpointerdown="indiceRailDown(event)" onpointermove="indiceRailMove(event)" onpointerup="indiceRailUp(event)" onpointercancel="indiceRailUp(event)"></div>
     </div>
 
     <!-- VISTA EXPLORAR -->
@@ -162,6 +165,9 @@
       <button type="button" class="xp-btn xc-close" onclick="closeCountryOverlay()" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div id="country-ov-list" class="xc-list"></div>
+    <div id="country-ov-bubble" class="xc-bubble" aria-hidden="true"></div>
+    <div id="country-ov-rail" class="xc-rail" aria-label="Índice de letras"
+         onpointerdown="railDown(event)" onpointermove="railMove(event)" onpointerup="railUp(event)" onpointercancel="railUp(event)"></div>
   </div>
 
   <!-- BOTTOM NAVIGATION -->

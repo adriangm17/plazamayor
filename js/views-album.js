@@ -117,10 +117,104 @@ function openCountryOverlay() {
   const inp = document.getElementById('country-ov-input'); if (inp) inp.value = '';
   el.classList.remove('hidden');
   document.body.classList.add('xc-lock');
+  buildCountryRail();
   renderCountryOverlay();
   const list = document.getElementById('country-ov-list'); if (list) list.scrollTop = 0;
-  if (inp) inp.focus();
+  // v8.12: en móvil no se abre el teclado; se filtra con el índice lateral de letras (en ordenador sí se puede escribir directamente)
+  if (inp && window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches) inp.focus();
 }
+
+/* ----- Índice lateral de letras (semiescondido): al deslizar de arriba abajo filtra los países por esa inicial ----- */
+/* Índice de letras reutilizable (Álbum e Índice): columna recta en reposo; al tocar se forma un arco que sigue al dedo, con burbuja a su izquierda;
+   al soltar el arco se relaja y la burbuja desaparece. cfg: { rail, bubble (ids), onLetter(letra) } */
+function makeAlphaRail(cfg) {
+  const AMP = cfg.arc === false ? 0 : 76, R = 10, GAP = cfg.gap || 40;   // salida máxima del arco (px; 0 = letras fijas), letras que abarca a cada lado, separación de la burbuja
+  const S = { cur: 0, tgt: 0, amp: 0, ampTgt: 0, raf: 0, letter: null, on: false };
+  const railEl = () => document.getElementById(cfg.rail), bubbleEl = () => document.getElementById(cfg.bubble);
+  function geom() {
+    const rail = railEl(); if (!rail || !rail.children.length) return null;
+    const spans = [...rail.children], first = spans[0].offsetTop, last = spans[spans.length - 1];
+    return { rail, spans, first, slot: (last.offsetTop + last.offsetHeight - first) / spans.length || 1 };
+  }
+  function apply() {
+    const g = geom(); if (!g) return;
+    g.spans.forEach((sp, j) => {
+      const t = Math.max(0, 1 - Math.abs(j - S.cur) / R);
+      sp.style.transform = AMP && S.amp > 0.001 ? `translateX(${(-AMP * S.amp * Math.pow(t, 1.3)).toFixed(1)}px)` : '';
+    });
+    const b = bubbleEl(); if (!b) return;
+    const r = g.rail.getBoundingClientRect(), sp0 = g.spans[0];
+    const x = r.left + sp0.offsetLeft + sp0.offsetWidth / 2 - AMP * S.amp - GAP;   // a la izquierda del punto más saliente del arco
+    const y = r.top + g.first + (S.cur + 0.5) * g.slot;
+    b.style.transform = `translate3d(${(x - 22).toFixed(1)}px, ${(y - 22).toFixed(1)}px, 0)`;
+  }
+  function loop() {
+    S.raf = 0;
+    const df = S.tgt - S.cur, da = S.ampTgt - S.amp;
+    if (Math.abs(df) < 0.004 && Math.abs(da) < 0.004) { S.cur = S.tgt; S.amp = S.ampTgt; apply(); return; }
+    S.cur += df * 0.38; S.amp += da * 0.26;
+    apply();
+    S.raf = requestAnimationFrame(loop);
+  }
+  const kick = () => { if (!S.raf) S.raf = requestAnimationFrame(loop); };
+  const fracOf = (g, e) => Math.max(0, Math.min(g.spans.length - 1, (e.clientY - g.rail.getBoundingClientRect().top - g.first) / g.slot - 0.5));
+  function pick(e) {
+    const g = geom(); if (!g) return;
+    const f = fracOf(g, e);
+    S.tgt = f; kick();
+    const l = g.spans[Math.round(f)].dataset.l;
+    if (l === S.letter) return;
+    S.letter = l;
+    const b = bubbleEl(); if (b) b.textContent = l || '☆';
+    if (cfg.onLetter) cfg.onLetter(l);
+    if (navigator.vibrate) { try { navigator.vibrate(4); } catch (err) {} }
+  }
+  return {
+    build(letters) {
+      const rail = railEl(); if (!rail) return;
+      const key = letters.join('');
+      if (rail.dataset.key === key && rail.children.length) return;   // mismas letras: no se reconstruye (así no se corta un arrastre en curso)
+      rail.dataset.key = key;
+      rail.innerHTML = ['☆', ...letters].map((l, i) => `<span class="xc-rl" data-l="${i ? l : ''}">${l}</span>`).join('');
+      cancelAnimationFrame(S.raf); S.raf = 0;
+      S.cur = S.tgt = S.amp = S.ampTgt = 0; S.letter = null; S.on = false;
+      apply();
+    },
+    down(e) {
+      const g = geom(); if (!g) return;
+      e.preventDefault();
+      try { g.rail.setPointerCapture(e.pointerId); } catch (err) {}
+      S.on = true; S.letter = null;
+      S.cur = S.tgt = fracOf(g, e);   // el arco nace donde está el dedo
+      S.ampTgt = 1;
+      const b = bubbleEl(); if (b) b.classList.add('xc-show');
+      pick(e);
+    },
+    move(e) { if (S.on) { e.preventDefault(); pick(e); } },
+    up() {
+      if (!S.on) return;
+      S.on = false; S.ampTgt = 0; kick();
+      const b = bubbleEl(); if (b) b.classList.remove('xc-show');
+    }
+  };
+}
+function alphaLettersOf(list) {
+  const set = new Set();
+  list.forEach(c => { const l = normKey(c.name).charAt(0).toUpperCase(); if (/[A-Z]/.test(l)) set.add(l); });
+  return [...set].sort();
+}
+
+// Buscador de país del Álbum: al elegir letra se filtran los países por esa inicial
+const albumRail = makeAlphaRail({
+  rail: 'country-ov-rail', bubble: 'country-ov-bubble',
+  onLetter(l) {
+    const inp = document.getElementById('country-ov-input'); if (inp) inp.value = l;
+    renderCountryOverlay();
+    const list = document.getElementById('country-ov-list'); if (list) list.scrollTop = 0;
+  }
+});
+function buildCountryRail() { albumRail.build(alphaLettersOf(alphaCountries())); }
+const railDown = e => albumRail.down(e), railMove = e => albumRail.move(e), railUp = e => albumRail.up(e);
 function closeCountryOverlay() {
   const el = document.getElementById('country-overlay');
   if (el) el.classList.add('hidden');
