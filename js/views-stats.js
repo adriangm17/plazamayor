@@ -9,6 +9,7 @@ let statsType = '';         // tipo de moneda elegido ('' = ninguno)
 let statsTypeHave = false;  // false = todas las fichas registradas del tipo; true = solo las obtenidas
 let statsByCountry = {};    // monedas por país (para el mapa)
 let statsRankAll = false;   // ranking de países: false = top 10, true = todos
+let statsErrors = false;    // página de monedas con errores en los enlaces
 let statsRange = null;   // [añoDesde, añoHasta] al ampliar la línea de tiempo
 
 function collectionStats() {
@@ -88,7 +89,8 @@ function toggleNoYear() { statsNoYearOpen = !statsNoYearOpen; renderEstadisticas
 function setStatsGradePage(n) { statsGradePage = n; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 function pickStatsGrade(g) { statsGrade = g; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 function pickStatsType(t, have) { statsType = t; statsTypeHave = !!have; statsGrade = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function closeStatsGrade() { statsGrade = ''; statsType = ''; statsTypeHave = false; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function pickStatsErrors() { statsErrors = true; statsGrade = ''; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function closeStatsGrade() { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = false; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 
 // Lista paginada de fichas (40 por hoja) compartida por la página de un estado y la de un tipo
 function renderCoinListPage(box, cfg) {
@@ -160,17 +162,41 @@ function renderTypePage(box) {
     }
   });
 }
+// v8.08: monedas con algún enlace que falta o no es válido (las que salen con «!» en el Álbum)
+function coinsWithLinkErrors() { return coins.filter(c => coinLinkProblems(c).length); }
+function renderErrorsPage(box) {
+  const list = sortCoinsForList(coinsWithLinkErrors());
+  renderCoinListPage(box, {
+    list, kicker: 'Errores en enlaces',
+    titleHtml: `${list.length} ${list.length === 1 ? 'ficha con error' : 'fichas con error'}`,
+    emptyMsg: 'No hay ninguna ficha con errores en los enlaces.',
+    extraFor: c => coinListHead(c, '', esc(coinLinkProblems(c).map(t => t.replace('Falta el enlace a ', 'Falta ').replace(/^El enlace de (\w+) no es de .*/, '$1 no válido')).join(' · ')))
+  });
+}
 function toggleStatsRank() { statsRankAll = !statsRankAll; renderEstadisticas(); }
 function resetStatsZoom() { statsRange = null; renderEstadisticas(); }
 
 function renderEstadisticas() {
   if (typeof navSync === 'function') navSync();
   const box = document.getElementById('estadisticas-content'); if (!box) return;
+  if (statsErrors) { if (coinsWithLinkErrors().length) { renderErrorsPage(box); return; } statsErrors = false; }   // sin errores: se vuelve a Estadísticas
   if (statsGrade) { renderGradePage(box); return; }
   if (statsType) { renderTypePage(box); return; }
+  const nErr = coinsWithLinkErrors().length;
+  const errSection = nErr ? `
+    <section class="xs-sec">
+      <div class="xp-head" style="cursor:default"><span class="xp-num">07</span><span class="xp-title" style="font-size:20px">Errores en enlaces</span></div>
+      <p class="xs-hint">Fichas a las que les falta el enlace de Numista o Ucoin, o no es válido (salen con «!» en el Álbum). Toca para verlas todas.</p>
+      <div class="xs-panel">
+        <button onclick="pickStatsErrors()" class="xs-warn w-full flex items-center justify-between gap-2 text-left" style="margin:0">
+          <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${nErr} ${nErr === 1 ? 'moneda con error' : 'monedas con error'}</span>
+          <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+      </div>
+    </section>` : '';
   const s = collectionStats();
   statsByCountry = s.byCountry; statsMapData = { ...(statsMapData || {}), byCountry: s.byCountry };
-  if (s.total === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay monedas en tu colección. Marca alguna con su estado para ver las estadísticas.</div>`; return; }
+  if (s.total === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay monedas en tu colección. Marca alguna con su estado para ver las estadísticas.</div>${errSection}`; return; }
   const card = (icon, label, value, sub) => `
     <div class="xs-stat">
       <div class="xs-stat-label"><i class="fa-solid fa-${icon}"></i>${label}</div>
@@ -256,7 +282,7 @@ function renderEstadisticas() {
           <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${s.noYear} ${s.noYear === 1 ? 'moneda sin año' : 'monedas sin año'} (no ${s.noYear === 1 ? 'aparece' : 'aparecen'} en el gráfico)</span>
           <i class="fa-solid fa-chevron-${statsNoYearOpen ? 'up' : 'down'} text-[10px]"></i>
         </button>
-        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}`;
+        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}${errSection}`;
   attachStatsChart();
   ensureWorldMap();
 }

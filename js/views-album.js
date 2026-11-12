@@ -90,6 +90,7 @@ function goToPeriod(periodId) {
   if (p.collapsed) { p.collapsed = false; persistMeta(); }
   if (coinsOfPeriod(p.id).length === 0) periodForceOpen[p.id] = true;
   movingCoinId = null;
+  if (typeof BarScroll !== 'undefined') BarScroll.freezeUntil = performance.now() + 1400;   // el desplazamiento automático no cambia el banner
   renderSections();
   setTimeout(() => {
     const el = document.getElementById('period-section-' + periodId);
@@ -151,6 +152,7 @@ function selectCountry(countryId) {
   albumPeriodId = '';
   albumGroup = '';
   movingCoinId = null;
+  expandAlbumPeriods();   // al cambiar de país salen todas las épocas desplegadas
   render();
   window.scrollTo(0, 0);
 }

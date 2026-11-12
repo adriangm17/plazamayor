@@ -32,7 +32,7 @@ function navSnap() {
   } else if (currentTab === 'explorar') {
     s.xc = (typeof exploreContinent !== 'undefined' && exploreContinent) || '';
   } else if (currentTab === 'estadisticas') {
-    s.sg = statsGrade; s.st = statsType; s.sh = statsTypeHave;
+    s.sg = statsGrade; s.st = statsType; s.sh = statsTypeHave; s.se = statsErrors;
   }
   return s;
 }
@@ -86,7 +86,7 @@ function navApply(S) {
   } else if (S.t === 'explorar' && sameTab) {
     exploreContinent = S.xc || '';
   } else if (S.t === 'estadisticas' && sameTab) {
-    statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsGradePage = 1;
+    statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsErrors = !!S.se; statsGradePage = 1;
   }
   showTab(S.t);
   render();

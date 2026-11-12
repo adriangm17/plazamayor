@@ -29,32 +29,43 @@
         <h1 class="xh-name">Plaza Mayor</h1>
       </div>
 
-      <div class="xh-mid">
-        <div id="backup-status" class="xh-status"></div>
-        <span id="app-version" class="xh-ver"></span>
-      </div>
-
       <div class="xh-actions">
-        <button onclick="openCreateModal()" class="xh-add"><i class="fa-solid fa-plus"></i> Añadir</button>
+        <button id="xh-add" onclick="openCreateModal()" class="xh-add" title="Añadir moneda" aria-label="Añadir moneda"><i class="fa-solid fa-plus"></i></button>
+        <button type="button" id="xh-addp" onclick="toggleHeaderPop('periods', event)" class="xh-add xh-addp hidden" title="Añadir moneda a una época concreta" aria-label="Añadir moneda a una época concreta" aria-haspopup="true">+P</button>
+        <button type="button" id="xh-editc" onclick="openEditCountryModal()" class="xh-ico hidden" title="Editar país" aria-label="Editar país"><i class="fa-solid fa-pen"></i></button>
+        <button type="button" id="xh-newzone" onclick="toggleAddZoneRow()" class="xh-ico hidden" title="Nueva zona" aria-label="Nueva zona"><i class="fa-solid fa-folder-plus"></i></button>
+        <button type="button" id="xh-sortzone" onclick="startZoneSortMode()" class="xh-ico hidden" title="Mover zonas" aria-label="Mover zonas"><i class="fa-solid fa-arrows-up-down"></i></button>
 
         <div class="relative">
-          <button onclick="toggleSettingsMenu(event)" class="xh-set"><i class="fa-solid fa-gear"></i> Ajustes <span id="sync-dot" class="xs-dot xs-off" title="Sin sesión"></span> <i class="fa-solid fa-chevron-down xh-chev"></i></button>
+          <button onclick="toggleSettingsMenu(event)" class="xh-set" aria-label="Ajustes"><i class="fa-solid fa-gear"></i><span class="xh-set-t"> Ajustes</span> <span id="sync-dot" class="xs-dot xs-off" title="Sin sesión"></span> <i class="fa-solid fa-chevron-down xh-chev"></i></button>
 
-          <div id="settings-dropdown" class="xh-menu hidden">
-            <div id="sync-info" class="xs-info hidden"></div>
-            <button onclick="closeSettingsMenu(); PMSync.enabled && PMSync.syncNow({ pullToo: true });"><i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar</button>
-            <button onclick="closeSettingsMenu(); exportBackup();"><i class="fa-solid fa-download"></i> Exportar</button>
-            <label><i class="fa-solid fa-upload"></i> Importar
-              <input type="file" accept=".json" onchange="closeSettingsMenu(); importBackup(event)" class="hidden">
-            </label>
-            <button onclick="closeSettingsMenu(); openImportModal();"><i class="fa-solid fa-file-csv"></i> CSV</button>
-            <button onclick="closeSettingsMenu(); openThemeModal();"><i class="fa-solid fa-palette"></i> Temas</button>
-            <button onclick="closeSettingsMenu(); openOptionsModal();"><i class="fa-solid fa-sliders"></i> Opciones</button>
-            <button onclick="closeSettingsMenu(); PMSync.enabled && PMSync.logout();"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button>
+          <div id="settings-dropdown" class="xh-menu xh-set-menu hidden">
+            <button type="button" class="xm-row" onclick="toggleSetSub('info', event)" aria-expanded="false"><i class="fa-solid fa-circle-info"></i><span>Información</span><i class="fa-solid fa-chevron-down xm-ch"></i></button>
+            <div id="xm-sub-info" class="xm-sub hidden" onclick="event.stopPropagation()">
+              <div class="xm-line"><small>Cuenta</small><div id="xm-acct">Sin sesión</div></div>
+              <div class="xm-line"><small>Sincronización</small><div id="xm-sync">—</div></div>
+              <div class="xm-line"><small>Versión de desarrollo</small><div><span id="app-version"></span></div></div>
+              <div class="xm-line"><small>Última copia de seguridad</small><div id="backup-status" class="xh-status"></div></div>
+            </div>
+
+            <button type="button" class="xm-row" onclick="toggleSetSub('data', event)" aria-expanded="false"><i class="fa-solid fa-database"></i><span>Datos</span><i class="fa-solid fa-chevron-down xm-ch"></i></button>
+            <div id="xm-sub-data" class="xm-sub hidden">
+              <button type="button" class="xm-item" onclick="closeSettingsMenu(); PMSync.enabled && PMSync.syncNow({ pullToo: true });"><i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar</button>
+              <button type="button" class="xm-item" onclick="closeSettingsMenu(); exportBackup();"><i class="fa-solid fa-download"></i> Exportar</button>
+              <label class="xm-item"><i class="fa-solid fa-upload"></i> Importar
+                <input type="file" accept=".json" onchange="closeSettingsMenu(); importBackup(event)" class="hidden">
+              </label>
+              <button type="button" class="xm-item" onclick="closeSettingsMenu(); openImportModal();"><i class="fa-solid fa-file-csv"></i> CSV</button>
+            </div>
+
+            <button type="button" class="xm-row" onclick="closeSettingsMenu(); openThemeModal();"><i class="fa-solid fa-palette"></i><span>Temas</span></button>
+            <button type="button" class="xm-row" onclick="closeSettingsMenu(); openOptionsModal();"><i class="fa-solid fa-sliders"></i><span>Opciones</span></button>
+            <button type="button" class="xm-row" onclick="closeSettingsMenu(); confirmLogout();"><i class="fa-solid fa-right-from-bracket"></i><span>Cerrar sesión</span></button>
           </div>
         </div>
       </div>
     </div>
+    <div id="xh-pop" class="xh-menu xh-pop hidden" role="menu"></div>
   </header>
 
   <!-- CONTENEDOR DE VISTAS PRINCIPALES -->
@@ -83,7 +94,6 @@
         <input type="search" id="explorar-search" oninput="onExploreSearch(this.value)" placeholder="Buscador: países, zonas geográficas,..." aria-label="Buscar países o zonas geográficas" autocomplete="off">
       </div>
       <div class="xp-tools">
-        <button type="button" id="xp-btn-addzone" class="xp-btn" onclick="toggleAddZoneRow()" title="Añadir zona" aria-label="Añadir zona"><i class="fa-solid fa-plus"></i></button>
         <button type="button" class="xp-btn" onclick="expandAllZones()" title="Desplegar todo" aria-label="Desplegar todo"><i class="fa-solid fa-angles-down"></i></button>
         <button type="button" class="xp-btn" onclick="collapseAllZones()" title="Contraer todo" aria-label="Contraer todo"><i class="fa-solid fa-angles-up"></i></button>
       </div>
@@ -96,6 +106,7 @@
         <button type="button" class="xp-cont" data-cont="Oceanía" onclick="setExploreContinent('Oceanía')"><i class="fa-solid fa-earth-oceania"></i><span>Oceanía</span></button>
         <button type="button" class="xp-cont" data-cont="Extintos" onclick="setExploreContinent('Extintos')"><i class="fa-solid fa-landmark-dome"></i><span>Extintos</span></button>
       </div>
+      <div id="xp-sorthint" class="xp-sorthint">Mantén pulsada una zona y arrástrala para moverla de sitio.</div>
       <div id="xp-addzone" class="xp-addzone">
         <input type="text" id="new-zone-name" maxlength="40" placeholder="Nombre de la zona (Balcanes…)" onkeydown="if(event.key==='Enter')addZone()" aria-label="Nombre de la nueva zona">
         <select id="new-zone-continent" aria-label="Continente de la nueva zona"></select>
@@ -126,11 +137,9 @@
             <input type="text" id="album-country-search" autocomplete="off" oninput="onCountrySearchInput(this.value)" onfocus="onCountrySearchInput(this.value)" onkeydown="onCountrySearchKey(event)" placeholder="País…" title="Ir a otro país" class="xa-input">
             <div id="country-suggest" class="xa-suggest hidden"></div>
           </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-          <button onclick="openEditCountryModal()" title="Editar país" aria-label="Editar país" class="xp-btn"><i class="fa-solid fa-pen"></i></button>
+          <div class="flex items-center gap-1.5 shrink-0 xa-fbtns">
           <button id="btn-only-missing" onclick="toggleOnlyMissing()" title="Solo las que me faltan" aria-label="Solo las que me faltan" class="xp-btn"><i class="fa-solid fa-circle-exclamation"></i></button>
           <button id="btn-only-owned" onclick="toggleOnlyOwned()" title="Solo las que tengo" aria-label="Solo las que tengo" class="xp-btn"><i class="fa-solid fa-circle-check"></i></button>
-          <button id="btn-only-special" onclick="toggleOnlySpecial()" title="Solo no circulantes (conmemorativas, colección, falsas de época…)" aria-label="Solo no circulantes" class="xp-btn"><i class="fa-solid fa-star"></i></button>
           <button id="btn-toggle-periods" onclick="toggleAllPeriods()" title="Contraer períodos" aria-label="Contraer períodos" class="xp-btn"><i class="fa-solid fa-angles-up"></i></button>
           </div>
         </div>

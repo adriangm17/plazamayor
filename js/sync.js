@@ -108,12 +108,12 @@
   function paintStatus() {
     const dot = document.getElementById('sync-dot');
     if (dot) { dot.className = 'xs-dot xs-' + status.state; dot.title = status.text; }
-    const info = document.getElementById('sync-info');
-    if (info) {
-      if (!user) { info.classList.add('hidden'); return; }
-      info.classList.remove('hidden');
-      const when = lastOkAt ? ' · ' + new Date(lastOkAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
-      info.innerHTML = `<b>${esc(user.email || '')}</b>${role ? ` <span class="xs-role">${role === 'admin' ? 'admin' : 'miembro'}</span>` : ''}<br><span class="xs-state xs-${status.state}">${esc(status.text)}${status.state === 'ok' ? esc(when) : ''}</span>`;
+    const acct = document.getElementById('xm-acct'), st = document.getElementById('xm-sync');
+    if (acct) acct.innerHTML = user ? `<b>${esc(user.email || '')}</b>${role ? ` <span class="xs-role">${role === 'admin' ? 'admin' : 'miembro'}</span>` : ''}` : 'Sin sesión';
+    if (st) {
+      let when = '';
+      if (lastOkAt) { const d = new Date(lastOkAt); const hoy = d.toDateString() === new Date().toDateString(); when = '<br>Última: ' + (hoy ? '' : d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ') + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); }
+      st.innerHTML = `<span class="xs-state xs-${status.state}">${esc(status.text)}</span>${when}`;
     }
   }
 

@@ -26,6 +26,22 @@ function neProject(lon, lat) {
     -f * (1.007226 + f2 * (0.015085 + f4 * (-0.044475 + 0.028874 * f2 - 0.005916 * f4)))];
 }
 
+// Recorta un contorno (lon, lat) por un paralelo: se queda con la parte al norte (north = true) o al sur
+const SAH_LAT = 27.667;
+const SPAIN_ENCLAVES = [   // contorno aproximado (lon, lat)
+  { pts: [[-5.385, 35.890], [-5.340, 35.910], [-5.290, 35.905], [-5.272, 35.893], [-5.300, 35.884], [-5.340, 35.872], [-5.375, 35.874]] },   // Ceuta
+  { pts: [[-2.975, 35.290], [-2.965, 35.318], [-2.935, 35.322], [-2.920, 35.300], [-2.935, 35.270], [-2.965, 35.268]] }                      // Melilla
+];
+function clipRingLat(pts, T, north) {
+  const inside = p => north ? p[1] >= T : p[1] <= T, out = [], n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n], ia = inside(a), ib = inside(b);
+    if (ia) out.push(a);
+    if (ia !== ib) { const t = (T - a[1]) / (b[1] - a[1]); out.push([a[0] + t * (b[0] - a[0]), T]); }
+  }
+  return out;
+}
+
 // TopoJSON → [{ key, name, d, cx, cy, size }] en un lienzo de 1000 de ancho
 function buildWorld(topo) {
   const obj = topo.objects.countries || topo.objects[Object.keys(topo.objects)[0]];
@@ -44,11 +60,12 @@ function buildWorld(topo) {
   };
   const XE = neProject(180, 0)[0];   // el mapa ocupa de -180° a 180°: el ancho sale del ecuador
   let minY = Infinity, maxY = -Infinity;
-  const feats = [];
+  const feats = [], sahRings = [];   // v8.07: Sáhara Occidental es una entrada propia (732), nunca parte de Marruecos
   obj.geometries.forEach(g => {
     const name = (g.properties && g.properties.name) || '';
     if (String(g.id) === '010' || name === 'Antarctica') return;   // la Antártida no es un país y estorba
-    const key = g.id != null && g.id !== '' ? String(g.id).padStart(3, '0') : name;
+    let key = g.id != null && g.id !== '' ? String(g.id).padStart(3, '0') : name;
+    if (/sahara/i.test(name)) key = '732';
     const polys = g.type === 'Polygon' ? [g.arcs] : g.type === 'MultiPolygon' ? g.arcs : [];
     const rings = [];
     polys.forEach(poly => poly.forEach(r => {
@@ -62,13 +79,24 @@ function buildWorld(topo) {
         if (lon < lo) lo = lon; if (lon > hi) hi = lon;
       });
       const offs = [0]; if (hi > 180) offs.push(-360); if (lo < -180) offs.push(360);
-      offs.forEach(o => {
-        const pr = un.map(pt => neProject(pt[0] + o, pt[1]));
+      // v8.08: en estos datos el Sáhara Occidental viene dentro del contorno de Marruecos. Se corta por la frontera real
+      // (paralelo 27°40' N, de la costa a 8°40' O); al sur queda el Sáhara Occidental (entrada propia 732) y al norte, Marruecos.
+      const parts = key === '504' ? [{ pts: clipRingLat(un, SAH_LAT, true), sah: false }, { pts: clipRingLat(un, SAH_LAT, false), sah: true }].filter(x => x.pts.length >= 3) : [{ pts: un, sah: false }];
+      parts.forEach(part => offs.forEach(o => {
+        const pr = part.pts.map(pt => neProject(pt[0] + o, pt[1]));
         pr.forEach(q => { if (q[1] < minY) minY = q[1]; if (q[1] > maxY) maxY = q[1]; });
-        rings.push({ pr, base: o === 0 });
-      });
+        (part.sah ? sahRings : rings).push({ pr, base: o === 0 });
+      }));
     }));
     if (rings.length) feats.push({ key, name, rings });
+  });
+  if (sahRings.length) { const e = feats.find(f => f.key === '732'); if (e) e.rings.push(...sahRings); else feats.push({ key: '732', name: 'Western Sahara', rings: sahRings }); }
+  // v8.09: Ceuta y Melilla son España. Son tan pequeñas que el mapa no las dibuja (o quedan dentro del contorno marroquí):
+  // se añaden como entradas de España (724), se pintan encima y, al ser diminutas, salen como un punto con el color de España.
+  SPAIN_ENCLAVES.forEach(e => {
+    const pr = e.pts.map(pt => neProject(pt[0], pt[1]));
+    pr.forEach(q => { if (q[1] < minY) minY = q[1]; if (q[1] > maxY) maxY = q[1]; });
+    feats.push({ key: '724', name: 'Spain', rings: [{ pr, base: true }] });
   });
   const minX = -XE, k = 1000 / (2 * XE), W = 1000, H = (maxY - minY) * k;
   const out = feats.map(f => {

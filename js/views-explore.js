@@ -219,10 +219,18 @@ function addCountryToZone(countryId, zone) {
 }
 function toggleExploreContinent(c) { exploreClosed[c] = !exploreClosed[c]; renderExplorar(); }
 
-function toggleAddZoneRow() {
-  const row = document.getElementById('xp-addzone'), btn = document.getElementById('xp-btn-addzone');
+// v8.04: «Mover zonas» (menú de la cabecera): contrae todas las zonas, que así se pueden arrastrar (mantener pulsado)
+function startZoneSortMode() {
+  collapseAllZones();
+  window.scrollTo(0, 0);
+  const row = document.getElementById('xp-addzone'); if (row) row.classList.remove('xp-open');
+  const n = document.getElementById('xp-sorthint');
+  if (n) { n.classList.add('xp-open'); clearTimeout(startZoneSortMode.t); startZoneSortMode.t = setTimeout(() => n.classList.remove('xp-open'), 6000); }
+}
+function toggleAddZoneRow(forceOpen) {
+  const row = document.getElementById('xp-addzone'), btn = document.getElementById('xh-newzone');
   if (!row) return;
-  const open = row.classList.toggle('xp-open');
+  const open = row.classList.toggle('xp-open', forceOpen === true ? true : undefined);
   if (btn) btn.classList.toggle('xp-on', open);
   if (open) { const nc = document.getElementById('new-zone-continent'); if (nc) nc.value = exploreContinent || ''; const i = document.getElementById('new-zone-name'); if (i) i.focus(); }
 }

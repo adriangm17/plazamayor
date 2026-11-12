@@ -158,9 +158,57 @@ async function shrinkBlob(blob) {
   }
 }
 
+/* v8.07: monedas con agujero (foto sobre fondo blanco). Si el centro de la imagen es blanco y forma un hueco redondo,
+   centrado y cerrado (no toca los bordes), esos píxeles pasan a transparentes. Si algo no cuadra se deja la imagen tal cual. */
+async function clearCoinHole(blob) {
+  try {
+    if (!blob || (blob.type && !/^image\//.test(blob.type)) || typeof createImageBitmap !== 'function') return blob;
+    const bmp = await createImageBitmap(blob);
+    const w = bmp.width, h = bmp.height;
+    if (w < 40 || h < 40) return blob;
+    const isW = (d, o, t) => d[o + 3] >= 200 && d[o] >= t && d[o + 1] >= t && d[o + 2] >= t;
+    // Prueba rápida a baja resolución: ¿el centro es blanco?
+    const sm = document.createElement('canvas'); sm.width = sm.height = 32;
+    const sx = sm.getContext('2d', { willReadFrequently: true }); sx.drawImage(bmp, 0, 0, 32, 32);
+    const q = sx.getImageData(15, 15, 2, 2).data;
+    for (let i = 0; i < 4; i++) if (!isW(q, i * 4, 232)) { bmp.close && bmp.close(); return blob; }
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(bmp, 0, 0); bmp.close && bmp.close();
+    const im = cx.getImageData(0, 0, w, h), d = im.data;
+    const reg = new Uint8Array(w * h), stack = [(h >> 1) * w + (w >> 1)];
+    let area = 0, x0 = w, x1 = 0, y0 = h, y1 = 0, touches = false;
+    while (stack.length) {
+      const p = stack.pop();
+      if (reg[p]) continue;
+      const x = p % w, y = (p - x) / w;
+      if (!isW(d, p * 4, 225)) continue;
+      reg[p] = 1; area++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) { touches = true; break; }
+      if (area > w * h * 0.3) break;
+      stack.push(p - 1, p + 1, p - w, p + w);
+    }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    const ok = !touches && area <= w * h * 0.3 && area > 25 &&
+      bw / bh > 0.82 && bw / bh < 1.22 && area / (bw * bh) > 0.62 && area / (bw * bh) < 0.92 &&
+      Math.abs((x0 + x1) / 2 - w / 2) < w * 0.15 && Math.abs((y0 + y1) / 2 - h / 2) < h * 0.15 &&
+      bw < w * 0.7 && bh < h * 0.7;
+    if (!ok) return blob;
+    for (let y = Math.max(0, y0 - 2); y <= Math.min(h - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 2); x <= Math.min(w - 1, x1 + 2); x++) {
+      const p = y * w + x;
+      if (reg[p]) { d[p * 4 + 3] = 0; continue; }
+      // 1 píxel de borde claro junto al hueco: se quita también para que no quede un halo blanco
+      if ((reg[p - 1] || reg[p + 1] || reg[p - w] || reg[p + w]) && isW(d, p * 4, 190)) d[p * 4 + 3] = 0;
+    }
+    cx.putImageData(im, 0, 0);
+    const out = await new Promise(res => cv.toBlob(b => res(b), 'image/webp', 0.95));
+    return out || blob;
+  } catch (e) { return blob; }
+}
+
 async function getImageUrl(key) {
   if (imgUrlCache.has(key)) return imgUrlCache.get(key);
-  const blob = await dbGetImage(key);
+  const blob = await clearCoinHole(await dbGetImage(key));   // v8.07: el hueco blanco central se vuelve transparente (solo al mostrar; el original no se toca)
   if (!blob) return null;
   if (imgUrlCache.has(key)) return imgUrlCache.get(key);
   const url = URL.createObjectURL(blob);

@@ -9,6 +9,7 @@ function isIndiceCollapsed(countryId) {
   const v = indiceCollapsedCountries[countryId];
   return v === undefined ? true : v;
 }
+// Texto predictivo: solo salen los países cuyo nombre EMPIEZA por lo escrito (sin tildes ni mayúsculas)
 // Búsqueda sin tildes ni mayúsculas: «peru» encuentra «Perú»
 const indiceNorm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
@@ -76,7 +77,7 @@ function renderIndiceView() {
   const html = list.map(country => {
     const ps = periodsOfCountry(country.id);
 
-    if (search && !indiceNorm(country.name).includes(search)) return '';   // solo se busca por nombre de país
+    if (search && !indiceNorm(country.name).startsWith(search)) return '';   // solo se busca por nombre de país
     const matching = ps;
 
     const shown = new Set(ps.map(p => p.id));
