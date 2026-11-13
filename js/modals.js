@@ -1024,7 +1024,10 @@ async function handleSaveCoin(e) {
   const imgBack = document.getElementById('new-img-back').value;
 
   const country = getOrCreateCountry(countryName);
-  const period = getOrCreatePeriod(country.id, periodName);
+  // v8.25: al editar una ficha y pasarla a un período que no existe, el nuevo se crea justo debajo del período de origen
+  const prevCoin = editId ? coins.find(c => c.id === editId) : null;
+  const afterPeriodId = prevCoin && prevCoin.countryId === country.id ? prevCoin.periodId : '';
+  const period = getOrCreatePeriod(country.id, periodName, afterPeriodId);
 
   let savedCoin = null;
   if (editId) {

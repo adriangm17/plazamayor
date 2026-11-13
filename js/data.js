@@ -39,12 +39,18 @@ function getOrCreateCountry(name) {
   return c;
 }
 
-function getOrCreatePeriod(countryId, name) {
+// afterPeriodId (opcional, v8.25): si el período no existe se crea justo debajo de ese período en lugar de al final
+function getOrCreatePeriod(countryId, name, afterPeriodId) {
   name = String(name ?? '').trim() || 'General';
   let p = findPeriodByName(countryId, name);
   if (!p) {
     const mine = periodsOfCountry(countryId);
     p = { id: newId(), countryId, name, order: mine.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1, collapsed: false, sortMode: 'default' };
+    const at = afterPeriodId ? mine.findIndex(x => x.id === afterPeriodId) : -1;
+    if (at >= 0) {
+      mine.splice(at + 1, 0, p);
+      mine.forEach((x, i) => { x.order = i; });
+    }
     periods.push(p);
   }
   return p;

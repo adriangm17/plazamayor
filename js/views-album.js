@@ -399,6 +399,7 @@ function openCoinOrVariants(el, coinId) {   // ficha base de un grupo de variant
 function handleCoinTouchStart(e, coinId) {
   isLongPress = false;
   const cardEl = e && e.currentTarget;
+  if (coinDragAllowed(cardEl)) return;   // v8.25: con permisos, mantener pulsado = arrastrar la ficha (ver más abajo)
   pressTimer = setTimeout(() => {
     // Pulsación larga: solo despliega la ficha (mover la moneda se hace desde "Editar ficha")
     isLongPress = true;
@@ -422,6 +423,169 @@ function handleCoinClick(e, coinId) {
     return;
   }
   openCoinOrVariants(e.currentTarget, coinId);
+}
+
+/* ----- v8.25: reordenar fichas del Álbum manteniendo pulsado y arrastrando (sin desplegar la ficha) -----
+   Solo con permisos de edición del catálogo (administrador). El miembro conserva la pulsación larga de siempre.
+   Se mueve dentro del mismo período; con filtros activos solo se recolocan las fichas visibles, en los huecos que ya ocupaban. */
+const COIN_HOLD_MS = 450;
+let coinDrag = null;   // { card, pointerId, startX, startY, x, y, timer, active, scrollRaf }
+let coinDragSuppressClick = false;
+
+function coinDragAllowed(card) {
+  if (!card || !card.closest || !card.closest('.xa-grid')) return false;
+  const s = window.PMSync;
+  return !(s && s.enabled && typeof s.role === 'function' && s.role() === 'miembro');
+}
+
+window.addEventListener('pointerdown', e => {
+  if (coinDrag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const card = e.target.closest && e.target.closest('.xa-grid > .xc');
+  if (!card || !coinDragAllowed(card)) return;
+  if (e.target.closest('button, a, input, select, [data-nodrag]')) return;
+  coinDrag = { card, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false, scrollRaf: 0 };
+  coinDrag.timer = setTimeout(coinDragActivate, COIN_HOLD_MS);
+  window.addEventListener('pointermove', coinDragMove);
+  window.addEventListener('pointerup', coinDragEnd);
+  window.addEventListener('pointercancel', coinDragEnd);
+  window.addEventListener('touchmove', coinBlockScroll, { passive: false });
+});
+window.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.xa-grid > .xc')) e.preventDefault(); });
+window.addEventListener('click', e => {
+  if (coinDragSuppressClick) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+
+function coinBlockScroll(e) { if (coinDrag && coinDrag.active && e.cancelable) e.preventDefault(); }
+
+function coinDragActivate() {
+  const d = coinDrag;
+  if (!d) return;
+  d.active = true;
+  d.startX = d.x; d.startY = d.y;
+  const s = d.card.style;
+  s.transition = 'none'; s.position = 'relative'; s.zIndex = '60';
+  s.transform = 'scale(1.05)';
+  s.boxShadow = '0 14px 34px rgba(0,0,0,0.45)';
+  s.touchAction = 'none';
+  document.body.style.userSelect = 'none';
+  document.body.style.webkitUserSelect = 'none';
+  try { d.card.setPointerCapture(d.pointerId); } catch (err) {}
+  if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) {} }
+  d.scrollRaf = requestAnimationFrame(coinAutoScroll);
+}
+
+function coinDragMove(e) {
+  const d = coinDrag;
+  if (!d || e.pointerId !== d.pointerId) return;
+  d.x = e.clientX; d.y = e.clientY;
+  if (!d.active) {
+    // Si se mueve antes de tiempo es un scroll normal: se cancela la pulsación larga
+    if (Math.abs(d.x - d.startX) > 8 || Math.abs(d.y - d.startY) > 8) coinDragCleanup();
+    return;
+  }
+  e.preventDefault();
+  coinDragPlace();
+}
+
+// La ficha sigue al dedo/ratón y se intercambia con la ficha sobre la que pasa el puntero
+function coinDragPlace() {
+  const d = coinDrag;
+  if (!d || !d.active) return;
+  const card = d.card, grid = card.parentElement;
+  const apply = () => { card.style.transform = `translate(${d.x - d.startX}px, ${d.y - d.startY}px) scale(1.05)`; };
+  apply();
+  for (let guard = 0; guard < 4; guard++) {
+    const target = [...grid.children].find(el => {
+      if (el === card || !el.classList.contains('xc')) return false;
+      const r = el.getBoundingClientRect();
+      return d.x >= r.left && d.x <= r.right && d.y >= r.top && d.y <= r.bottom;
+    });
+    if (!target) break;
+    const vr = card.getBoundingClientRect();
+    const vcx = vr.left + vr.width / 2, vcy = vr.top + vr.height / 2;
+    const targetIsBefore = !!(card.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_PRECEDING);
+    if (targetIsBefore) target.before(card); else target.after(card);
+    // Se mide la nueva posición natural y se corrige el desplazamiento para que la ficha no salte
+    card.style.transform = 'scale(1.05)';
+    const nr = card.getBoundingClientRect();
+    d.startX = d.x - (vcx - (nr.left + nr.width / 2));
+    d.startY = d.y - (vcy - (nr.top + nr.height / 2));
+    apply();
+  }
+}
+
+function coinAutoScroll() {
+  const d = coinDrag;
+  if (!d || !d.active) return;
+  const edge = 90, vh = window.innerHeight;
+  let step = 0;
+  if (d.y < edge) step = -Math.ceil((edge - d.y) / 6);
+  else if (d.y > vh - edge) step = Math.ceil((d.y - (vh - edge)) / 6);
+  if (step) {
+    const before = window.scrollY;
+    window.scrollBy(0, step);
+    const moved = window.scrollY - before;
+    if (moved) { d.startY -= moved; coinDragPlace(); }
+  }
+  d.scrollRaf = requestAnimationFrame(coinAutoScroll);
+}
+
+function coinDragEnd(e) {
+  const d = coinDrag;
+  if (!d || (e && e.pointerId !== d.pointerId)) return;
+  const wasActive = d.active, grid = d.card.parentElement;
+  const ids = wasActive && grid ? [...grid.children].filter(el => el.classList.contains('xc')).map(el => el.id.replace(/^coin-card-/, '')) : [];
+  coinDragCleanup();
+  if (!wasActive) return;
+  coinDragSuppressClick = true;
+  setTimeout(() => { coinDragSuppressClick = false; }, 350);
+  applyCoinCardOrder(ids);
+}
+
+function coinDragCleanup() {
+  const d = coinDrag;
+  if (!d) return;
+  clearTimeout(d.timer);
+  cancelAnimationFrame(d.scrollRaf);
+  if (d.active) {
+    const s = d.card.style;
+    s.transition = s.position = s.zIndex = s.transform = s.boxShadow = s.touchAction = '';
+    document.body.style.userSelect = document.body.style.webkitUserSelect = '';
+    try { d.card.releasePointerCapture(d.pointerId); } catch (err) {}
+  }
+  window.removeEventListener('pointermove', coinDragMove);
+  window.removeEventListener('pointerup', coinDragEnd);
+  window.removeEventListener('pointercancel', coinDragEnd);
+  window.removeEventListener('touchmove', coinBlockScroll);
+  coinDrag = null;
+}
+
+// ids = fichas del período en el orden en que quedaron en pantalla (una por grupo de variantes)
+function applyCoinCardOrder(ids) {
+  const first = coins.find(c => c.id === ids[0]);
+  if (!first) { render(); return; }
+  const periodId = first.periodId;
+  const all = coinsOfPeriod(periodId).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const onlyMissing = !!periodOnlyMissing[periodId];
+  const visible = all.filter(c => matchesAlbumFilter(c) && !(onlyMissing && c.acquired));   // igual que al pintar
+  const visIds = new Set(visible.map(c => c.id));
+  const seq = [], used = new Set();
+  ids.forEach(id => {
+    const c = all.find(x => x.id === id);
+    if (!c || used.has(c.id)) return;
+    const key = compactGroupKey(c);
+    // una ficha de grupo arrastra a todas sus variantes visibles, manteniendo su orden entre ellas
+    const members = key ? visible.filter(x => compactGroupKey(x) === key) : [c];
+    (members.length ? members : [c]).forEach(x => { if (!used.has(x.id) && visIds.has(x.id)) { used.add(x.id); seq.push(x); } });
+  });
+  if (seq.length !== visible.length) { render(); return; }   // algo no cuadra: no se toca nada
+  const merged = all.slice();
+  all.forEach((c, i) => { if (visIds.has(c.id)) merged[i] = null; });
+  let n = 0;
+  for (let i = 0; i < merged.length; i++) if (merged[i] === null) merged[i] = seq[n++];
+  const changed = [];
+  merged.forEach((c, i) => { if ((c.order ?? 0) !== i) { c.order = i; changed.push(c); } });
+  if (changed.length) saveCoins(changed); else render();
 }
 
 function flipGridCoin(event, coinId) {
