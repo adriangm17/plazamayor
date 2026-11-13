@@ -432,10 +432,13 @@ const COIN_HOLD_MS = 450;
 let coinDrag = null;   // { card, pointerId, startX, startY, x, y, timer, active, scrollRaf }
 let coinDragSuppressClick = false;
 
-function coinDragAllowed(card) {
-  if (!card || !card.closest || !card.closest('.xa-grid')) return false;
+function catalogEditAllowed() {   // administrador (o sin nube: todo es del propietario)
   const s = window.PMSync;
   return !(s && s.enabled && typeof s.role === 'function' && s.role() === 'miembro');
+}
+function coinDragAllowed(card) {
+  if (!card || !card.closest || !card.closest('.xa-grid')) return false;
+  return catalogEditAllowed();
 }
 
 window.addEventListener('pointerdown', e => {
@@ -487,6 +490,14 @@ function coinDragMove(e) {
   coinDragPlace();
 }
 
+/* v8.26: sobre otra ficha hay dos zonas. BORDE (margen exterior): tras una pausa breve se intercambian de sitio (reordenar, como antes).
+   CENTRO: tras una pausa algo mayor la ficha de destino se marca «FUSIONAR»; al soltar se pide confirmación y se fusionan. */
+const COIN_SWAP_MS = 220, COIN_MERGE_MS = 550;
+function coinMergeClear() {
+  const d = coinDrag; if (!d) return;
+  clearTimeout(d.zoneTimer); d.zoneTimer = 0; d.zoneEl = null; d.zoneKind = '';
+  if (d.mergeEl) { d.mergeEl.classList.remove('xc-merge-target'); d.mergeEl = null; d.card.style.opacity = ''; }
+}
 // La ficha sigue al dedo/ratón y se intercambia con la ficha sobre la que pasa el puntero
 function coinDragPlace() {
   const d = coinDrag;
@@ -494,13 +505,40 @@ function coinDragPlace() {
   const card = d.card, grid = card.parentElement;
   const apply = () => { card.style.transform = `translate(${d.x - d.startX}px, ${d.y - d.startY}px) scale(1.05)`; };
   apply();
-  for (let guard = 0; guard < 4; guard++) {
-    const target = [...grid.children].find(el => {
-      if (el === card || !el.classList.contains('xc')) return false;
-      const r = el.getBoundingClientRect();
-      return d.x >= r.left && d.x <= r.right && d.y >= r.top && d.y <= r.bottom;
-    });
-    if (!target) break;
+  const under = [...grid.children].find(el => {
+    if (el === card || !el.classList.contains('xc')) return false;
+    const r = el.getBoundingClientRect();
+    return d.x >= r.left && d.x <= r.right && d.y >= r.top && d.y <= r.bottom;
+  });
+  if (!under) { coinMergeClear(); return; }
+  const r = under.getBoundingClientRect();
+  const inCenter = d.x > r.left + r.width * 0.25 && d.x < r.right - r.width * 0.25 && d.y > r.top + r.height * 0.2 && d.y < r.bottom - r.height * 0.2;
+  const kind = inCenter ? 'merge' : 'swap';
+  if (d.zoneEl === under && d.zoneKind === kind) return;   // sigue en la misma zona: el temporizador ya corre
+  coinMergeClear();
+  d.zoneEl = under; d.zoneKind = kind;
+  if (kind === 'merge') {
+    d.zoneTimer = setTimeout(() => {
+      if (!coinDrag || coinDrag !== d || !d.active || d.zoneEl !== under) return;
+      d.mergeEl = under; under.classList.add('xc-merge-target');
+      d.card.style.opacity = '.5';   // translúcida para ver la ficha de destino
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (err) {} }
+    }, COIN_MERGE_MS);
+  } else {
+    d.zoneTimer = setTimeout(() => {
+      if (!coinDrag || coinDrag !== d || !d.active || d.zoneEl !== under) return;
+      d.zoneEl = null; d.zoneKind = '';
+      coinDragSwap(under);
+      coinDragPlace();   // por si tras el cambio el puntero ya está sobre otra ficha
+    }, COIN_SWAP_MS);
+  }
+}
+function coinDragSwap(target) {
+  const d = coinDrag;
+  if (!d || !d.active) return;
+  const card = d.card;
+  const apply = () => { card.style.transform = `translate(${d.x - d.startX}px, ${d.y - d.startY}px) scale(1.05)`; };
+  {
     const vr = card.getBoundingClientRect();
     const vcx = vr.left + vr.width / 2, vcy = vr.top + vr.height / 2;
     const targetIsBefore = !!(card.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_PRECEDING);
@@ -535,17 +573,32 @@ function coinDragEnd(e) {
   if (!d || (e && e.pointerId !== d.pointerId)) return;
   const wasActive = d.active, grid = d.card.parentElement;
   const ids = wasActive && grid ? [...grid.children].filter(el => el.classList.contains('xc')).map(el => el.id.replace(/^coin-card-/, '')) : [];
+  const dragId = d.card.id.replace(/^coin-card-/, ''), mergeId = d.mergeEl ? d.mergeEl.id.replace(/^coin-card-/, '') : '';
   coinDragCleanup();
   if (!wasActive) return;
   coinDragSuppressClick = true;
   setTimeout(() => { coinDragSuppressClick = false; }, 350);
   applyCoinCardOrder(ids);
+  if (mergeId) confirmMergeCards(dragId, mergeId);
+}
+
+// v8.26: confirmación de la fusión (solo administrador)
+function confirmMergeCards(dragId, targetId) {
+  if (!catalogEditAllowed()) return;
+  const a = coins.find(c => c.id === dragId), b = coins.find(c => c.id === targetId);
+  if (!a || !b) return;
+  const desc = id => { const x = coins.find(c => c.id === id), g = (x && vgGroupOfId(x.id)) || [x]; return g.map(y => `${y.denom} · ${y.km || 'KM#-'}`).join('\n   '); };
+  const ok = confirm('¿Fusionar estas fichas como variantes?\n\n' +
+    '•  ' + desc(targetId) + '\n•  ' + desc(dragId) +
+    '\n\nFuncionarán como variantes de una misma moneda (una sola ficha en el Álbum, un solo cómputo en la compleción), pero cada una conserva su KM#. Se podrá deshacer desde la ficha de variantes.');
+  if (ok) mergeCoinGroups(dragId, targetId);
 }
 
 function coinDragCleanup() {
   const d = coinDrag;
   if (!d) return;
   clearTimeout(d.timer);
+  coinMergeClear();
   cancelAnimationFrame(d.scrollRaf);
   if (d.active) {
     const s = d.card.style;
@@ -703,6 +756,8 @@ function kmKey(km) {
   return { base: (m[1] || 'KM').toUpperCase() + '#' + m[2], suffix: m[3].trim().toLowerCase().replace(/^[\s.\-_/]+/, '') };
 }
 function variantGroupOf(c) {
+  const fused = c && c.id && vgGroupOfId(c.id);   // v8.26: grupo con fichas fusionadas → sus porciones son las del grupo fusionado
+  if (fused && fused.some(x => x.vlink)) return fused;
   const k = kmKey(c && c.km);
   if (!k) return null;
   if (!variantCache) {
@@ -722,24 +777,86 @@ function variantGroupOf(c) {
 /* ----- v4.33: una sola ficha por grupo de variantes (mismo país + período + número base de KM) -----
    El álbum pinta la variante elegida (por defecto la original, sin sufijo) y el círculo partido hace de selector.
    Cada variante sigue siendo una moneda independiente (conseguida, ejemplares, grado, plata, imágenes, backups). */
+/* v8.26: FUSIÓN. El administrador puede arrastrar una ficha sobre otra y fusionarlas: pasan a ser variantes entre sí
+   aunque su KM# sea distinto (cada una conserva su KM#). La unión se guarda en el campo `vlink` de cada ficha
+   (= id de la ficha líder, que pasa a ser la ficha base del grupo). Un grupo = fichas del mismo país + período
+   unidas por el mismo número base de KM# o por el mismo `vlink` (si una variante nueva comparte KM# con una fusionada, entra también). */
+let _vgCache = null;
+function vgIndex() {
+  if (_vgCache && _vgCache.ref === coins && _vgCache.n === coins.length) return _vgCache;
+  const parent = new Map();
+  const find = id => { while (parent.get(id) !== id) { parent.set(id, parent.get(parent.get(id))); id = parent.get(id); } return id; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  const seenKey = new Map();
+  const link = (key, id) => { if (seenKey.has(key)) union(id, seenKey.get(key)); else seenKey.set(key, id); };
+  coins.forEach(x => parent.set(x.id, x.id));
+  coins.forEach(x => {
+    const scope = x.periodId + '|' + x.countryId, k = kmKey(x.km);
+    if (k) link('km|' + scope + '|' + k.base, x.id);
+    if (x.vlink) link('vl|' + scope + '|' + x.vlink, x.id);
+  });
+  const comps = new Map();
+  coins.forEach(x => { const r = find(x.id); if (!comps.has(r)) comps.set(r, []); comps.get(r).push(x); });
+  const byKey = new Map(), ofId = new Map();   // clave → grupo (2 o más), id → grupo
+  comps.forEach(list => {
+    if (list.length < 2) return;
+    const entries = list.map(x => { const k = kmKey(x.km); return { coin: x, base: k ? k.base : '', suffix: k ? k.suffix : '' }; });
+    const leaderIds = new Set(list.map(x => x.vlink).filter(Boolean));
+    const lead = e => (e.coin.vlink && leaderIds.has(e.coin.id) && e.coin.vlink === e.coin.id) ? 0 : 1;   // la ficha líder de la fusión va primero
+    entries.sort((a, b) => lead(a) - lead(b)
+      || (!a.base - !b.base)
+      || a.base.localeCompare(b.base, undefined, { numeric: true })
+      || a.suffix.localeCompare(b.suffix, undefined, { numeric: true })
+      || (a.coin.order ?? 0) - (b.coin.order ?? 0));
+    const g = entries.map(e => e.coin), f = entries[0];
+    const key = f.coin.periodId + '|' + f.coin.countryId + '|' + (f.base || 'vl:' + (f.coin.vlink || f.coin.id));
+    byKey.set(key, g);
+    g.forEach(x => ofId.set(x.id, g));
+  });
+  _vgCache = { ref: coins, n: coins.length, byKey, ofId };
+  Promise.resolve().then(() => { _vgCache = null; });
+  return _vgCache;
+}
+function vgGroupOfId(id) { return vgIndex().ofId.get(id) || null; }
 function compactGroupKey(c) {
-  const k = kmKey(c && c.km);
+  if (!c) return null;
+  const g = vgGroupOfId(c.id);
+  if (g) { const f = g[0], k = kmKey(f.km); return f.periodId + '|' + f.countryId + '|' + (k ? k.base : 'vl:' + (f.vlink || f.id)); }
+  const k = kmKey(c.km);
   return k ? c.periodId + '|' + c.countryId + '|' + k.base : null;
 }
-function compactGroupsMap() {   // clave → variantes (2 o más) del mismo período, la original primero
-  const m = new Map();
-  coins.forEach(x => {
-    const key = compactGroupKey(x); if (!key) return;
-    if (!m.has(key)) m.set(key, []);
-    m.get(key).push({ coin: x, suffix: kmKey(x.km).suffix });
-  });
-  const out = new Map();
-  m.forEach((g, key) => {
-    if (g.length < 2) return;
-    g.sort((a, b) => a.suffix.localeCompare(b.suffix, undefined, { numeric: true }));
-    out.set(key, g.map(e => e.coin));
-  });
-  return out;
+function compactGroupsMap() {   // clave → variantes (2 o más) del mismo período, la ficha base primero
+  return vgIndex().byKey;
+}
+// Distintos KM# base del grupo (en orden): una ficha fusionada puede llevar varios
+function groupBaseKms(g) {
+  const out = [];
+  g.forEach(x => { const l = baseKmLabel(x), k = kmKey(x.km); if (k && !out.includes(l)) out.push(l); });
+  return out.length ? out : [baseKmLabel(g[0])];
+}
+// ¿El grupo contiene fichas fusionadas a mano?
+function groupIsFused(g) { return !!(g && g.some(x => x.vlink)); }
+
+/* Fusionar (solo administrador): la ficha arrastrada y la de destino (con todas sus variantes) pasan a ser un solo grupo */
+function mergeCoinGroups(dragId, targetId) {
+  const a = coins.find(c => c.id === dragId), b = coins.find(c => c.id === targetId);
+  if (!a || !b || a.id === b.id || a.periodId !== b.periodId || a.countryId !== b.countryId) return false;
+  const ga = vgGroupOfId(a.id) || [a], gb = vgGroupOfId(b.id) || [b];
+  if (ga.includes(b)) return false;   // ya están juntas
+  const leader = gb[0];
+  const all = [...gb, ...ga], changed = [];
+  all.forEach(x => { if (x.vlink !== leader.id) { x.vlink = leader.id; changed.push(x); } });
+  _vgCache = null; _cmpCache = null;
+  saveCoins(changed);
+  return true;
+}
+// Deshacer la fusión de un grupo (vuelven a agruparse solo por su número de KM#)
+function unmergeCoinGroup(key) {
+  const g = compactGroupsMap().get(key); if (!g) return;
+  const changed = [];
+  g.forEach(x => { if (x.vlink) { delete x.vlink; changed.push(x); } });
+  _vgCache = null; _cmpCache = null;
+  if (changed.length) saveCoins(changed);
 }
 /* v7.08: porcentajes de compleción. Cada grupo de variantes (mismo país + período + KM# base) cuenta como UNA moneda:
    la ficha base, que se da por conseguida si se tiene alguna de sus variantes (igual que se ve en el álbum). */
@@ -917,9 +1034,14 @@ function renderCoinCard(c, opts) {
         </div>
 
         <div class="flex gap-1 w-full">
-          <div class="xc-cell xc-km w-[45%]">
-            ${esc(isBase ? baseKmLabel(c) : (c.km || 'KM#-'))}
-          </div>
+          ${(() => {
+            if (!isBase) return `<div class="xc-cell xc-km w-[45%]">${esc(c.km || 'KM#-')}</div>`;
+            const kms = groupBaseKms(opts.group);
+            if (kms.length < 2) return `<div class="xc-cell xc-km w-[45%]">${esc(kms[0])}</div>`;
+            // v8.26: grupo fusionado con varios KM#: todos, uno encima de otro, ajustados al hueco
+            const lh = Math.max(7, Math.floor(26 / kms.length));
+            return `<div class="xc-cell xc-km xc-km-multi w-[45%]" style="--kml:${lh}px" title="${esc(kms.join(' · '))}">${kms.map(k => `<span>${esc(k)}</span>`).join('')}</div>`;
+          })()}
           ${isBase
             ? `<div class="xc-cell xc-multi w-[55%]" title="${opts.group.length} variantes · toca la ficha para verlas"><i class="fa-solid fa-layer-group"></i><span>${opts.group.length} VARIANTES</span></div>`
             : `<div class="xc-cell xc-soft w-[55%]" style="font-weight:600;font-size:11px">${cecaOrValue}</div>`}
@@ -967,12 +1089,20 @@ function openVariantsSheet(key, okStr) {
       <div class="xv-links">${lk(x.numistaUrl, 'N', 'Numista')}${lk(x.ucoinUrl, 'U', 'Ucoin')}</div>
     </div>`;
   }).join('');
+  const un = document.getElementById('variants-unmerge');
+  if (un) un.classList.toggle('hidden', !(groupIsFused(g) && catalogEditAllowed()));
   const ov = document.getElementById('variants-modal');
   ov.classList.remove('hidden');
   hydrateImages(ov);
   fitVariantsSheet();
 }
 function closeVariantsSheet() { document.getElementById('variants-modal').classList.add('hidden'); }
+function unmergeFromSheet() {
+  const g = compactGroupsMap().get(variantsSheetKey); if (!g) return;
+  if (!confirm('¿Deshacer la fusión de estas fichas?\n\n' + g.map(x => (x.km || 'KM#-') + ' · ' + x.denom).join('\n') + '\n\nVolverán a ser fichas independientes (cada una con su KM#; las que compartan número base seguirán como variantes).')) return;
+  closeVariantsSheet();
+  unmergeCoinGroup(variantsSheetKey);
+}
 function openVariantFromSheet(id) { closeVariantsSheet(); openCoinModal(id); }
 // Añadir una variante nueva: abre el formulario de crear ficha con país, período, denominación y KM# base ya rellenos
 function addVariantFromSheet() {

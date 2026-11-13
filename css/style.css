@@ -1337,3 +1337,13 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xt-bad .xt-track i { background:#dc2626; } .xt-bad .xt-left b { color:#b91c1c; }
 .xt-line { font-size:12.5px; font-weight:700; color:var(--xp-plum); line-height:1.3; }
 .xt-note { margin-top:3px; font-size:11px; font-weight:600; color:rgba(var(--xp-plum-rgb),.62); line-height:1.3; }
+
+
+/* ===== v8.26: fusionar fichas (arrastrar una sobre otra) ===== */
+.xc.xc-merge-target { z-index:61; outline:3px dashed var(--xp-orange); outline-offset:3px; transform:scale(1.03); transition:transform .15s; }
+.xc.xc-merge-target::after { content:'FUSIONAR'; position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); z-index:70; padding:6px 12px; border-radius:12px; background:var(--xp-orange); color:var(--xp-plum-d); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:14px; letter-spacing:.05em; box-shadow:0 4px 12px rgba(0,0,0,.4); pointer-events:none; }
+/* KM# de un grupo fusionado: todos, uno encima de otro, ajustados al hueco (la fuente la reduce fitText) */
+.xc-km.xc-km-multi { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px 3px; font-size:11px; line-height:var(--kml,13px); }
+.xc-km.xc-km-multi > span { display:block; white-space:nowrap; line-height:var(--kml,13px); }
+.xv-unmerge { flex:none; width:52px; height:46px; border-radius:14px; border:2.5px solid var(--xp-plum); background:var(--xp-sand-l); color:var(--xp-plum); font-size:16px; cursor:pointer; }
+.xv-unmerge.hidden { display:none; }
