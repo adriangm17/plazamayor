@@ -157,6 +157,33 @@ function identHintScore(ex, c) {
 
 const identGroupKey = c => (typeof compactGroupKey === 'function' && compactGroupKey(c)) || c.id;   // variantes (KM# 337a/337b…) = un mismo diseño
 
+/* v8.26: dentro de un grupo de variantes (KM# 23.1 / 23.2…, o fichas fusionadas) se intenta saber CUÁL es la variante de la foto:
+   1.º por el año leído (solo las variantes cuyo rango lo incluye) y 2.º por la comparación de imágenes (refine.variant).
+   «La tengo» / «No la tengo» se decide solo con esa variante. Si no se puede distinguir y entre las que quedan hay tenidas y no tenidas
+   (g.mixed), se pide comparar y se listan una por una. */
+function identResolveVariants(g, year, refine) {
+  let cands = g.coins.slice(), why = '';
+  if (cands.length > 1) {
+    if (year) {
+      const inR = cands.filter(c => { const r = parseYearRange(c.range); return r && year >= r.min && year <= r.max; });
+      if (inR.length && inR.length < cands.length) { cands = inR; why = 'year'; }
+    }
+    const rv = refine && refine.variant && refine.variant.get(g.key);
+    if (cands.length > 1 && rv && rv.size) {
+      const f = cands.filter(c => rv.has(c.id));
+      if (f.length && f.length < cands.length) { cands = f; why = 'image'; }
+    }
+  }
+  const have = cands.filter(c => c.acquired).length;
+  g.vcands = cands; g.vwhy = why;
+  g.variant = cands.length === 1 && g.coins.length > 1 ? cands[0] : null;
+  g.owned = have === cands.length;
+  g.mixed = have > 0 && have < cands.length;
+  if (cands.length === 1) g.rep = cands[0];
+  else if (!cands.includes(g.rep)) g.rep = cands.find(c => c.acquired) || cands[0];
+}
+const identNeedsVariantRefine = m => !!(m && m.contenders.some(g => g.mixed && g.vcands.some(c => c.hasFront || c.hasBack)));
+
 /* Cruza la lectura con el catálogo.
    Devuelve { state: have|miss|ambiguous|none|unreadable, country, groups (todas, por puntuación), contenders (las que empatan arriba), reason } */
 function identMatch(ex, refine) {
@@ -183,11 +210,11 @@ function identMatch(ex, refine) {
     g.coins.push(c);
     g.score = Math.max(g.score, s);
     if (ys.inRange === true) g.yearIn = true; else if (ys.inRange === false && g.yearIn === null) g.yearIn = false;
-    if (c.acquired) g.owned = true;
     const pick = s + (c.acquired ? 0.01 : 0);   // a igualdad de puntos se enseña la que tengo
     if (pick > g.repScore) { g.repScore = pick; g.rep = c; }
   });
   const groups = [...byKey.values()];
+  groups.forEach(g => identResolveVariants(g, year, refine));
   if (refine) groups.forEach(g => {
     if (refine.same.has(g.key)) g.score += 6;
     else if (refine.sent.has(g.key)) g.score -= 3;
@@ -197,7 +224,8 @@ function identMatch(ex, refine) {
   const top = groups[0].score;
   res.contenders = groups.filter(g => g.score >= top - 2);
   const owned = res.contenders.filter(g => g.owned).length;
-  if (res.contenders.length === 1 || owned === 0 || owned === res.contenders.length) res.state = (owned === res.contenders.length) ? 'have' : 'miss';
+  if (res.contenders.some(g => g.mixed)) res.state = 'ambiguous';   // v8.26: variantes tenidas y no tenidas sin poder distinguirlas
+  else if (res.contenders.length === 1 || owned === 0 || owned === res.contenders.length) res.state = (owned === res.contenders.length) ? 'have' : 'miss';
   else res.state = 'ambiguous';
   return res;
 }
@@ -534,12 +562,14 @@ function identRunManual() {
 
 // Compara la foto con las imágenes del catálogo de las candidatas empatadas y devuelve qué fichas tienen el mismo diseño
 async function identRefineCore(m) {
-  const sent = m.contenders.slice(0, 6);
-  const parts = [{ text: 'The first image(s) are a photo of a coin taken by the user. Then come numbered catalogue candidates, each with its obverse/reverse reference picture. Decide which candidates show the SAME coin type/design as the photo (same portrait, motifs and layout; ignore the minting year, photo quality and lighting). Return the indices of every candidate that matches (empty if none) and the single best one.' }]
+  // Cada candidata es una ficha; si un grupo tiene variantes tenidas y no tenidas sin distinguir, cada variante es una candidata
+  const sent = [];
+  m.contenders.slice(0, 6).forEach(g => (g.mixed ? g.vcands.slice(0, 5) : [g.rep]).forEach(c => { if (sent.length < 10) sent.push({ key: g.key, c, variant: g.mixed }); }));
+  const parts = [{ text: 'The first image(s) are a photo of a coin taken by the user. Then come numbered catalogue candidates, each with its obverse/reverse reference picture. Decide which candidates show the SAME coin type/design as the photo (same portrait, motifs and layout; ignore the minting year, photo quality and lighting). Some candidates are VARIANTS of the same design that differ only in small details (mint mark, legend, letter style, lettering, edge, metal): compare those details carefully and return only the variants that truly match the photo. Return the indices of every candidate that matches (empty if none) and the single best one.' }]
     .concat(identPhotos.map(p => ({ inline_data: { mime_type: p.mime, data: p.b64 } })));
   for (let i = 0; i < sent.length; i++) {
-    const c = sent[i].rep;
-    parts.push({ text: `Candidate ${i}: ${c.denom} · ${coinPeriodName(c)} · ${c.range || ''}` });
+    const c = sent[i].c;
+    parts.push({ text: `Candidate ${i}: ${c.denom} · ${coinPeriodName(c)} · ${c.range || ''}${sent[i].variant ? ' · ' + (c.km || '') + ' ' + (c.cecaMaterial || '') : ''}` });
     for (const side of ['front', 'back']) {
       if (!c[side === 'front' ? 'hasFront' : 'hasBack']) continue;
       const blob = await dbGetImage(imgKey(c.id, side));
@@ -550,9 +580,11 @@ async function identRefineCore(m) {
   const { data } = await identGenerate(parts, schema, 60000);
   const idx = new Set((data.same_design_indices || []).filter(i => Number.isInteger(i) && i >= 0 && i < sent.length));
   if (Number.isInteger(data.best_index) && data.best_index >= 0 && data.best_index < sent.length) idx.add(data.best_index);
-  return { sent: new Set(sent.map(g => g.key)), same: new Set([...idx].map(i => sent[i].key)), reason: data.reason || '' };
+  const variant = new Map();
+  [...idx].forEach(i => { if (!sent[i].variant) return; if (!variant.has(sent[i].key)) variant.set(sent[i].key, new Set()); variant.get(sent[i].key).add(sent[i].c.id); });
+  return { sent: new Set(sent.map(x => x.key)), same: new Set([...idx].map(i => sent[i].key)), variant, reason: data.reason || '' };
 }
-const identCanRefine = m => m && m.contenders.length > 1 && m.contenders.some(g => g.rep.hasFront || g.rep.hasBack);
+const identCanRefine = m => m && ((m.contenders.length > 1 && m.contenders.some(g => g.rep.hasFront || g.rep.hasBack)) || identNeedsVariantRefine(m));
 
 // Botón manual (por si el afinado automático falló o se quiere repetir)
 async function identRefineRun() {
@@ -686,7 +718,7 @@ function identRarityChip(c) {
 // Ejemplares que tengo de un grupo (solo los que tienen conservación)
 function identMineHtml(g) {
   const rows = [];
-  g.coins.forEach(c => (Array.isArray(c.items) ? c.items : []).forEach(it => {
+  (g.vcands || g.coins).forEach(c => (Array.isArray(c.items) ? c.items : []).forEach(it => {
     if (it && String(it.grade || '').trim()) rows.push({ c, it });
   }));
   if (!rows.length) return '';
@@ -720,19 +752,25 @@ function identFichaHtml(g, opts) {
       <div class="xf-r"><span class="xf-pill xf-line xf-yr">${esc(formatYearRange(c.range))}</span><span class="xf-pill xf-dark xf-grow">${esc(coinPeriodName(c))}</span></div>
       <div class="xf-r">${flag}<span class="xf-pill xf-line xf-grow">${esc((c.cecaMaterial || '').trim() || '—')}</span><span class="xf-chip xf-type" style="background:${COIN_TYPE_COLORS[type] || COIN_TYPE_COLORS[DEFAULT_COIN_TYPE]}">${esc(type.toUpperCase())}</span></div>
     </div>
-    ${g.coins.length > 1 ? `<p class="xid-note xid-light">Hay ${g.coins.length} variantes de esta ficha (${g.coins.map(x => esc(x.km || '')).filter(Boolean).join(' · ')}).</p>` : ''}
+    ${g.coins.length > 1 ? (g.variant
+      ? `<p class="xid-note xid-light">Variante identificada: <b>${esc(c.km || 'sin KM#')}</b> (${g.vwhy === 'image' ? 'por la comparación de imágenes' : 'por el año'}). Otras variantes: ${g.coins.filter(x => x !== c).map(x => esc(x.km || '—') + (x.acquired ? ' ✓' : '')).join(' · ')}.</p>`
+      : `<p class="xid-note xid-light">Hay ${g.coins.length} variantes de esta ficha (${g.coins.map(x => esc(x.km || '')).filter(Boolean).join(' · ')}).</p>`) : ''}
     ${yearNote}
     ${g.owned ? identMineHtml(g) : ''}
     <div class="xid-foot"><button type="button" class="xid-btn xid-big" onclick="openCoinModal('${jsArg(c.id)}')"><i class="fa-solid fa-id-card"></i> ABRIR FICHA${g.owned ? '' : ' Y AÑADIRLA'}</button></div>
   </article>`;
 }
 
-function identCandHtml(g) {
-  const c = g.rep;
+// v8.26: un grupo con variantes tenidas y no tenidas sin distinguir se lista variante por variante
+function identCandsHtml(groups) {
+  return groups.map(g => g.mixed ? g.vcands.map(c => identCandHtml(g, c)).join('') : identCandHtml(g)).join('');
+}
+function identCandHtml(g, coin) {
+  const c = coin || g.rep, own = coin ? !!coin.acquired : g.owned;
   return `<button type="button" class="xid-cand" onclick="openCoinModal('${jsArg(c.id)}')">
     <span class="xid-cimg xid-cmini">${identFichaImg(c, 'front')}</span>
     <span class="xid-ctxt"><b>${esc(c.denom)}</b><small>${esc(coinPeriodName(c))} · ${esc(formatYearRange(c.range))}${c.km ? ' · ' + esc(c.km) : ''}</small></span>
-    <span class="xid-badge ${g.owned ? 'xid-b-have' : 'xid-b-miss'}">${g.owned ? 'LA TENGO' : 'NO LA TENGO'}</span>
+    <span class="xid-badge ${own ? 'xid-b-have' : 'xid-b-miss'}">${own ? 'LA TENGO' : 'NO LA TENGO'}</span>
   </button>`;
 }
 
@@ -765,7 +803,7 @@ function identResultHtml() {
   const seen = identSeenHtml(ex);
   const lowConf = ex.source === 'gemini' && ex.confidence && ex.confidence < 0.5;
   const note = ex.notes ? `<p class="xid-note xid-pad">${esc(ex.notes)}</p>` : '';
-  const refineBtn = (m.contenders.length > 1 && identPhotos.length && identKey() && !identRefine)
+  const refineBtn = ((m.contenders.length > 1 || identNeedsVariantRefine(m)) && identPhotos.length && identKey() && !identRefine)
     ? `<button type="button" class="xid-btn xid-soft xid-full" onclick="identRefineRun()"><i class="fa-solid fa-code-compare"></i> Afinar comparando con las imágenes del catálogo</button>` : '';
   const refineMsg = identRefine ? `<p class="xid-note xid-pad">${identRefine.same.size ? 'Gemini ha comparado tu foto con las imágenes del catálogo.' : 'Ninguna imagen del catálogo se parece claramente a tu foto.'}${identRefine.reason ? ' ' + esc(identRefine.reason) : ''}</p>` : '';
 
@@ -783,18 +821,21 @@ function identResultHtml() {
   }
   const top = m.contenders[0];
   if (m.state === 'ambiguous') {
-    return html + identBanner('ambiguous', 'Varias fichas posibles', 'Tu foto encaja con fichas que tienes y otras que no. Compáralas.') + seen + note + refineMsg
-      + `<div class="xid-cands">${m.contenders.map(identCandHtml).join('')}</div>` + refineBtn;
+    const onlyVar = m.contenders.length === 1;
+    return html + identBanner('ambiguous', onlyVar ? 'Varias variantes posibles' : 'Varias fichas posibles', onlyVar ? 'No he podido distinguir qué variante es: tienes algunas y otras no. Compáralas.' : 'Tu foto encaja con fichas que tienes y otras que no. Compáralas.') + seen + note + refineMsg
+      + `<div class="xid-cands">${identCandsHtml(m.contenders)}</div>` + refineBtn;
   }
   const have = m.state === 'have';
-  const owned = have ? top.coins.flatMap(c => (Array.isArray(c.items) ? c.items : []).filter(i => i && String(i.grade || '').trim()).map(i => i.year || 's/f')) : [];
+  const owned = have ? (top.vcands || top.coins).flatMap(c => (Array.isArray(c.items) ? c.items : []).filter(i => i && String(i.grade || '').trim()).map(i => i.year || 's/f')) : [];
   const sub = have
     ? (owned.length ? 'Ya está en tu colección · ejemplares: ' + [...new Set(owned)].map(esc).join(', ') : 'Ya está en tu colección.')
-    : 'Está en el catálogo, pero todavía no la has conseguido.';
+    : (top.variant && top.coins.some(x => x !== top.variant && x.acquired)
+        ? `Tienes otras variantes de esta ficha, pero no la <b>${esc(top.variant.km || 'identificada')}</b>.`
+        : 'Está en el catálogo, pero todavía no la has conseguido.');
   const others = m.contenders.slice(1);
   return html + identBanner(have ? 'have' : 'miss', have ? 'La tengo' : 'No la tengo', sub) + seen + note
     + identFichaHtml(top) + refineMsg
-    + (others.length ? `<h4 class="xid-sub">También podría ser</h4><div class="xid-cands">${others.map(identCandHtml).join('')}</div>` + refineBtn : '')
+    + (others.length ? `<h4 class="xid-sub">También podría ser</h4><div class="xid-cands">${identCandsHtml(others)}</div>` + refineBtn : '')
     + (lowConf ? '<p class="xid-note xid-pad">Lectura poco segura: comprueba que es la misma moneda.</p>' : '');
 }
 
