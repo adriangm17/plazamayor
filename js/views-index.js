@@ -99,7 +99,7 @@ function renderIndiceView() {
     const matching = ps;
 
     const shown = new Set(ps.map(p => p.id));
-    const normal = completionList(coinsOfCountry(country.id).filter(c => shown.has(c.periodId))).filter(c => !isSilverCoin(c));   // v7.08: las variantes no cuentan
+    const normal = completionList(coinsOfCountry(country.id).filter(c => shown.has(c.periodId))).filter(isCompletionNormal);   // v7.08: las variantes no cuentan
     const cAcquired = normal.filter(c => c.acquired).length;
     const cTotal = normal.length;
     const cPct = cTotal > 0 ? Math.round((cAcquired / cTotal) * 100) : 0;
@@ -124,7 +124,7 @@ function renderIndiceView() {
         <div class="xi-periods ${isCollapsed ? 'hidden' : ''}">
           ${matching.map(p => {
             const periodCoins = completionList(coinsOfPeriod(p.id));   // v7.08: las variantes no cuentan
-            const normalCoins = periodCoins.filter(c => !isSilverCoin(c));
+            const normalCoins = periodCoins.filter(isCompletionNormal);
             const pAcquired = normalCoins.filter(c => c.acquired).length;
             const pTotal = normalCoins.length;
             const pPct = pTotal > 0 ? Math.round((pAcquired / pTotal) * 100) : 0;

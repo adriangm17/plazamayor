@@ -14,7 +14,7 @@ let statsRange = null;   // [añoDesde, añoHasta] al ampliar la línea de tiemp
 
 function collectionStats() {
   const s = { total: 0, unique: 0, silverCount: 0, silverNoWeight: 0, gross: 0, fine: 0, byYear: {}, noYear: 0, prog: { n: { a: 0, t: 0 }, s: { a: 0, t: 0 } }, byCountry: {}, grades: {}, noGrade: 0, noYearBy: {} };
-  completionList(coins).forEach(c => { const pk = s.prog[isSilverCoin(c) ? 's' : 'n']; pk.t++; if (c.acquired) pk.a++; });   // v7.08: las variantes no cuentan para la compleción
+  completionList(coins).forEach(c => { if (isSetCoin(c)) return; const pk = s.prog[isSilverCoin(c) ? 's' : 'n']; pk.t++; if (c.acquired) pk.a++; });   // v7.08: las variantes no cuentan para la compleción
   coins.forEach(c => {
     const rows = (Array.isArray(c.items) ? c.items : []).filter(i => i && typeof i === 'object');
     const owned = rows.some(i => String(i.grade || '').trim() !== '') ? rows : [];

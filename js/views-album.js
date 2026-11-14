@@ -14,7 +14,7 @@ let albumGroup = '';   // (sin uso desde 4.10: ya no hay pestañas ni grupos de 
 // Todos los períodos del país se ven siempre; el desplegable "Épocas" solo lleva a la posición de cada uno
 function periodsInAlbumView() { return periodsOfCountry(currentCountryId); }
 function periodProgressText(p) {
-  const n = completionList(coinsOfPeriod(p.id)).filter(c => !isSilverCoin(c));
+  const n = completionList(coinsOfPeriod(p.id)).filter(isCompletionNormal);
   return `${n.filter(c => c.acquired).length}/${n.length}`;
 }
 function validAlbumPeriod() { albumPeriodId = ''; albumGroup = ''; return ''; }
@@ -699,11 +699,11 @@ function renderSections() {
     if (filterActive && periodCoins.length === 0 && !onlyMissingHere) return '';
 
     const cmpCoins = completionList(allPeriodCoins);   // v7.08: las variantes no cuentan (cada grupo = 1 moneda)
-    const normalCoins = cmpCoins.filter(c => !isSilverCoin(c));
+    const normalCoins = cmpCoins.filter(isCompletionNormal);
     const acquiredCount = normalCoins.filter(c => c.acquired).length;
     const totalCount = normalCoins.length;
     const normalPct = totalCount > 0 ? Math.round((acquiredCount / totalCount) * 100) : 0;
-    const silverCoins = cmpCoins.filter(isSilverCoin);
+    const silverCoins = cmpCoins.filter(c => isSilverCoin(c) && !isSetCoin(c));
     const silverPct = silverCoins.length > 0 ? Math.round((silverCoins.filter(c => c.acquired).length / silverCoins.length) * 100) : 0;
 
     const isCollapsed = periodIsCollapsed(p);

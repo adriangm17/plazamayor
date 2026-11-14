@@ -1,5 +1,5 @@
 // Versión de la app: se sube en cada iteración (se muestra en la cabecera, junto al aviso de copia)
-const APP_VERSION = '8.27';
+const APP_VERSION = '8.28';
 
 /* ===== UTILIDADES GENERALES (sin estado) ===== */
 const GRADES = ['TBD', 'F', 'VF', 'XF', 'AU', 'UNC'];   // de peor a mejor
@@ -16,7 +16,7 @@ function itemFormatIcon(id, size) {
   const f = ITEM_FORMATS.find(x => x.id === id) || ITEM_FORMATS[0];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.svg}</svg>`;
 }
-const RARITIES =['A', 'B', 'C', 'R', 'RR', 'RRR', 'RRR*', 'UR', 'PLATA'];
+const RARITIES =['A', 'B', 'C', 'R', 'RR', 'RRR', 'RRR*', 'UR', 'PLATA', 'SET'];
 // Tipo de moneda (solo se edita desde "Editar ficha"). Circulante es el valor por defecto y no lleva marca en las tarjetas.
 const COIN_TYPES = ['Circulante', 'Conmemorativas', 'Colección', 'Falsas de época', 'FAO'];
 const DEFAULT_COIN_TYPE = 'Circulante';
@@ -54,6 +54,11 @@ function bestGrade(c) {
 function isSilverCoin(c) {
   return Boolean(c.rarity && c.rarity.trim().toUpperCase() === 'PLATA');
 }
+// v8.28: rareza SET (sets/estuches): no cuenta en ninguna estadística de compleción (ni siquiera en la barra de plata)
+function isSetCoin(c) {
+  return Boolean(c && c.rarity && c.rarity.trim().toUpperCase() === 'SET');
+}
+const isCompletionNormal = c => !isSilverCoin(c) && !isSetCoin(c);   // cuenta en la compleción «normal»
 
 function getRarityStyle(rarityStr) {
   if (!rarityStr) return 'background-color: #1e293b; color: #ffffff;';
@@ -67,7 +72,8 @@ function getRarityStyle(rarityStr) {
     'RRR': 'background-color: #ff914d; color: #0f172a;',
     'RRR*': 'background-color: #e2a9f1; color: #0f172a;',
     'UR': 'background-color: #ff5757; color: #ffffff;',
-    'PLATA': 'background-color: #64748b; color: #ffffff;'
+    'PLATA': 'background-color: #64748b; color: #ffffff;',
+    'SET': 'background-color: #cb6ce6; color: #ffffff;'
   };
   return colors[cleanRarity] || 'background-color: #1e293b; color: #ffffff;';
 }

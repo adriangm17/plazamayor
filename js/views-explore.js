@@ -249,7 +249,7 @@ function toggleAddZoneRow(forceOpen) {
 function onExploreSearch(value) { exploreSearch = value; renderExplorar(); }
 
 function countryStats(c) {
-  const normal = completionList(coinsOfCountry(c.id)).filter(x => !isSilverCoin(x));   // v7.08: las variantes no cuentan
+  const normal = completionList(coinsOfCountry(c.id)).filter(isCompletionNormal);   // v7.08: las variantes no cuentan
   const a = normal.filter(x => x.acquired).length;
   return { a, t: normal.length, pct: normal.length ? Math.round(a / normal.length * 100) : 0 };
 }
@@ -275,7 +275,7 @@ function dotsLayout(n) {
   return { s, g: Math.round(s * k * 10) / 10, cols, shown: Math.min(n, DOTS_MAX_ROWS * DOTS_MAX_COLS) };   // (más de 15 períodos: se dibujan los 15 primeros)
 }
 function periodPctOf(p) {
-  const all = completionList(coinsOfPeriod(p.id)), normal = all.filter(x => !isSilverCoin(x)), list = normal.length ? normal : all;   // un período solo de plata se mide con sus monedas de plata
+  const all = completionList(coinsOfPeriod(p.id)), normal = all.filter(isCompletionNormal), list = normal.length ? normal : all.filter(x => !isSetCoin(x));   // un período solo de plata se mide con sus monedas de plata
   return list.length ? Math.round(list.filter(x => x.acquired).length / list.length * 100) : 0;
 }
 
