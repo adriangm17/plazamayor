@@ -81,6 +81,7 @@ let exploreContinent = '';   // continente filtrado ('' = todos)
 function setExploreContinent(c) {
   exploreContinent = (exploreContinent === c) ? '' : c;
   renderExplorar();
+  if (typeof navSync === 'function') navSync();   // v8.29: el continente elegido queda en el historial (así "atrás" desde un país vuelve a él)
 }
 function syncContinentButtons() {
   document.querySelectorAll('#xp-conts .xp-cont').forEach(b => {
@@ -241,9 +242,52 @@ function startZoneSortMode() {
 function toggleAddZoneRow(forceOpen) {
   const row = document.getElementById('xp-addzone'), btn = document.getElementById('xh-newzone');
   if (!row) return;
+  if (forceOpen !== false) closeAddCountryRow();
   const open = row.classList.toggle('xp-open', forceOpen === true ? true : undefined);
   if (btn) btn.classList.toggle('xp-on', open);
   if (open) { const nc = document.getElementById('new-zone-continent'); if (nc) nc.value = exploreContinent || ''; const i = document.getElementById('new-zone-name'); if (i) i.focus(); }
+}
+
+/* v8.29: añadir un país sin monedas. Se guarda con keep:true (no lo borra la limpieza de países vacíos), sale en Explorar
+   con su ficha y en el Índice como cualquier otro; al añadirle períodos/monedas funciona como el resto. */
+function closeAddCountryRow() {
+  const row = document.getElementById('xp-addcountry'), btn = document.getElementById('xh-newcountry');
+  if (row) row.classList.remove('xp-open');
+  if (btn) btn.classList.remove('xp-on');
+}
+function toggleAddCountryRow() {
+  const row = document.getElementById('xp-addcountry'), btn = document.getElementById('xh-newcountry');
+  if (!row) return;
+  const open = !row.classList.contains('xp-open');
+  if (open) { const z = document.getElementById('xp-addzone'), zb = document.getElementById('xh-newzone'); if (z) z.classList.remove('xp-open'); if (zb) zb.classList.remove('xp-on'); }
+  row.classList.toggle('xp-open', open);
+  if (btn) btn.classList.toggle('xp-on', open);
+  if (open) {
+    const sel = document.getElementById('new-country-zone');
+    if (sel) sel.innerHTML = '<option value="">Zona automática</option>' + allZones().map(z => `<option value="${esc(z)}">${esc(z)}</option>`).join('');
+    const i = document.getElementById('new-country-name'); if (i) i.focus();
+  }
+}
+function addEmptyCountry() {
+  const input = document.getElementById('new-country-name');
+  const name = String(input.value || '').trim().replace(/\s+/g, ' ');
+  if (!name) return;
+  if (findCountryByName(name)) { alert('Ya existe un país con ese nombre.'); return; }
+  const c = getOrCreateCountry(name);
+  c.keep = true;   // sin monedas ni períodos: se conserva
+  const zone = (document.getElementById('new-country-zone') || {}).value || '';
+  if (zone) c.continent = zone;
+  persistMeta();
+  input.value = '';
+  closeAddCountryRow();
+  // Con un filtro de continente que lo ocultaría, se quita el filtro para que se vea la ficha nueva
+  if (exploreContinent && zoneContinent(continentOf(c)) !== exploreContinent) exploreContinent = '';
+  exploreSearch = ''; const es = document.getElementById('explorar-search'); if (es) es.value = '';
+  exploreClosed[continentOf(c)] = false;
+  renderExplorar();
+  if (typeof navSync === 'function') navSync();
+  const card = document.querySelector(`.xp-card[data-cid="${CSS.escape(c.id)}"]`);
+  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); card.classList.add('ring-2', 'ring-amber-500'); setTimeout(() => card.classList.remove('ring-2', 'ring-amber-500'), 1800); }
 }
 
 function onExploreSearch(value) { exploreSearch = value; renderExplorar(); }
@@ -288,12 +332,12 @@ function countryCardHtml(c) {
   const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
   const id = jsArg(c.id);
   return `
-    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras} ${eras === 1 ? 'período' : 'períodos'}, ${s.pct}% completado"><div class="xp-in">
+    <div class="xp-card" data-cid="${esc(c.id)}" onclick="jumpToCountry('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${eras === 0 ? 'sin períodos' : eras + (eras === 1 ? ' período' : ' períodos') + ', ' + (s.t ? s.pct + '% completado' : 'sin monedas')}"><div class="xp-in">
       <div class="xp-photo ${photo ? '' : 'xp-empty'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
       <button type="button" class="xp-edit" onclick="event.stopPropagation(); editCountryCard('${id}')" aria-label="Editar ${esc(name)}" title="Editar"><i class="fa-solid fa-pen"></i></button>
       <span class="xp-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span>
       <div class="xp-dots" aria-hidden="true"><div class="xp-dots-b" style="--ds:${lay.s}px;--dg:${lay.g}px;--dc:${lay.cols}">${dots}</div></div>
-      <div class="xp-pct ${s.pct >= 100 ? 'xp-p100' : ''}" title="${s.a} de ${s.t} monedas">${s.pct}%</div>
+      <div class="xp-pct ${s.pct >= 100 ? 'xp-p100' : ''}" title="${s.a} de ${s.t} monedas">${eras === 0 && s.t === 0 ? '-' : s.pct + '%'}</div>
       <div class="xp-name ${name.length > 14 ? 'xp-long' : (name.length > 9 ? 'xp-mid' : '')}">${esc(name)}</div>
     </div></div>`;
 }
@@ -306,9 +350,27 @@ function renderExplorar() {
   const nc = document.getElementById('new-zone-continent');
   if (nc && !nc.options.length) nc.innerHTML = continentOptionsHtml('');
   box.innerHTML = renderContinents();
+  restoreRowScroll(box);
   hydrateImages(box);
   updateExploreToggle();
 }
+
+/* v8.30: scroll lateral de cada fila de países (por zona). Se guarda al desplazar y se recupera al repintar o al volver con «atrás» desde un país.
+   Al entrar en Explorar desde otra pestaña (no con «atrás») se empieza de cero (switchTab llama a resetRowScroll). */
+const exploreRowScroll = {};
+function resetRowScroll() { Object.keys(exploreRowScroll).forEach(k => delete exploreRowScroll[k]); }
+function restoreRowScroll(box) {
+  box.querySelectorAll('section[data-zone]').forEach(sec => {
+    const x = exploreRowScroll[sec.dataset.zone], row = sec.querySelector('.xp-row');
+    if (x && row) row.scrollLeft = x;
+  });
+}
+document.addEventListener('scroll', e => {
+  const t = e.target;
+  if (!t || !t.classList || !t.classList.contains('xp-row') || t.scrollWidth === 0) return;
+  const sec = t.closest('section[data-zone]');
+  if (sec && t.offsetParent !== null) exploreRowScroll[sec.dataset.zone] = t.scrollLeft;
+}, true);
 
 function renderContinents() {
   const zones = allZones();

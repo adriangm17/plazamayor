@@ -34,6 +34,7 @@
         <button type="button" id="xh-addp" onclick="toggleHeaderPop('periods', event)" class="xh-add xh-addp hidden" title="Añadir moneda a una época concreta" aria-label="Añadir moneda a una época concreta" aria-haspopup="true">+P</button>
         <button type="button" id="xh-editc" onclick="openEditCountryModal()" class="xh-ico hidden" title="Editar país" aria-label="Editar país"><i class="fa-solid fa-pen"></i></button>
         <button type="button" id="xh-newzone" onclick="toggleAddZoneRow()" class="xh-ico hidden" title="Nueva zona" aria-label="Nueva zona"><i class="fa-solid fa-folder-plus"></i></button>
+        <button type="button" id="xh-newcountry" onclick="toggleAddCountryRow()" class="xh-ico hidden" title="Nuevo país (sin monedas)" aria-label="Nuevo país (sin monedas)"><i class="fa-solid fa-flag"></i></button>
         <button type="button" id="xh-sortzone" onclick="startZoneSortMode()" class="xh-ico hidden" title="Mover zonas" aria-label="Mover zonas"><i class="fa-solid fa-arrows-up-down"></i></button>
 
         <div class="relative">
@@ -118,6 +119,11 @@
         <input type="text" id="new-zone-name" maxlength="40" placeholder="Nombre de la zona (Balcanes…)" onkeydown="if(event.key==='Enter')addZone()" aria-label="Nombre de la nueva zona">
         <select id="new-zone-continent" aria-label="Continente de la nueva zona"></select>
         <button type="button" onclick="addZone()">Crear</button>
+      </div>
+      <div id="xp-addcountry" class="xp-addzone">
+        <input type="text" id="new-country-name" maxlength="60" placeholder="Nombre del país (aún sin monedas)" onkeydown="if(event.key==='Enter')addEmptyCountry()" aria-label="Nombre del nuevo país">
+        <select id="new-country-zone" aria-label="Zona del nuevo país"></select>
+        <button type="button" onclick="addEmptyCountry()">Crear</button>
       </div>
       <div id="explorar-content"></div>
     </div>

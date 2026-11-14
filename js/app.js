@@ -36,6 +36,7 @@ function updateHeaderTools() {
   set('xh-addp', inAlbum);
   set('xh-editc', inAlbum);
   set('xh-newzone', currentTab === 'explorar');
+  set('xh-newcountry', currentTab === 'explorar');
   set('xh-sortzone', currentTab === 'explorar');
   set('xh-add', currentTab === 'album');
   closeHeaderPop();
@@ -136,6 +137,8 @@ function resetViewFolds(tabName) {
 }
 
 function switchTab(tabName) {
+  if (tabName === 'explorar' && currentTab !== 'explorar' && typeof resetRowScroll === 'function') resetRowScroll();   // v8.30
+  if (tabName !== currentTab && typeof navRememberScroll === 'function') navRememberScroll();   // v8.29: se recuerda dónde se estaba para el botón atrás
   if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = false; }   // tocar de nuevo la pestaña vuelve al resumen
   if (tabName !== currentTab) resetAllFilters();   // al cambiar de pestaña no se mantiene ningún filtro
   const changed = tabName !== currentTab;

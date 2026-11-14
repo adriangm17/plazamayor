@@ -19,6 +19,9 @@ const NAV_CLOSERS = {
   'country-overlay': () => closeCountryOverlay()
 };
 let navReady = false, navSnaps = [], navIdx = 0, navPending = 0, navTimer = 0, navPendingTimer = 0;
+// v8.29: posición de scroll de cada paso del historial, para que "atrás" devuelva a donde se estaba (p. ej. Explorar → Oceanía → Australia → atrás)
+const navScrolls = {};
+function navRememberScroll() { if (navReady) navScrolls[navIdx] = window.scrollY || 0; }
 
 function navOpenModals() {
   return NAV_MODALS.filter(id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden'); });
@@ -84,14 +87,18 @@ function navApply(S) {
       setFilterButtonState('btn-only-owned', albumOnlyOwned);
       setFilterButtonState('btn-only-special', albumOnlySpecial);
     }
-  } else if (S.t === 'explorar' && sameTab) {
-    exploreContinent = S.xc || '';
+  } else if (S.t === 'explorar') {
+    exploreContinent = S.xc || '';   // v8.29: también al volver desde otra pestaña (antes solo si ya se estaba en Explorar y el continente se perdía)
   } else if (S.t === 'estadisticas' && sameTab) {
     statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsErrors = !!S.se; statsGradePage = 1;
   }
   showTab(S.t);
   render();
-  if (!sameTab) window.scrollTo(0, 0);
+  if (!sameTab) {
+    const y = navScrolls[navIdx] || 0;
+    window.scrollTo(0, y);
+    if (y) requestAnimationFrame(() => window.scrollTo(0, y));
+  }
   // 3) una entrada que pedía una ventana que ya no está abierta no se puede reconstruir: se sigue hacia atrás
   if (S.m.some(id => !navOpenModals().includes(id))) history.back();
 }

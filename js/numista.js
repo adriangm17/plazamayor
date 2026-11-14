@@ -28,6 +28,26 @@
   }
   loadLocal();
 
+  /* v8.30: valores calculados que no llegaron a la nube (p. ej. desde la cuenta de otro usuario sin permiso de escritura).
+     Antes, al recargar la tabla de la nube se borraban de este dispositivo y parecía que "no se guardaban". Ahora se
+     comprueba que la fila esté en la nube, si no se intenta guardar desde la app, y si sigue sin poder se conserva
+     aquí marcada como pendiente y se reintenta en cada carga. */
+  const PEND_KEY = 'pm_numista_pendientes';
+  const pending = new Set();
+  try { (JSON.parse(localStorage.getItem(PEND_KEY) || '[]') || []).forEach(n => pending.add(Number(n))); } catch (e) {}
+  function savePending() { try { localStorage.setItem(PEND_KEY, JSON.stringify([...pending])); } catch (e) {} }
+  let lastPersistError = '';
+  async function persist(id, fila) {
+    const c = sb(); if (!c || !fila) { lastPersistError = 'Sin conexión con la nube'; return false; }
+    try {
+      const got = await c.from('numista_valores').select('*').eq('numista_id', id).maybeSingle();
+      if (!got.error && got.data && Number(got.data.mediana) === Number(fila.mediana) && got.data.estado === fila.estado) return true;   // ya está (la guardó la función)
+      const up = await c.from('numista_valores').upsert(fila, { onConflict: 'numista_id' });
+      if (up.error) throw up.error;
+      return true;
+    } catch (e) { lastPersistError = (e && (e.message || e.details)) || String(e); return false; }
+  }
+
   /* ---- leer la tabla de la nube (por páginas) ---- */
   function load(force) {
     if (loaded && !force) return Promise.resolve();
@@ -44,8 +64,12 @@
           if (!data || data.length < page) break;
           from += page;
         }
-        map.clear(); fresh.forEach((v, k) => map.set(k, v));
-        loaded = true; saveLocal();
+        const keep = [...map.entries()].filter(([k]) => pending.has(k) && !fresh.has(k));   // pendientes de subir: no se pierden
+        map.clear(); fresh.forEach((v, k) => map.set(k, v)); keep.forEach(([k, v]) => map.set(k, v));
+        [...pending].forEach(k => { if (fresh.has(k)) pending.delete(k); });
+        loaded = true; saveLocal(); savePending();
+        for (const [k, v] of keep) { if (await persist(k, v)) { pending.delete(k); } }   // reintento
+        savePending();
         if (typeof refreshNumistaViews === 'function') refreshNumistaViews(true);
       } catch (e) { /* sin conexión o tabla sin crear: se usa la copia local */ }
       finally { loading = null; }
@@ -112,7 +136,12 @@
     if (!id) throw new Error('Esta ficha no tiene un enlace de Numista válido');
     const res = await call({ numista_id: id, forzar: !!force });
     note(res);
-    if (res.ok && res.fila) { map.set(id, res.fila); saveLocal(); }
+    if (res.ok && res.fila) {
+      map.set(id, res.fila); saveLocal();
+      if (await persist(id, res.fila)) { pending.delete(id); res.guardado = true; }
+      else { pending.add(id); res.guardado = false; res.errorGuardado = lastPersistError; }
+      savePending();
+    }
     return res;
   }
 
@@ -123,6 +152,7 @@
     try {
       const res = await computeOne(coin, true);
       if (!res.ok) alert(motivoTxt(res));
+      else if (res.guardado === false) alert('Valor calculado, pero NO se ha podido guardar en la nube:\n' + res.errorGuardado + '\n\nSe conserva en este dispositivo y se reintentará al abrir la app. Si el error habla de permisos (row-level security), hay que dar permiso de escritura en la tabla numista_valores a los usuarios miembro (ver supabase/numista_valores_miembros.sql).');
     } catch (e) { alert('No se pudo calcular el valor:\n' + e.message); }
     renderModal(coin);
     if (typeof refreshNumistaViews === 'function') refreshNumistaViews();
@@ -197,13 +227,13 @@
     const left = Math.max(0, (u.limite || 1900) - (u.usadas || 0));
     if (!confirm(`Hay ${list.length} tipos de Numista sin calcular${onlyOwned ? ' entre tus monedas' : ''}.\n\nPeticiones gratuitas de este mes: te quedan ${left} de ${u.limite}. Cada tipo gasta 1 + el número de años/cecas que tenga.\n\nSe irán calculando de una en una hasta acabar la lista o el cupo del mes (puedes parar cuando quieras). ¿Empezar?`)) return;
     batch = { cancel: false };
-    let done = 0, noPrice = 0, skipped = 0, stop = '';
+    let done = 0, noPrice = 0, skipped = 0, unsaved = 0, stop = '';
     for (const it of list) {
       if (batch.cancel) { stop = 'Parado.'; break; }
       bar(`Calculando valores… ${done + skipped} de ${list.length} · ${usage ? usage.usadas + '/' + usage.limite + ' peticiones' : ''}`, true);
       try {
         const res = await computeOne(it.coin, false);
-        if (res.ok) { done++; if (res.fila && res.fila.estado !== 'ok') noPrice++; }
+        if (res.ok) { done++; if (res.guardado === false) unsaved++; if (res.fila && res.fila.estado !== 'ok') noPrice++; }
         else if (res.motivo === 'cuota') {
           // este tipo no cabe en lo que queda; si queda poco cupo se corta, si no se sigue con tipos más cortos
           if (res.necesarias == null || (usage && usage.limite - usage.usadas < 5)) { stop = 'Cupo mensual de Numista agotado: se continúa el mes que viene.'; break; }
@@ -213,7 +243,7 @@
     }
     batch = null;
     if (typeof refreshNumistaViews === 'function') refreshNumistaViews();
-    bar(`${stop || 'Terminado.'} Calculados ${done}${noPrice ? ` (${noPrice} sin precios en Numista)` : ''}${skipped ? ` · saltados ${skipped}` : ''}${usage ? ` · ${usage.usadas}/${usage.limite} peticiones este mes` : ''}`, false);
+    bar(`${stop || 'Terminado.'} Calculados ${done}${noPrice ? ` (${noPrice} sin precios en Numista)` : ''}${skipped ? ` · saltados ${skipped}` : ''}${unsaved ? ` · ⚠ ${unsaved} sin guardar en la nube (${lastPersistError})` : ''}${usage ? ` · ${usage.usadas}/${usage.limite} peticiones este mes` : ''}`, false);
   }
 
   window.NumistaValor = { fetchUsage, cardValue, groupValue, toggleBox, close() { open = false; }, idOf, load, rowOf, estimate, collectionTotal, renderModal, computeFromModal, startBatch, cancelBatch, fmt: eur, isAdmin, usage: () => usage, pending: pendingList };

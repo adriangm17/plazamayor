@@ -996,7 +996,7 @@ function renderCoinCard(c, opts) {
       ontouchmove="handleCoinTouchMove(event)"
       onclick="handleCoinClick(event, '${id}')"`}
       ${isBase ? `data-vkey="${esc(compactGroupKey(c))}" data-vok="${(opts.ok || []).map(esc).join(',')}"` : ''}
-      class="xc ${cardBorderClass}${c.acquired ? ' xc-own' : ''}">
+      class="xc ${cardBorderClass}${c.acquired ? ' xc-own' : ''}${(isBase && c.acquired && opts.group.some(x => !x.acquired)) ? ' xc-partial' : ''}">
 
       ${typeDot}
       ${topLeft}

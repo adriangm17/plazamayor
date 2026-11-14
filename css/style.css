@@ -171,7 +171,7 @@ body.theme-explorar { background-color: var(--xp-sand); }
 /* Tarjeta de país (diseño 224 × 264, escalado con --xs) */
 .xp-card, .xp-card * { box-sizing:border-box; }
 .xp-card { position:relative; flex:none; width:calc(224px*var(--xs)); height:calc(264px*var(--xs)); border-radius:calc(16px*var(--xs)); background:var(--xp-plum); overflow:hidden;
-  scroll-snap-align:start; cursor:pointer; box-shadow:0 8px 18px rgba(var(--xp-plum-rgb),.22); -webkit-tap-highlight-color:transparent; }
+  scroll-snap-align:start; cursor:pointer; box-shadow:none; -webkit-tap-highlight-color:transparent; }
 .xp-in { position:absolute; left:0; top:0; width:224px; height:264px; transform:scale(var(--xs)); transform-origin:0 0; }
 .xp-photo { position:absolute; left:5px; top:5px; width:214px; height:164px; border-radius:11px 11px 0 0; overflow:hidden;
   background:var(--xp-plum-2) center/cover no-repeat; }
@@ -1044,6 +1044,11 @@ select.xe-in { cursor:pointer; }
 .xc.border-\[\#a3b84a\] { --xc-mark:163,184,74; }
 .opt-mark .xc.xc-own::after { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; border-radius:16px;
   background:linear-gradient(to top right, transparent calc(50% - 20px), rgba(var(--xc-mark),.5) calc(50% - 20px), rgba(var(--xc-mark),.5) calc(50% + 20px), transparent calc(50% + 20px)); }
+
+/* v8.29: ficha base con alguna variante que falta → en vez de la diagonal, franja horizontal del mismo grosor a la altura de la moneda
+   (moneda de 7rem, 8rem desde sm: centro a 12px + mitad) */
+.opt-mark .xc.xc-own.xc-partial::after { background:linear-gradient(to bottom, transparent 48px, rgba(var(--xc-mark),.5) 48px, rgba(var(--xc-mark),.5) 88px, transparent 88px); }
+@media (min-width:640px) { .opt-mark .xc.xc-own.xc-partial::after { background:linear-gradient(to bottom, transparent 56px, rgba(var(--xc-mark),.5) 56px, rgba(var(--xc-mark),.5) 96px, transparent 96px); } }
 
 /* v7.11: años de la ficha más grandes y legibles (el tamaño exacto lo ajusta fitCardYears) */
 .xc-cell.xc-yr { font-family:'Inter',system-ui,sans-serif; font-weight:800; font-size:15.5px; letter-spacing:0; font-variant-numeric:tabular-nums lining-nums; text-overflow:clip; padding:3px 2px; }
