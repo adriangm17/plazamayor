@@ -70,6 +70,17 @@ function navCommit() {
   history.pushState({ pm: 1, i: navIdx }, '');
 }
 
+/* v8.30: el botón de la cabecera del Álbum (flecha junto a la bandera) vuelve a donde se estaba antes de entrar al país
+   (Explorar con su continente y scroll, el Índice, Estadísticas…) en vez de ir siempre al Índice. */
+function leaveCountry() {
+  if (navReady) {
+    for (let j = navIdx - 1; j >= 0; j--) {
+      if (navSnaps[j] && navSnaps[j].t !== 'album') { history.go(j - navIdx); return; }
+    }
+  }
+  switchTab('indice');   // se entró directamente en el Álbum (sin pestaña anterior)
+}
+
 function navApply(S) {
   // 1) cierra las ventanas que la foto no tiene abiertas
   navOpenModals().forEach(id => { if (!S.m.includes(id)) NAV_CLOSERS[id](); });

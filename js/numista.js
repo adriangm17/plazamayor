@@ -152,7 +152,7 @@
     try {
       const res = await computeOne(coin, true);
       if (!res.ok) alert(motivoTxt(res));
-      else if (res.guardado === false) alert('Valor calculado, pero NO se ha podido guardar en la nube:\n' + res.errorGuardado + '\n\nSe conserva en este dispositivo y se reintentará al abrir la app. Si el error habla de permisos (row-level security), hay que dar permiso de escritura en la tabla numista_valores a los usuarios miembro (ver supabase/numista_valores_miembros.sql).');
+      else if (res.guardado === false) alert('Valor calculado, pero NO se ha podido guardar en la nube:\n' + res.errorGuardado + '\n\nSe conserva en este dispositivo y se reintentará al abrir la app. Si el error habla de permisos («permission denied»), hay que dar permiso de escritura en la tabla numista_valores a los usuarios con sesión (ejecutar supabase/numista_valores_miembros.sql en Supabase).');
     } catch (e) { alert('No se pudo calcular el valor:\n' + e.message); }
     renderModal(coin);
     if (typeof refreshNumistaViews === 'function') refreshNumistaViews();
