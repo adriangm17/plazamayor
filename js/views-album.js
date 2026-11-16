@@ -909,7 +909,9 @@ function unionRange(g) {
 function groupRarityHtml(g) {
   const set = [...new Set(g.map(x => String(x.rarity || '').trim().toUpperCase()).filter(Boolean))];   // en el orden de KM del grupo
   if (!set.length) return `<div class="xc-cell xc-rar w-[45%]" style="background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);">-</div>`;
-  const fs = set.length <= 1 ? 12 : set.length === 2 ? 11 : set.length === 3 ? 10 : 8.5;
+  // v8.33: más de 2 rarezas distintas → «VARIAS» en azul (color que no usa ninguna rareza); el detalle queda en el tooltip
+  if (set.length > 2) return `<div class="xc-cell xc-rar w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="background-color:#3b82f6;color:#ffffff;font-size:11px;font-weight:700;">VARIAS</div>`;
+  const fs = set.length <= 1 ? 12 : 11;
   return `<div class="xc-cell xc-rar xc-rar-split w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="font-size:${fs}px">${set.map(r => `<span style="${getRarityStyle(r)}">${r === 'PLATA' ? 'AG' : esc(r)}</span>`).join('')}</div>`;
 }
 function baseKmLabel(c) {   // KM# del que parten las variantes (sin sufijo): KM# 26.1 → KM# 26
@@ -1038,8 +1040,8 @@ function renderCoinCard(c, opts) {
             if (!isBase) return `<div class="xc-cell xc-km w-[45%]">${esc(c.km || 'KM#-')}</div>`;
             const kms = groupBaseKms(opts.group);
             if (kms.length < 2) return `<div class="xc-cell xc-km w-[45%]">${esc(kms[0])}</div>`;
-            // v8.32: más de 3 KM# distintos → solo «KM# VARIOS» (el detalle queda en el tooltip y en la ficha desplegada)
-            if (kms.length > 3) return `<div class="xc-cell xc-km w-[45%]" title="${esc(kms.join(' · '))}">KM# VARIOS</div>`;
+            // v8.33: más de 2 KM# distintos → solo «KM# VARIOS» (el detalle queda en el tooltip y en la ficha desplegada)
+            if (kms.length > 2) return `<div class="xc-cell xc-km w-[45%]" title="${esc(kms.join(' · '))}">KM# VARIOS</div>`;
             // v8.26: grupo fusionado con varios KM#: todos, uno encima de otro, ajustados al hueco
             const lh = Math.max(7, Math.floor(26 / kms.length));
             return `<div class="xc-cell xc-km xc-km-multi w-[45%]" style="--kml:${lh}px" title="${esc(kms.join(' · '))}">${kms.map(k => `<span>${esc(k)}</span>`).join('')}</div>`;

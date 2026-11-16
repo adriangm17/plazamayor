@@ -102,3 +102,5 @@ v8.30: (1) Explorar: el scroll lateral de cada fila de países se recuerda (al v
 v8.31: la flecha junto a la bandera en la cabecera del Álbum ya no manda siempre al Índice: vuelve a la pestaña de la que vienes (Explorar con su continente y scroll, Índice, etc.). supabase/numista_valores_miembros.sql ahora incluye GRANT select/insert/update (el error «permission denied for table» es de permisos de tabla, no de políticas). Cache sw: plaza-mayor-v123.
 
 v8.32: ficha base de un grupo fusionado con MÁS DE 3 KM# distintos: muestra solo «KM# VARIOS» (con 2-3 siguen apilados). Cache sw: plaza-mayor-v124.
+
+v8.33: ficha base de grupo fusionado: con más de 2 KM# distintos sale «KM# VARIOS» (antes 3); con más de 2 rarezas distintas sale «VARIAS» en azul. Corregido que Información mostrase siempre v8.28 (APP_VERSION estaba sin actualizar). Cache sw: plaza-mayor-v125.
