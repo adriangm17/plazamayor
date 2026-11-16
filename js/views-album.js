@@ -1001,8 +1001,11 @@ function renderCoinCard(c, opts) {
     `<span class="xc-tdot" style="background:${typeColor};border:2px solid ${typeColor}" title="${esc(type)}"></span>`;
   // Esquina superior izquierda: iconos de formato (solo los distintos del formato por defecto, de los ejemplares que se tienen)
   const ownedFormats = [...new Set((c.items || []).filter(i => i && String(i.grade || '').trim() !== '').map(i => i.format).filter(f => f && f !== DEFAULT_ITEM_FORMAT && ITEM_FORMATS.some(x => x.id === f)))];
-  const topLeft = ownedFormats.length === 0 ? '' :
-    `<span class="xc-tl" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`;
+  // v8.35 (prueba): si no hay formato que mostrar y la ficha tiene valor orientativo calculado, ese valor ocupa la esquina (el formato siempre tiene prioridad)
+  const nvVal = (ownedFormats.length === 0 && window.NumistaValor) ? (isBase ? NumistaValor.groupValue(opts.group) : NumistaValor.cardValue(c)) : null;
+  const topLeft = ownedFormats.length > 0
+    ? `<span class="xc-tl" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`
+    : (nvVal != null ? `<span class="xc-tl xc-tl-val" title="Valor orientativo (Numista)">≈ ${esc(NumistaValor.fmt(nvVal))}</span>` : '');
 
   // Estado de conservación en la esquina inferior izquierda, justo encima de la denominación (mejor grado de los ejemplares)
   const grade = bestGrade(c);

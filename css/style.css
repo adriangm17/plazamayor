@@ -506,6 +506,7 @@ body.theme-explorar { background-color: var(--xp-sand); }
 /* v4.21: marca de variantes (esquina inferior derecha de la ficha, sobre la denominación). Círculo sin relleno, mismo tono arena que los iconos de formato. */
 .xc-var { position:absolute; right:0; bottom:-2px; z-index:10; pointer-events:none; display:inline-flex; line-height:0; }
 /* v4.37: esquina superior izquierda (tipo primero, formatos a su derecha) y botón esquinero BASE / variante (arriba a la derecha) */
+.xc-tl-val { font-family:'Poppins',sans-serif; font-style:italic; font-weight:700; font-size:11px; line-height:15px; color:var(--xp-sand); white-space:nowrap; }
 .xc-tl { position:absolute; top:8px; left:8px; z-index:10; display:flex; align-items:center; gap:2px; pointer-events:none; }
 .xc-tdot { position:absolute; top:8px; right:8px; z-index:10; width:14px; height:14px; border-radius:50%; pointer-events:none; box-sizing:border-box; }
 /* v4.34: ficha base del grupo de variantes: rareza partida en tantos trozos como monedas (solo color) y botón "Variantes" */
