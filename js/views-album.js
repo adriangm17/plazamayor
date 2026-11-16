@@ -1005,7 +1005,7 @@ function renderCoinCard(c, opts) {
   const nvVal = (ownedFormats.length === 0 && window.NumistaValor) ? (isBase ? NumistaValor.groupValue(opts.group) : NumistaValor.cardValue(c)) : null;
   const topLeft = ownedFormats.length > 0
     ? `<span class="xc-tl" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`
-    : (nvVal != null ? `<span class="xc-tl xc-tl-val" title="Valor orientativo (Numista)">≈ ${esc(NumistaValor.fmt(nvVal))}</span>` : '');
+    : (nvVal != null ? `<span class="xc-tl xc-tl-val" title="${isBase ? 'Alguna variante tiene valor orientativo (Numista): se ve al desplegarlas' : 'Valor orientativo (Numista)'}">${isBase ? '≈' : esc(NumistaValor.fmt(nvVal))}</span>` : '');
 
   // Estado de conservación en la esquina inferior izquierda, justo encima de la denominación (mejor grado de los ejemplares)
   const grade = bestGrade(c);
