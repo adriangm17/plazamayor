@@ -1038,6 +1038,8 @@ function renderCoinCard(c, opts) {
             if (!isBase) return `<div class="xc-cell xc-km w-[45%]">${esc(c.km || 'KM#-')}</div>`;
             const kms = groupBaseKms(opts.group);
             if (kms.length < 2) return `<div class="xc-cell xc-km w-[45%]">${esc(kms[0])}</div>`;
+            // v8.32: más de 3 KM# distintos → solo «KM# VARIOS» (el detalle queda en el tooltip y en la ficha desplegada)
+            if (kms.length > 3) return `<div class="xc-cell xc-km w-[45%]" title="${esc(kms.join(' · '))}">KM# VARIOS</div>`;
             // v8.26: grupo fusionado con varios KM#: todos, uno encima de otro, ajustados al hueco
             const lh = Math.max(7, Math.floor(26 / kms.length));
             return `<div class="xc-cell xc-km xc-km-multi w-[45%]" style="--kml:${lh}px" title="${esc(kms.join(' · '))}">${kms.map(k => `<span>${esc(k)}</span>`).join('')}</div>`;
