@@ -71,7 +71,19 @@ function pruneEmpty() {
   return periods.length + countries.length !== before;
 }
 
+/* v8.34: años puestos a mano en un período (campo `years`). Si existen mandan sobre los que salen de las monedas.
+   Acepta «1965-1990», «1965 – 1990», «1999-ACT», «1999» …; devuelve el texto normalizado o '' si no hay ningún año de 4 cifras. */
+function normPeriodYears(raw) {
+  const s = String(raw || '').trim();
+  const m = s.match(/\d{4}/g);
+  if (!m) return '';
+  const a = parseInt(m[0], 10), b = m.length > 1 ? parseInt(m[1], 10) : null;
+  if (/ACT/i.test(s) || (b !== null && b >= new Date().getFullYear())) return `${a}–ACT.`;
+  return (b === null || b === a) ? `${a}` : `${Math.min(a, b)}–${Math.max(a, b)}`;
+}
 function getPeriodWithDate(periodId) {
+  const per = periods.find(x => x.id === periodId);
+  if (per && per.years) return per.years;
   const list = coinsOfPeriod(periodId);
   if (list.length === 0) return '';
   let minYear = Infinity, maxYear = -Infinity, hasAct = false;

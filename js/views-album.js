@@ -21,6 +21,7 @@ function validAlbumPeriod() { albumPeriodId = ''; albumGroup = ''; return ''; }
 
 // Años (mín–máx) que cubren las monedas de un período; null si no tiene fechas
 function periodYearSpan(p) {
+  if (p.years) { const r = parseYearRange(p.years.replace(/ACT\.?/i, String(new Date().getFullYear())).replace(/^(\d{4})$/, '$1-$1')); if (r) return { min: r.min, max: r.max }; }   // v8.34: años manuales
   let min = Infinity, max = -Infinity;
   coinsOfPeriod(p.id).forEach(c => { const r = parseYearRange(c.range); if (r) { min = Math.min(min, r.min); max = Math.max(max, r.max); } });
   return min === Infinity ? null : { min, max };
@@ -756,6 +757,7 @@ function kmKey(km) {
   return { base: (m[1] || 'KM').toUpperCase() + '#' + m[2], suffix: m[3].trim().toLowerCase().replace(/^[\s.\-_/]+/, '') };
 }
 function variantGroupOf(c) {
+  if (c && c.solo) return null;   // v8.34: ficha desvinculada
   const fused = c && c.id && vgGroupOfId(c.id);   // v8.26: grupo con fichas fusionadas → sus porciones son las del grupo fusionado
   if (fused && fused.some(x => x.vlink)) return fused;
   const k = kmKey(c && c.km);
@@ -763,7 +765,7 @@ function variantGroupOf(c) {
   if (!variantCache) {
     variantCache = new Map();
     coins.forEach(x => {
-      const kx = kmKey(x.km); if (!kx) return;
+      const kx = kmKey(x.km); if (!kx || x.solo) return;
       const key = x.countryId + '|' + kx.base;
       if (!variantCache.has(key)) variantCache.set(key, []);
       variantCache.get(key).push({ coin: x, suffix: kx.suffix });
@@ -791,6 +793,7 @@ function vgIndex() {
   const link = (key, id) => { if (seenKey.has(key)) union(id, seenKey.get(key)); else seenKey.set(key, id); };
   coins.forEach(x => parent.set(x.id, x.id));
   coins.forEach(x => {
+    if (x.solo) return;   // v8.34: desvinculada a mano: no se agrupa ni por KM# ni por fusión
     const scope = x.periodId + '|' + x.countryId, k = kmKey(x.km);
     if (k) link('km|' + scope + '|' + k.base, x.id);
     if (x.vlink) link('vl|' + scope + '|' + x.vlink, x.id);
@@ -822,6 +825,7 @@ function compactGroupKey(c) {
   if (!c) return null;
   const g = vgGroupOfId(c.id);
   if (g) { const f = g[0], k = kmKey(f.km); return f.periodId + '|' + f.countryId + '|' + (k ? k.base : 'vl:' + (f.vlink || f.id)); }
+  if (c.solo) return null;
   const k = kmKey(c.km);
   return k ? c.periodId + '|' + c.countryId + '|' + k.base : null;
 }
@@ -845,7 +849,7 @@ function mergeCoinGroups(dragId, targetId) {
   if (ga.includes(b)) return false;   // ya están juntas
   const leader = gb[0];
   const all = [...gb, ...ga], changed = [];
-  all.forEach(x => { if (x.vlink !== leader.id) { x.vlink = leader.id; changed.push(x); } });
+  all.forEach(x => { if (x.vlink !== leader.id || x.solo) { x.vlink = leader.id; delete x.solo; changed.push(x); } });
   _vgCache = null; _cmpCache = null;
   saveCoins(changed);
   return true;
@@ -857,6 +861,24 @@ function unmergeCoinGroup(key) {
   g.forEach(x => { if (x.vlink) { delete x.vlink; changed.push(x); } });
   _vgCache = null; _cmpCache = null;
   if (changed.length) saveCoins(changed);
+}
+/* v8.34: DESVINCULAR variantes aunque compartan KM#. La ficha desvinculada lleva `solo: true` (y pierde su `vlink`):
+   deja de agruparse con las demás y pasa a ser una ficha independiente. Volver a fusionarla (arrastrando) quita la marca. */
+function unlinkVariant(id) {
+  const x = coins.find(c => c.id === id); if (!x) return;
+  const g = vgGroupOfId(id); if (!g || g.length < 2) return;
+  if (!confirm(`¿Desvincular ${x.km || 'esta ficha'} de sus variantes?\n\n${x.denom} pasará a ser una ficha independiente aunque comparta número de KM#.`)) return;
+  const key = variantsSheetKey;
+  x.solo = true; delete x.vlink;
+  _vgCache = null; _cmpCache = null; variantCache = null;
+  saveCoins([x]);
+  if (key && compactGroupsMap().get(key)) openVariantsSheet(key); else if (key) closeVariantsSheet();
+}
+function unlinkAllVariants(key) {
+  const g = compactGroupsMap().get(key); if (!g) return;
+  g.forEach(x => { x.solo = true; delete x.vlink; });
+  _vgCache = null; _cmpCache = null; variantCache = null;
+  saveCoins(g.slice());
 }
 /* v7.08: porcentajes de compleción. Cada grupo de variantes (mismo país + período + KM# base) cuenta como UNA moneda:
    la ficha base, que se da por conseguida si se tiene alguna de sus variantes (igual que se ve en el álbum). */
@@ -1090,11 +1112,11 @@ function openVariantsSheet(key, okStr) {
         </div>
       </div>
       <span class="xv-rule"></span>
-      <div class="xv-links">${lk(x.numistaUrl, 'N', 'Numista')}${lk(x.ucoinUrl, 'U', 'Ucoin')}</div>
+      <div class="xv-links">${lk(x.numistaUrl, 'N', 'Numista')}${lk(x.ucoinUrl, 'U', 'Ucoin')}${(g.length > 1 && catalogEditAllowed()) ? `<button type="button" class="xp-lk xv-unlink" title="Desvincular esta variante" aria-label="Desvincular esta variante" onclick="event.stopPropagation();unlinkVariant('${jsArg(x.id)}')"><i class="fa-solid fa-link-slash"></i></button>` : ''}</div>
     </div>`;
   }).join('');
   const un = document.getElementById('variants-unmerge');
-  if (un) un.classList.toggle('hidden', !(groupIsFused(g) && catalogEditAllowed()));
+  if (un) { un.classList.toggle('hidden', !catalogEditAllowed()); un.title = un.ariaLabel = groupIsFused(g) ? 'Deshacer la fusión' : 'Desvincular todas las variantes'; }
   const ov = document.getElementById('variants-modal');
   ov.classList.remove('hidden');
   hydrateImages(ov);
@@ -1103,9 +1125,13 @@ function openVariantsSheet(key, okStr) {
 function closeVariantsSheet() { document.getElementById('variants-modal').classList.add('hidden'); }
 function unmergeFromSheet() {
   const g = compactGroupsMap().get(variantsSheetKey); if (!g) return;
-  if (!confirm('¿Deshacer la fusión de estas fichas?\n\n' + g.map(x => (x.km || 'KM#-') + ' · ' + x.denom).join('\n') + '\n\nVolverán a ser fichas independientes (cada una con su KM#; las que compartan número base seguirán como variantes).')) return;
+  const fused = groupIsFused(g);
+  if (!confirm((fused ? '¿Deshacer la fusión de estas fichas?' : '¿Desvincular todas las variantes?') + '\n\n' + g.map(x => (x.km || 'KM#-') + ' · ' + x.denom).join('\n') + (fused
+    ? '\n\nVolverán a ser fichas independientes (cada una con su KM#; las que compartan número base seguirán como variantes; para separar también esas, desvincúlalas una a una).'
+    : '\n\nTodas pasarán a ser fichas independientes aunque compartan número de KM#.'))) return;
+  const key = variantsSheetKey;
   closeVariantsSheet();
-  unmergeCoinGroup(variantsSheetKey);
+  if (fused) unmergeCoinGroup(key); else unlinkAllVariants(key);
 }
 function openVariantFromSheet(id) { closeVariantsSheet(); openCoinModal(id); }
 // Añadir una variante nueva: abre el formulario de crear ficha con país, período, denominación y KM# base ya rellenos

@@ -293,6 +293,7 @@ function openEditPeriodModal(periodId) {
   del.classList.toggle('flex', coinsOfPeriod(p.id).length === 0);
   document.getElementById('input-edit-period-old').value = p.id;
   document.getElementById('input-edit-period-name').value = p.name;
+  document.getElementById('input-edit-period-years').value = p.years || '';
   updatePeriodMoveUI(p.id);
   const add = document.getElementById('btn-period-addcoin');
   add.classList.remove('hidden'); add.classList.add('flex');
@@ -306,6 +307,7 @@ function openAddPeriodModal(countryId) {
   pendingNewPeriodCountry = countryId;
   document.getElementById('input-edit-period-old').value = '';
   document.getElementById('input-edit-period-name').value = '';
+  document.getElementById('input-edit-period-years').value = '';
   document.getElementById('edit-period-title').innerText = 'Nuevo Período';
   document.getElementById('edit-period-move-box').classList.add('hidden');
   const del = document.getElementById('btn-period-delete');
@@ -368,6 +370,9 @@ function closeEditPeriodModal() {
 function saveEditedPeriodName() {
   const oldId = document.getElementById('input-edit-period-old').value;
   const newName = document.getElementById('input-edit-period-name').value.trim();
+  const yearsRaw = document.getElementById('input-edit-period-years').value.trim();
+  const years = normPeriodYears(yearsRaw);
+  if (yearsRaw && !years) { alert('Los años deben llevar al menos un año de 4 cifras (por ejemplo 1965-1990 o 1999-ACT).'); return; }
 
   // Modo "nuevo período"
   if (!oldId && pendingNewPeriodCountry) {
@@ -376,6 +381,7 @@ function saveEditedPeriodName() {
     if (findPeriodByName(countryId, newName)) { alert('Ya existe un período con este nombre en este país.'); return; }
     const np = getOrCreatePeriod(countryId, newName);
     np.keep = true;   // creado a mano: se conserva aunque no tenga monedas
+    if (years) np.years = years;
     indiceCollapsedCountries[countryId] = false;   // en el Índice, el país se abre para que se vea el nuevo período
     persistMeta();
     closeEditPeriodModal();
@@ -391,6 +397,7 @@ function saveEditedPeriodName() {
   if (clash) { alert('Ya existe un período con este nombre en este país.'); return; }
 
   p.name = newName;
+  if (years) p.years = years; else delete p.years;
   persistMeta();
   closeEditPeriodModal();
   render();

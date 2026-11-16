@@ -270,6 +270,8 @@
       <input type="hidden" id="input-edit-period-old">
       <div class="xe-f"><label>Nombre del período</label>
         <input type="text" id="input-edit-period-name" class="xe-in xe-strong"></div>
+      <div class="xe-f" style="margin-top:8px"><label>Años (opcional)</label>
+        <input type="text" id="input-edit-period-years" maxlength="14" inputmode="numeric" placeholder="1965-1990 · 1999-ACT · vacío = según las monedas" onkeydown="if(event.key==='Enter')saveEditedPeriodName()" class="xe-in"></div>
       <div class="xe-f" id="edit-period-move-box"><label>Posición en el país</label>
         <div class="xe-row">
           <button type="button" id="btn-period-up" onclick="movePeriodFromModal(-1)" class="xe-ico" title="Subir período" aria-label="Subir período"><i class="fa-solid fa-arrow-up"></i></button>
