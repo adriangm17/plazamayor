@@ -1,5 +1,5 @@
 // Versión de la app: se sube en cada iteración (se muestra en la cabecera, junto al aviso de copia)
-const APP_VERSION = '8.36';   // subir en cada entrega: es lo que se ve en Ajustes → Información
+const APP_VERSION = '8.37';   // subir en cada entrega: es lo que se ve en Ajustes → Información
 
 /* ===== UTILIDADES GENERALES (sin estado) ===== */
 const GRADES = ['TBD', 'F', 'VF', 'XF', 'AU', 'UNC'];   // de peor a mejor
@@ -16,7 +16,7 @@ function itemFormatIcon(id, size) {
   const f = ITEM_FORMATS.find(x => x.id === id) || ITEM_FORMATS[0];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.svg}</svg>`;
 }
-const RARITIES =['A', 'B', 'C', 'R', 'RR', 'RRR', 'RRR*', 'UR', 'PLATA', 'SET'];
+const RARITIES =['A', 'B', 'C', 'R', 'RR', 'RRR', 'RRR*', 'UR', 'HR', 'PLATA', 'SET'];
 // Tipo de moneda (solo se edita desde "Editar ficha"). Circulante es el valor por defecto y no lleva marca en las tarjetas.
 const COIN_TYPES = ['Circulante', 'Conmemorativas', 'Colección', 'Falsas de época', 'FAO'];
 const DEFAULT_COIN_TYPE = 'Circulante';
@@ -72,6 +72,7 @@ function getRarityStyle(rarityStr) {
     'RRR': 'background-color: #ff914d; color: #0f172a;',
     'RRR*': 'background-color: #e2a9f1; color: #0f172a;',
     'UR': 'background-color: #ff5757; color: #ffffff;',
+    'HR': 'background-color: #8c52ff; color: #ffffff;',
     'PLATA': 'background-color: #64748b; color: #ffffff;',
     'SET': 'background-color: #cb6ce6; color: #ffffff;'
   };

@@ -110,3 +110,5 @@ v8.34: (1) Desvincular variantes aunque compartan KM#: en la ficha de variantes,
 v8.35 (prueba): el valor orientativo de Numista (si está calculado) se muestra en la esquina superior izquierda de la ficha sin desplegar, sin color, con el estilo del resto de textos de la ficha («≈ valor»; en fichas base, la mediana del grupo). Si la ficha tiene un formato que mostrar (distinto de encartonada), el formato tiene prioridad y el valor no se muestra. Cache sw: plaza-mayor-v127.
 
 v8.36: el valor orientativo de la esquina superior izquierda va en burbuja (mismo estilo que el estado de conservación), sin «≈». En fichas base con al menos una variante valorada solo se muestra «≈» en la burbuja (el valor se ve al desplegar las variantes). El formato sigue teniendo prioridad. Cache sw: plaza-mayor-v128.
+
+v8.37: nueva rareza HR (color #8c52ff, texto blanco) entre UR y PLATA/SET. Aparece en el selector de rareza, en las fichas y en la importación CSV. Cache sw: plaza-mayor-v129.
