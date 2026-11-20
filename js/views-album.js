@@ -1194,7 +1194,7 @@ function noteCardHtml(p, n) {
       ? `<button type="button" class="xn-pill xn-pill-btn" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',${i})"><span>${esc(s.title)}</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`
       : `<div class="xn-pill"><span>${esc(s.title)}</span></div>`).join('');
   }
-  const back = (secs.length > 1 && open >= 0) ? `<button type="button" class="xn-btn xn-back" title="Volver a todos los conceptos" aria-label="Volver a todos los conceptos" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',-1)"><i class="fa-solid fa-arrow-left"></i></button>` : '';
+  const back = (secs.length > 1 && open >= 0) ? `<button type="button" class="nt-btn xn-back" title="Volver a todos los conceptos" aria-label="Volver a todos los conceptos" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',-1)"><i class="fa-solid fa-arrow-left"></i></button>` : '';
   return `<div class="xn-body">${body}</div>${back ? `<div class="xn-foot">${back}</div>` : ''}`;
 }
 function renderNoteCard(p, n) {
@@ -1262,9 +1262,12 @@ function fitNoteImages(root) {
 // La ficha de nota toma la altura de una ficha de moneda de su misma cuadrícula (si no hay ninguna, queda la altura mínima del CSS)
 function fitNoteCards(root) {
   (root || document).querySelectorAll('.xa-grid').forEach(grid => {
-    const note = grid.querySelector('.xn-card'); if (!note) return;
-    const coin = grid.querySelector('.xc');
-    grid.querySelectorAll('.xn-card').forEach(n => { n.style.height = coin && coin.offsetHeight ? coin.offsetHeight + 'px' : ''; });
+    const notes = [...grid.querySelectorAll('.xn-card')]; if (!notes.length) return;
+    notes.forEach(n => { n.style.height = ''; });
+    // contain:size → la nota no aporta altura a su fila: la fila la marcan las monedas y la nota se estira hasta ella.
+    // Si una fila no tiene monedas (p. ej. dos notas seguidas), se le da la altura de una ficha de moneda.
+    const coin = grid.querySelector('.xc'); const ch = coin ? coin.offsetHeight : 0;
+    notes.forEach(n => { if (n.offsetHeight < 80) n.style.height = (ch || 240) + 'px'; });
   });
   fitNoteBubbles(root);
 }

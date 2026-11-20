@@ -1358,7 +1358,7 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 
 /* v8.38: ficha de nota de período. Fondo plano azul pizarra, borde gris azulado; sin moneda ni burbujas (diseño distinto al de las monedas).
    La altura se iguala por JS (fitNoteCards) a la de una ficha de moneda; min-height por si el período no tiene ninguna. */
-.xn-card { position:relative; box-sizing:border-box; width:100%; min-height:15rem; display:flex; flex-direction:column; gap:6px; padding:12px 12px 10px; border-radius:20px;
+.xn-card { position:relative; box-sizing:border-box; width:100%; min-height:0; contain:size; display:flex; flex-direction:column; gap:6px; padding:12px 12px 10px; border-radius:20px;
   background:#2f3d52; border:4.5px solid #8aa0b8; color:var(--xp-sand-l); overflow:hidden; user-select:text; }
 .xn-pill { display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; min-height:34px; padding:6px 14px; margin:0 0 8px; border-radius:17px; border:0; background:var(--xp-sand); color:#2f3d52;
   font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:16px; letter-spacing:.01em; line-height:1.15; text-align:center; overflow-wrap:anywhere; flex:none; }
@@ -1384,8 +1384,8 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 /* v8.40: pie de la ficha de nota (volver / editar) */
 .xn-foot { flex:none; display:flex; align-items:center; gap:6px; margin-top:6px; }
 .xn-sp { flex:1; }
-.xn-btn { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1.8px solid #8aa0b8; background:transparent; color:#cfdae6; font-size:12px; cursor:pointer; padding:0; }
-.xn-btn:hover { border-color:var(--xp-orange); color:var(--xp-orange); }
+.nt-btn { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1.8px solid #8aa0b8; background:transparent; color:#cfdae6; font-size:12px; cursor:pointer; padding:0; }
+.nt-btn:hover { border-color:var(--xp-orange); color:var(--xp-orange); }
 
 /* v8.41: imágenes dentro de las notas (ocupan todo el ancho de la ficha) y miniaturas en la ventana de edición */
 .xn-img { display:block; width:100%; height:auto; margin:0 0 8px; border-radius:10px; border:1.5px solid rgba(138,160,184,.55); background:rgba(0,0,0,.15); }
