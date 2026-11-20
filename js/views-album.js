@@ -1175,7 +1175,7 @@ function noteTextHtml(text) {
    El concepto abierto es solo de la sesión (noteOpenIdx). */
 const noteOpenIdx = {};
 // v8.42: imagen de detalle como elemento de la lista: de lado a lado de la ficha (respetando sus márgenes), con esquinas redondeadas como las burbujas
-function noteImgItem(s) { return (typeof s.image === 'string' && s.image.startsWith('data:image/')) ? `<img class="xn-img xn-img-item" src="${s.image}" alt="">` : ''; }
+function noteImgItem(s) { return (typeof s.image === 'string' && s.image.startsWith('data:image/')) ? `<img class="xn-img xn-img-item" src="${s.image}" alt="" style="object-position:50% ${Number.isFinite(s.pos) ? s.pos : 50}%">` : ''; }
 function noteHasContext(s) { return !!((s.text && s.text.trim()) || (Array.isArray(s.images) && s.images.length)); }
 // v8.41: imágenes pequeñas dentro del contexto de un concepto; se escalan al ancho de la nota
 function noteImagesHtml(s) {
@@ -1195,12 +1195,26 @@ function noteCardHtml(p, n) {
       : `<div class="xn-pill"><span>${esc(s.title)}</span></div>`).join('');
   }
   const back = (secs.length > 1 && open >= 0) ? `<button type="button" class="xn-btn xn-back" title="Volver a todos los conceptos" aria-label="Volver a todos los conceptos" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',-1)"><i class="fa-solid fa-arrow-left"></i></button>` : '';
-  const pen = edit ? `<button type="button" class="xn-btn xn-pen" title="Editar nota" aria-label="Editar nota" onclick="event.stopPropagation();openNoteModal('${jsArg(p.id)}','${jsArg(n.id)}')"><i class="fa-solid fa-pen"></i></button>` : '';
-  return `<div class="xn-body">${body}</div>${(back || pen) ? `<div class="xn-foot">${back}<span class="xn-sp"></span>${pen}</div>` : ''}`;
+  return `<div class="xn-body">${body}</div>${back ? `<div class="xn-foot">${back}</div>` : ''}`;
 }
 function renderNoteCard(p, n) {
-  return `<div class="xn-card" data-nid="${esc(n.id)}">${noteCardHtml(p, n)}</div>`;
+  return `<div class="xn-card${catalogEditAllowed() ? ' xn-edit' : ''}" data-nid="${esc(n.id)}" data-pid="${esc(p.id)}">${noteCardHtml(p, n)}</div>`;
 }
+/* v8.43: el administrador edita la nota manteniéndola pulsada (0,6 s) — sin botón. Se cancela si el dedo/ratón se mueve (scroll) o se suelta antes. */
+(function () {
+  let timer = 0, sx = 0, sy = 0, fired = false;
+  const clear = () => { clearTimeout(timer); timer = 0; };
+  document.addEventListener('pointerdown', e => {
+    const card = e.target.closest && e.target.closest('.xn-card.xn-edit');
+    if (!card || e.target.closest('.xn-back') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    fired = false; sx = e.clientX; sy = e.clientY; clear();
+    timer = setTimeout(() => { timer = 0; fired = true; if (navigator.vibrate) { try { navigator.vibrate(20); } catch (x) {} } openNoteModal(card.dataset.pid, card.dataset.nid); setTimeout(() => { fired = false; }, 500); }, 600);
+  });
+  document.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clear(); });
+  ['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach(t => document.addEventListener(t, clear, true));
+  document.addEventListener('click', e => { if (fired && e.target.closest && e.target.closest('.xn-card')) { e.stopPropagation(); e.preventDefault(); fired = false; } }, true);   // al soltar tras la pulsación larga no se abre el concepto
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.xn-card.xn-edit')) e.preventDefault(); });
+})();
 function noteOpenConcept(periodId, noteId, idx) {
   const p = periodById(periodId); const n = p && (p.notes || []).find(x => x.id === noteId); if (!n) return;
   if (idx < 0) delete noteOpenIdx[noteId]; else noteOpenIdx[noteId] = idx;
@@ -1215,10 +1229,34 @@ function fitNoteBubbles(root) {
     const full = el.classList.contains('xn-pill-full');
     let fs = full ? 18 : 16;
     el.style.whiteSpace = 'nowrap'; el.style.fontSize = fs + 'px';
-    const t = el.querySelector('span') || el;
-    const over = () => (full ? el.scrollWidth > el.clientWidth + 1 : t.scrollWidth > t.clientWidth + 1);
+    const t = el.querySelector(':scope > span') || el;
+    const over = () => t.scrollWidth > t.clientWidth + 1;
     while (over() && fs > 14) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
-    if (over()) el.style.whiteSpace = 'normal';
+    if (over()) el.style.whiteSpace = 'normal';   // demasiado largo aun a 14 px: en vez de reducirlo más, pasa a dos líneas (o más)
+  });
+  fitNoteImages(root);
+}
+/* v8.43: las imágenes de detalle nunca alargan la ficha: ocupan (recortadas, object-fit:cover) el hueco que dejan los demás elementos,
+   con un mínimo de 60 px; el encuadre vertical lo elige el administrador en la ventana de la nota. */
+function fitNoteImages(root) {
+  const r = root || document;
+  const cards = (r.matches && r.matches('.xn-card')) ? [r] : [...r.querySelectorAll('.xn-card')];
+  cards.forEach(card => {
+    const body = card.querySelector('.xn-body'); if (!body) return;
+    const imgs = [...body.querySelectorAll('.xn-img-item')]; if (!imgs.length) return;
+    const run = () => {
+      imgs.forEach(im => { im.style.height = '0px'; });
+      let others = 0;
+      [...body.children].forEach(ch => { if (!ch.classList.contains('xn-img-item')) others += ch.offsetHeight + 8; });
+      const avail = body.clientHeight - others - imgs.length * 8;
+      const per = Math.max(60, avail / imgs.length);
+      imgs.forEach(im => {
+        const nat = im.naturalWidth ? im.clientWidth * im.naturalHeight / im.naturalWidth : per;
+        im.style.height = Math.round(Math.min(per, nat || per)) + 'px';
+      });
+    };
+    imgs.forEach(im => { im.style.objectFit = 'cover'; if (!im.complete) im.addEventListener('load', run, { once: true }); });
+    run();
   });
 }
 // La ficha de nota toma la altura de una ficha de moneda de su misma cuadrícula (si no hay ninguna, queda la altura mínima del CSS)

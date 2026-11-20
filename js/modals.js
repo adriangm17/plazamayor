@@ -338,8 +338,15 @@ function noteSectionBlock(sec) {
   if (sec && sec.image) {
     d._kind = 'image'; d._image = sec.image;
     d.appendChild(noteBlockHead(d, '<span class="xn-blabel"><i class="fa-solid fa-image"></i> Imagen de detalle</span>'));
+    d._pos = Number.isFinite(sec.pos) ? sec.pos : 50;
     const im = document.createElement('img'); im.className = 'xn-prev'; im.src = sec.image; im.alt = '';
+    im.style.objectPosition = '50% ' + d._pos + '%';
     d.appendChild(im);
+    const lab = document.createElement('label'); lab.className = 'xn-pos';
+    lab.innerHTML = '<span>Encuadre (recorte vertical)</span><input type="range" min="0" max="100" step="1">';
+    const rg = lab.querySelector('input'); rg.value = d._pos;
+    rg.oninput = () => { d._pos = parseInt(rg.value, 10); im.style.objectPosition = '50% ' + d._pos + '%'; };
+    d.appendChild(lab);
     return d;
   }
   d._kind = 'concept'; d._imgs = Array.isArray(sec.images) ? sec.images.slice() : [];   // imágenes antiguas (8.41) dentro del concepto: se conservan
@@ -406,7 +413,7 @@ function closeNoteModal() { document.getElementById('note-modal').classList.add(
 function saveNoteFromModal() {
   const p = periodById(document.getElementById('note-period-id').value); if (!p) return;
   const sections = [...document.querySelectorAll('#note-sections .xn-sec')].map(d => {
-    if (d._kind === 'image') return { image: d._image };
+    if (d._kind === 'image') return { image: d._image, pos: d._pos };
     const s = { title: d.querySelector('.xn-sec-title').value.trim(), text: d.querySelector('.xn-sec-text').value.replace(/\s+$/, '') };
     if (d._imgs && d._imgs.length) s.images = d._imgs;
     return s;
