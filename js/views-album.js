@@ -721,6 +721,8 @@ function renderSections() {
             ${ptp.date ? `<span class="xa-pdate">${esc(ptp.date)}</span>` : ''}
           </span>
           <span class="xa-tools" onclick="event.stopPropagation()">
+            ${catalogEditAllowed() ? `<button onclick="openCreateModal('${jsArg(p.id)}')" class="xp-btn" title="Añadir moneda a este período" aria-label="Añadir moneda a este período"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="openNoteModal('${jsArg(p.id)}')" class="xp-btn" title="Añadir nota a este período" aria-label="Añadir nota a este período"><i class="fa-solid fa-note-sticky"></i></button>` : ''}
             <button onclick="flipPeriodCoins('${pid}')" class="xp-btn" title="Girar todas las monedas del período" aria-label="Girar todas las monedas del período"><i class="fa-solid fa-rotate"></i></button>
             <button onclick="togglePeriodMissing('${pid}')" class="xp-btn ${onlyMissingHere ? 'xp-on' : ''}" title="Ver solo las que me faltan de este período" aria-label="Ver solo las que me faltan de este período"><i class="fa-solid fa-circle-exclamation"></i></button>
           </span>
@@ -731,6 +733,7 @@ function renderSections() {
         </div>
 
         <div class="xa-grid ${isCollapsed ? 'hidden' : ''}">
+          ${(!isCollapsed && !filterActive && !onlyMissingHere) ? (p.notes || []).map(n => renderNoteCard(p, n)).join('') : ''}
           ${(isCollapsed ? [] : buildAlbumCards(periodCoins)).map(x => renderCoinCard(x.coin, { group: x.group, ok: x.ok, base: x.base })).join('')}
           ${(!isCollapsed && periodCoins.length === 0) ? `<p class="xa-msg">${allPeriodCoins.length === 0 ? 'Este período aún no tiene monedas. Usa el + para añadir la primera.' : 'No hay monedas que mostrar con este filtro.'}</p>` : ''}
         </div>
@@ -743,6 +746,7 @@ function renderSections() {
     : `<div class="xp-empty-msg">Ninguna moneda coincide con el filtro.</div>`;
   hydrateImages(container);
   fitCardYears(container);
+  fitNoteCards(container);
   updateTogglePeriodsButton();
   if (typeof navSync === 'function') navSync();
 }
@@ -1149,6 +1153,40 @@ function addVariantFromSheet() {
   setTimeout(() => { try { km.focus(); km.setSelectionRange(km.value.length, km.value.length); } catch (e) {} }, 60);
 }
 
+
+/* v8.38: FICHAS DE NOTA. Se guardan dentro del período (p.notes = [{ id, title, text }]), así viajan con la sincronización y las copias.
+   Las ven todos; solo el administrador las crea, edita o borra. Mismo ancho (columna de la cuadrícula) y misma altura que una ficha de moneda. */
+function noteSections(n) {   // formato nuevo: n.sections = [{ title, text }]; las notas de la 8.38 (title/text sueltos) se leen como una sola sección
+  if (Array.isArray(n.sections) && n.sections.length) return n.sections;
+  return (n.title || n.text) ? [{ title: n.title || '', text: n.text || '' }] : [];
+}
+function noteTextHtml(text) {
+  let html = '', inList = false;
+  String(text || '').split('\n').forEach(raw => {
+    const m = raw.match(/^\s*[*\-•]\s+(.*)$/);
+    if (m) { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${esc(m[1])}</li>`; }
+    else { if (inList) { html += '</ul>'; inList = false; } if (raw.trim()) html += `<p>${esc(raw)}</p>`; }
+  });
+  if (inList) html += '</ul>';
+  return html;
+}
+function renderNoteCard(p, n) {
+  const edit = catalogEditAllowed();
+  const body = noteSections(n).map(sec => `${sec.title ? `<div class="xn-pill">${esc(sec.title)}</div>` : ''}${noteTextHtml(sec.text)}`).join('');
+  return `<div class="xn-card${edit ? ' xn-edit' : ''}" ${edit ? `onclick="openNoteModal('${jsArg(p.id)}','${jsArg(n.id)}')" title="Editar nota"` : ''}>
+    <div class="xn-body">${body}</div>
+    ${edit ? '<i class="fa-solid fa-pen xn-pen" aria-hidden="true"></i>' : ''}
+  </div>`;
+}
+// La ficha de nota toma la altura de una ficha de moneda de su misma cuadrícula (si no hay ninguna, queda la altura mínima del CSS)
+function fitNoteCards(root) {
+  (root || document).querySelectorAll('.xa-grid').forEach(grid => {
+    const note = grid.querySelector('.xn-card'); if (!note) return;
+    const coin = grid.querySelector('.xc');
+    grid.querySelectorAll('.xn-card').forEach(n => { n.style.height = coin && coin.offsetHeight ? coin.offsetHeight + 'px' : ''; });
+  });
+}
+window.addEventListener('resize', () => { try { fitNoteCards(document); } catch (e) {} });
 
 /* v7.11: los años de la ficha usan el mayor tamaño de letra que cabe en su casilla (se reduce solo si no entra) */
 function fitCardYears(root) {

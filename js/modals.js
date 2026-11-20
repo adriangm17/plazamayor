@@ -318,6 +318,63 @@ function openAddPeriodModal(countryId) {
   setTimeout(() => { const i = document.getElementById('input-edit-period-name'); if (i) i.focus(); }, 50);
 }
 
+/* v8.38: notas de período (ver renderNoteCard en views-album.js) */
+function noteSectionBlock(sec) {
+  const d = document.createElement('div'); d.className = 'xn-sec';
+  d.innerHTML = `<div class="xe-row" style="gap:6px"><input type="text" class="xe-in xe-strong xn-sec-title" maxlength="60" placeholder="Título (ej.: REY ARTURO:)"><button type="button" class="xe-ico xe-ico-s" title="Quitar este título" aria-label="Quitar este título"><i class="fa-solid fa-trash"></i></button></div>
+    <textarea class="xe-in xn-sec-text" rows="4" maxlength="1200" placeholder="Texto. Las líneas que empiecen por * o - salen como lista" style="resize:vertical;line-height:1.35;margin-top:6px"></textarea>`;
+  d.querySelector('.xn-sec-title').value = sec.title || '';
+  d.querySelector('.xn-sec-text').value = sec.text || '';
+  d.querySelector('button').onclick = () => { if (document.querySelectorAll('#note-sections .xn-sec').length > 1) d.remove(); else { d.querySelector('.xn-sec-title').value = ''; d.querySelector('.xn-sec-text').value = ''; } };
+  return d;
+}
+function addNoteSection(sec) {
+  const box = document.getElementById('note-sections');
+  const el = noteSectionBlock(sec || {});
+  box.appendChild(el);
+  if (!sec) { const i = el.querySelector('.xn-sec-title'); i.focus(); el.scrollIntoView({ block: 'nearest' }); }
+}
+function openNoteModal(periodId, noteId) {
+  const p = periodById(periodId); if (!p) return;
+  const n = noteId ? (p.notes || []).find(x => x.id === noteId) : null;
+  document.getElementById('note-period-id').value = periodId;
+  document.getElementById('note-id').value = n ? n.id : '';
+  const box = document.getElementById('note-sections'); box.innerHTML = '';
+  const secs = n ? noteSections(n) : [];
+  (secs.length ? secs : [{}]).forEach(s => addNoteSection(s.title || s.text ? s : {title: '', text: ''}));
+  document.getElementById('note-modal-title').textContent = n ? 'Editar nota' : 'Nueva nota';
+  document.getElementById('note-delete').classList.toggle('hidden', !n);
+  document.getElementById('note-modal').classList.remove('hidden');
+  setTimeout(() => { const i = box.querySelector('.xn-sec-title'); if (i) i.focus(); }, 50);
+}
+function closeNoteModal() { document.getElementById('note-modal').classList.add('hidden'); }
+function saveNoteFromModal() {
+  const p = periodById(document.getElementById('note-period-id').value); if (!p) return;
+  const sections = [...document.querySelectorAll('#note-sections .xn-sec')].map(d => ({
+    title: d.querySelector('.xn-sec-title').value.trim(),
+    text: d.querySelector('.xn-sec-text').value.replace(/\s+$/, '')
+  })).filter(s => s.title || s.text.trim());
+  if (!sections.length) { alert('Escribe al menos un título o un texto.'); return; }
+  if (!Array.isArray(p.notes)) p.notes = [];
+  const id = document.getElementById('note-id').value;
+  const n = id ? p.notes.find(x => x.id === id) : null;
+  if (n) { n.sections = sections; delete n.title; delete n.text; }
+  else p.notes.push({ id: newId(), sections });
+  persistMeta();
+  closeNoteModal();
+  renderSections();
+}
+function deleteNoteFromModal() {
+  const p = periodById(document.getElementById('note-period-id').value); if (!p) return;
+  const id = document.getElementById('note-id').value; if (!id) return;
+  if (!confirm('¿Eliminar esta nota?')) return;
+  p.notes = (p.notes || []).filter(x => x.id !== id);
+  if (!p.notes.length) delete p.notes;
+  persistMeta();
+  closeNoteModal();
+  renderSections();
+}
+
 // Opción "Añadir moneda" dentro del menú Editar período
 function addCoinFromPeriodModal() {
   const id = document.getElementById('input-edit-period-old').value;

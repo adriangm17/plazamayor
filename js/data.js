@@ -65,7 +65,7 @@ function nextCoinOrder(periodId) {
 function pruneEmpty() {
   const before = periods.length + countries.length;
   const used = new Set(coins.map(c => c.periodId));
-  periods = periods.filter(p => p.keep || used.has(p.id));
+  periods = periods.filter(p => p.keep || used.has(p.id) || (Array.isArray(p.notes) && p.notes.length));
   const usedCountries = new Set(periods.map(p => p.countryId));
   countries = countries.filter(c => c.keep || usedCountries.has(c.id));
   return periods.length + countries.length !== before;

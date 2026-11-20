@@ -1,5 +1,5 @@
 // Versión de la app: se sube en cada iteración (se muestra en la cabecera, junto al aviso de copia)
-const APP_VERSION = '8.37';   // subir en cada entrega: es lo que se ve en Ajustes → Información
+const APP_VERSION = '8.39';   // subir en cada entrega: es lo que se ve en Ajustes → Información
 
 /* ===== UTILIDADES GENERALES (sin estado) ===== */
 const GRADES = ['TBD', 'F', 'VF', 'XF', 'AU', 'UNC'];   // de peor a mejor

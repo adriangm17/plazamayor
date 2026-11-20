@@ -1355,3 +1355,25 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xc-km.xc-km-multi > span { display:block; white-space:nowrap; line-height:var(--kml,13px); }
 .xv-unmerge { flex:none; width:52px; height:46px; border-radius:14px; border:2.5px solid var(--xp-plum); background:var(--xp-sand-l); color:var(--xp-plum); font-size:16px; cursor:pointer; }
 .xv-unmerge.hidden { display:none; }
+
+/* v8.38: ficha de nota de período. Fondo plano azul pizarra, borde gris azulado; sin moneda ni burbujas (diseño distinto al de las monedas).
+   La altura se iguala por JS (fitNoteCards) a la de una ficha de moneda; min-height por si el período no tiene ninguna. */
+.xn-card { position:relative; box-sizing:border-box; width:100%; min-height:15rem; display:flex; flex-direction:column; gap:6px; padding:12px 12px 10px; border-radius:20px;
+  background:#2f3d52; border:4.5px solid #8aa0b8; color:var(--xp-sand-l); overflow:hidden; user-select:text; }
+.xn-card.xn-edit { cursor:pointer; user-select:none; }
+.xn-card.xn-edit:hover { border-color:var(--xp-orange); }
+.xn-pill { display:inline-flex; align-items:center; align-self:flex-start; max-width:100%; box-sizing:border-box; min-height:22px; padding:2px 10px; margin:2px 0 5px; border-radius:11px; border:1.5px solid var(--xp-sand); background:transparent; color:var(--xp-sand); font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:12px; letter-spacing:.03em; line-height:1.15; overflow-wrap:anywhere; }
+.xn-body > .xn-pill ~ .xn-pill { margin-top:10px; }
+.xn-body { flex:1 1 auto; min-height:0; overflow-y:auto; scrollbar-width:none; font-family:'Inter',system-ui,sans-serif; font-size:14.5px; line-height:1.38; color:var(--xp-sand-l); }
+.xn-body::-webkit-scrollbar { display:none; }
+.xn-body p { margin:0 0 5px; overflow-wrap:anywhere; }
+.xn-body ul { margin:0 0 5px; padding:0; list-style:none; }
+.xn-body li { position:relative; padding-left:14px; margin-bottom:3px; overflow-wrap:anywhere; }
+.xn-body li::before { content:''; position:absolute; left:2px; top:.55em; width:5px; height:5px; border-radius:50%; background:#8aa0b8; }
+.xn-pen { position:absolute; right:10px; bottom:8px; font-size:11px; color:#8aa0b8; opacity:.8; pointer-events:none; }
+
+/* v8.39: los botones de cada período, siempre en una sola fila (hasta 4 para el administrador) */
+.xa-tools { display:flex; grid-template-columns:none; flex-wrap:nowrap; gap:5px; margin-left:auto; }
+.xa-tools .xp-btn { width:36px; height:36px; font-size:14px; border-radius:11px; flex:none; }
+.xn-sec { padding:8px; margin-bottom:8px; border-radius:12px; border:1.5px solid rgba(138,160,184,.5); }
+#note-modal .xe-sheet { max-height:90vh; overflow-y:auto; }

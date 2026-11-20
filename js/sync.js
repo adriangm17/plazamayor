@@ -554,7 +554,7 @@
         return f.apply(this, a);
       };
     };
-    ['openCreateModal', 'openEditCountryModal', 'openAddPeriodModal', 'openEditPeriodModal', 'openEditZoneModal', 'openImportModal', 'openAdvancedEditFromModal', 'addZone', 'toggleAddZoneRow', 'addEmptyCountry', 'toggleAddCountryRow', 'importBackup', 'mergeCoinGroups', 'unmergeCoinGroup'].forEach(n => guard(n));
+    ['openCreateModal', 'openNoteModal', 'openEditCountryModal', 'openAddPeriodModal', 'openEditPeriodModal', 'openEditZoneModal', 'openImportModal', 'openAdvancedEditFromModal', 'addZone', 'toggleAddZoneRow', 'addEmptyCountry', 'toggleAddCountryRow', 'importBackup', 'mergeCoinGroups', 'unmergeCoinGroup'].forEach(n => guard(n));
     guard('zoneDragStart', true);
   }
 
