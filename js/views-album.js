@@ -1170,13 +1170,56 @@ function noteTextHtml(text) {
   if (inList) html += '</ul>';
   return html;
 }
-function renderNoteCard(p, n) {
+/* v8.40: la nota es una lista de CONCEPTOS (burbujas). Cada concepto puede llevar un contexto opcional: si lo tiene, al pulsar la burbuja la ficha pasa a
+   «título (ancho completo) + texto» y un botón permite volver a todos los conceptos. Con un solo concepto se muestra directamente desplegado.
+   El concepto abierto es solo de la sesión (noteOpenIdx). */
+const noteOpenIdx = {};
+// v8.42: imagen de detalle como elemento de la lista: de lado a lado de la ficha (respetando sus márgenes), con esquinas redondeadas como las burbujas
+function noteImgItem(s) { return (typeof s.image === 'string' && s.image.startsWith('data:image/')) ? `<img class="xn-img xn-img-item" src="${s.image}" alt="">` : ''; }
+function noteHasContext(s) { return !!((s.text && s.text.trim()) || (Array.isArray(s.images) && s.images.length)); }
+// v8.41: imágenes pequeñas dentro del contexto de un concepto; se escalan al ancho de la nota
+function noteImagesHtml(s) {
+  return (Array.isArray(s.images) ? s.images : []).filter(u => typeof u === 'string' && u.startsWith('data:image/')).map(u => `<img class="xn-img" src="${u}" alt="" loading="lazy">`).join('');
+}
+function noteCardHtml(p, n) {
   const edit = catalogEditAllowed();
-  const body = noteSections(n).map(sec => `${sec.title ? `<div class="xn-pill">${esc(sec.title)}</div>` : ''}${noteTextHtml(sec.text)}`).join('');
-  return `<div class="xn-card${edit ? ' xn-edit' : ''}" ${edit ? `onclick="openNoteModal('${jsArg(p.id)}','${jsArg(n.id)}')" title="Editar nota"` : ''}>
-    <div class="xn-body">${body}</div>
-    ${edit ? '<i class="fa-solid fa-pen xn-pen" aria-hidden="true"></i>' : ''}
-  </div>`;
+  const secs = noteSections(n);
+  const open = secs.length === 1 ? 0 : (noteOpenIdx[n.id] != null && secs[noteOpenIdx[n.id]] ? noteOpenIdx[n.id] : -1);
+  let body;
+  if (open >= 0) {
+    const s = secs[open];
+    body = s.image ? noteImgItem(s) : `<div class="xn-pill xn-pill-full">${esc(s.title)}</div><div class="xn-text">${noteTextHtml(s.text)}</div>${noteImagesHtml(s)}`;
+  } else {
+    body = secs.map((s, i) => s.image ? noteImgItem(s) : noteHasContext(s)
+      ? `<button type="button" class="xn-pill xn-pill-btn" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',${i})"><span>${esc(s.title)}</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`
+      : `<div class="xn-pill"><span>${esc(s.title)}</span></div>`).join('');
+  }
+  const back = (secs.length > 1 && open >= 0) ? `<button type="button" class="xn-btn xn-back" title="Volver a todos los conceptos" aria-label="Volver a todos los conceptos" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',-1)"><i class="fa-solid fa-arrow-left"></i></button>` : '';
+  const pen = edit ? `<button type="button" class="xn-btn xn-pen" title="Editar nota" aria-label="Editar nota" onclick="event.stopPropagation();openNoteModal('${jsArg(p.id)}','${jsArg(n.id)}')"><i class="fa-solid fa-pen"></i></button>` : '';
+  return `<div class="xn-body">${body}</div>${(back || pen) ? `<div class="xn-foot">${back}<span class="xn-sp"></span>${pen}</div>` : ''}`;
+}
+function renderNoteCard(p, n) {
+  return `<div class="xn-card" data-nid="${esc(n.id)}">${noteCardHtml(p, n)}</div>`;
+}
+function noteOpenConcept(periodId, noteId, idx) {
+  const p = periodById(periodId); const n = p && (p.notes || []).find(x => x.id === noteId); if (!n) return;
+  if (idx < 0) delete noteOpenIdx[noteId]; else noteOpenIdx[noteId] = idx;
+  const el = document.querySelector(`.xn-card[data-nid="${CSS.escape(noteId)}"]`); if (!el) return;
+  el.innerHTML = noteCardHtml(p, n);
+  fitNoteBubbles(el);
+}
+// Las burbujas ocupan todo el ancho de la ficha: el texto se reduce hasta 14 px para que quepa en una línea; si aun así no cabe, pasa a varias líneas
+function fitNoteBubbles(root) {
+  (root || document).querySelectorAll('.xn-pill').forEach(el => {
+    if (!el.clientWidth) return;
+    const full = el.classList.contains('xn-pill-full');
+    let fs = full ? 18 : 16;
+    el.style.whiteSpace = 'nowrap'; el.style.fontSize = fs + 'px';
+    const t = el.querySelector('span') || el;
+    const over = () => (full ? el.scrollWidth > el.clientWidth + 1 : t.scrollWidth > t.clientWidth + 1);
+    while (over() && fs > 14) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    if (over()) el.style.whiteSpace = 'normal';
+  });
 }
 // La ficha de nota toma la altura de una ficha de moneda de su misma cuadrícula (si no hay ninguna, queda la altura mínima del CSS)
 function fitNoteCards(root) {
@@ -1185,6 +1228,7 @@ function fitNoteCards(root) {
     const coin = grid.querySelector('.xc');
     grid.querySelectorAll('.xn-card').forEach(n => { n.style.height = coin && coin.offsetHeight ? coin.offsetHeight + 'px' : ''; });
   });
+  fitNoteBubbles(root);
 }
 window.addEventListener('resize', () => { try { fitNoteCards(document); } catch (e) {} });
 

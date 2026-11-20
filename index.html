@@ -269,7 +269,8 @@
       <div class="xe-head"><h2 class="xe-title" id="note-modal-title">Nueva nota</h2><button type="button" onclick="closeNoteModal()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
       <input type="hidden" id="note-period-id"><input type="hidden" id="note-id">
       <div id="note-sections" class="xn-secs"></div>
-      <button type="button" onclick="addNoteSection()" class="xe-btn xe-soft xe-full" style="margin-top:8px"><i class="fa-solid fa-plus"></i> Añadir título</button>
+      <div class="xe-row" style="gap:8px;margin-top:8px"><button type="button" onclick="addNoteSection()" class="xe-btn xe-soft" style="flex:1"><i class="fa-solid fa-plus"></i> Añadir concepto</button>
+        <label class="xe-btn xe-soft" style="flex:1;cursor:pointer;text-align:center"><i class="fa-solid fa-image"></i> Añadir imagen<input type="file" accept="image/*" hidden onchange="addNoteImage(this)"></label></div>
       <div class="xe-foot">
         <button type="button" id="note-delete" onclick="deleteNoteFromModal()" class="hidden xe-btn xe-danger"><i class="fa-solid fa-trash"></i> Eliminar</button>
         <span class="xe-sp"></span>

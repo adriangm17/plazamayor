@@ -319,20 +319,75 @@ function openAddPeriodModal(countryId) {
 }
 
 /* v8.38: notas de período (ver renderNoteCard en views-album.js) */
+/* v8.42: la nota es una lista de bloques en orden: CONCEPTO ({title, text}) o IMAGEN de detalle ({image}). En la ficha, la imagen ocupa su propio hueco
+   de lado a lado, como una burbuja más. Las flechas de cada bloque lo suben/bajan. */
+function noteBlockHead(d, label) {
+  const h = document.createElement('div'); h.className = 'xe-row xn-bhead'; h.style.gap = '6px';
+  h.innerHTML = `${label}<button type="button" class="xe-ico xe-ico-s xn-up" title="Subir" aria-label="Subir"><i class="fa-solid fa-arrow-up"></i></button><button type="button" class="xe-ico xe-ico-s xn-down" title="Bajar" aria-label="Bajar"><i class="fa-solid fa-arrow-down"></i></button><button type="button" class="xe-ico xe-ico-s xn-del" title="Quitar" aria-label="Quitar"><i class="fa-solid fa-trash"></i></button>`;
+  h.querySelector('.xn-up').onclick = () => { const p = d.previousElementSibling; if (p) d.parentNode.insertBefore(d, p); };
+  h.querySelector('.xn-down').onclick = () => { const n = d.nextElementSibling; if (n) d.parentNode.insertBefore(n, d); };
+  h.querySelector('.xn-del').onclick = () => {
+    if (document.querySelectorAll('#note-sections .xn-sec').length > 1) d.remove();
+    else if (d._kind === 'concept') { d.querySelector('.xn-sec-title').value = ''; d.querySelector('.xn-sec-text').value = ''; }
+    else d.remove();
+  };
+  return h;
+}
 function noteSectionBlock(sec) {
   const d = document.createElement('div'); d.className = 'xn-sec';
-  d.innerHTML = `<div class="xe-row" style="gap:6px"><input type="text" class="xe-in xe-strong xn-sec-title" maxlength="60" placeholder="Título (ej.: REY ARTURO:)"><button type="button" class="xe-ico xe-ico-s" title="Quitar este título" aria-label="Quitar este título"><i class="fa-solid fa-trash"></i></button></div>
-    <textarea class="xe-in xn-sec-text" rows="4" maxlength="1200" placeholder="Texto. Las líneas que empiecen por * o - salen como lista" style="resize:vertical;line-height:1.35;margin-top:6px"></textarea>`;
+  if (sec && sec.image) {
+    d._kind = 'image'; d._image = sec.image;
+    d.appendChild(noteBlockHead(d, '<span class="xn-blabel"><i class="fa-solid fa-image"></i> Imagen de detalle</span>'));
+    const im = document.createElement('img'); im.className = 'xn-prev'; im.src = sec.image; im.alt = '';
+    d.appendChild(im);
+    return d;
+  }
+  d._kind = 'concept'; d._imgs = Array.isArray(sec.images) ? sec.images.slice() : [];   // imágenes antiguas (8.41) dentro del concepto: se conservan
+  d.appendChild(noteBlockHead(d, '<input type="text" class="xe-in xe-strong xn-sec-title" maxlength="60" placeholder="Concepto (ej.: Corona de tres puntas)">'));
+  const ta = document.createElement('textarea'); ta.className = 'xe-in xn-sec-text'; ta.rows = 4; ta.maxLength = 1200;
+  ta.placeholder = 'Contexto (opcional). Se ve al pulsar el concepto. Las líneas que empiecen por * o - salen como lista';
+  ta.style.cssText = 'resize:vertical;line-height:1.35;margin-top:6px';
+  d.appendChild(ta);
   d.querySelector('.xn-sec-title').value = sec.title || '';
-  d.querySelector('.xn-sec-text').value = sec.text || '';
-  d.querySelector('button').onclick = () => { if (document.querySelectorAll('#note-sections .xn-sec').length > 1) d.remove(); else { d.querySelector('.xn-sec-title').value = ''; d.querySelector('.xn-sec-text').value = ''; } };
+  ta.value = sec.text || '';
   return d;
+}
+// Reduce la imagen a 640 px de ancho máximo (WebP) para que ocupe poco dentro de los datos de la nube
+function noteImageFromFile(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 640, w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+      const k = Math.min(1, MAX / Math.max(w0, h0));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(w0 * k)); cv.height = Math.max(1, Math.round(h0 * k));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      let url = cv.toDataURL('image/webp', 0.78);
+      if (!url.startsWith('data:image/webp')) url = cv.toDataURL('image/jpeg', 0.8);
+      cb(url);
+    };
+    img.onerror = () => alert('No se pudo leer la imagen.');
+    img.src = e.target.result;
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsDataURL(file);
 }
 function addNoteSection(sec) {
   const box = document.getElementById('note-sections');
   const el = noteSectionBlock(sec || {});
   box.appendChild(el);
-  if (!sec) { const i = el.querySelector('.xn-sec-title'); i.focus(); el.scrollIntoView({ block: 'nearest' }); }
+  if (!sec) { const i = el.querySelector('.xn-sec-title'); if (i) i.focus(); el.scrollIntoView({ block: 'nearest' }); }
+}
+function addNoteImage(input) {
+  const f = input.files[0]; input.value = '';
+  if (!f) return;
+  if (!f.type.startsWith('image/')) { alert('Elige un archivo de imagen.'); return; }
+  noteImageFromFile(f, url => {
+    const el = noteSectionBlock({ image: url });
+    document.getElementById('note-sections').appendChild(el);
+    el.scrollIntoView({ block: 'nearest' });
+  });
 }
 function openNoteModal(periodId, noteId) {
   const p = periodById(periodId); if (!p) return;
@@ -341,7 +396,7 @@ function openNoteModal(periodId, noteId) {
   document.getElementById('note-id').value = n ? n.id : '';
   const box = document.getElementById('note-sections'); box.innerHTML = '';
   const secs = n ? noteSections(n) : [];
-  (secs.length ? secs : [{}]).forEach(s => addNoteSection(s.title || s.text ? s : {title: '', text: ''}));
+  (secs.length ? secs : [{ title: '', text: '' }]).forEach(s => addNoteSection(s.image ? s : Object.assign({ title: '', text: '' }, s)));
   document.getElementById('note-modal-title').textContent = n ? 'Editar nota' : 'Nueva nota';
   document.getElementById('note-delete').classList.toggle('hidden', !n);
   document.getElementById('note-modal').classList.remove('hidden');
@@ -350,11 +405,14 @@ function openNoteModal(periodId, noteId) {
 function closeNoteModal() { document.getElementById('note-modal').classList.add('hidden'); }
 function saveNoteFromModal() {
   const p = periodById(document.getElementById('note-period-id').value); if (!p) return;
-  const sections = [...document.querySelectorAll('#note-sections .xn-sec')].map(d => ({
-    title: d.querySelector('.xn-sec-title').value.trim(),
-    text: d.querySelector('.xn-sec-text').value.replace(/\s+$/, '')
-  })).filter(s => s.title || s.text.trim());
-  if (!sections.length) { alert('Escribe al menos un título o un texto.'); return; }
+  const sections = [...document.querySelectorAll('#note-sections .xn-sec')].map(d => {
+    if (d._kind === 'image') return { image: d._image };
+    const s = { title: d.querySelector('.xn-sec-title').value.trim(), text: d.querySelector('.xn-sec-text').value.replace(/\s+$/, '') };
+    if (d._imgs && d._imgs.length) s.images = d._imgs;
+    return s;
+  }).filter(s => s.image || s.title || s.text.trim() || (s.images && s.images.length));
+  if (sections.some(s => !s.image && !s.title)) { alert('Cada contexto necesita su concepto (la burbuja).'); return; }
+  if (!sections.length) { alert('Escribe al menos un concepto.'); return; }
   if (!Array.isArray(p.notes)) p.notes = [];
   const id = document.getElementById('note-id').value;
   const n = id ? p.notes.find(x => x.id === id) : null;
