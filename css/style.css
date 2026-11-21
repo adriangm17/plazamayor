@@ -1396,11 +1396,11 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xn-addimg { margin-top:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
 
 /* v8.42: imagen de detalle como elemento de la lista de la nota */
-.xn-img-item { border-radius:17px; border:0; margin:0 0 8px; flex:none; object-fit:cover; }
+.xn-img-item { display:block; border-radius:17px; border:0; margin:0 auto 8px; flex:none; object-fit:contain; max-width:100%; }
 .xn-pill > span { flex:1 1 auto; min-width:0; overflow:hidden; }
 .xn-card.xn-edit { -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
 .xn-card.xn-edit * { -webkit-touch-callout:none; }
-.xn-prev { object-fit:cover; width:100%; height:90px; }
+.xn-prev { object-fit:contain; }
 .xn-bhead { align-items:center; }
 .xn-bhead .xn-sec-title { flex:1; min-width:0; }
 .xn-blabel { flex:1; font-size:13px; font-weight:700; color:var(--xp-plum); }

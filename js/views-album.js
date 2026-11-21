@@ -1175,7 +1175,7 @@ function noteTextHtml(text) {
    El concepto abierto es solo de la sesión (noteOpenIdx). */
 const noteOpenIdx = {};
 // v8.42: imagen de detalle como elemento de la lista: de lado a lado de la ficha (respetando sus márgenes), con esquinas redondeadas como las burbujas
-function noteImgItem(s) { return (typeof s.image === 'string' && s.image.startsWith('data:image/')) ? `<img class="xn-img xn-img-item" src="${s.image}" alt="" style="object-position:50% ${Number.isFinite(s.pos) ? s.pos : 50}%">` : ''; }
+function noteImgItem(s) { return (typeof s.image === 'string' && s.image.startsWith('data:image/')) ? `<img class="xn-img xn-img-item" src="${s.image}" alt="">` : ''; }
 function noteHasContext(s) { return !!((s.text && s.text.trim()) || (Array.isArray(s.images) && s.images.length)); }
 // v8.41: imágenes pequeñas dentro del contexto de un concepto; se escalan al ancho de la nota
 function noteImagesHtml(s) {
@@ -1238,6 +1238,8 @@ function fitNoteBubbles(root) {
 }
 /* v8.43: las imágenes de detalle nunca alargan la ficha: ocupan (recortadas, object-fit:cover) el hueco que dejan los demás elementos,
    con un mínimo de 60 px; el encuadre vertical lo elige el administrador en la ventana de la nota. */
+/* v8.45: las imágenes de detalle se ajustan al ALTO libre de la ficha (lo que queda tras burbujas y demás elementos), sin recortar ni alargar la ficha:
+   se escalan para caber en el hueco (mínimo 60 px de alto) manteniendo su proporción y quedan centradas; si el hueco es ancho, ocupan todo el ancho. */
 function fitNoteImages(root) {
   const r = root || document;
   const cards = (r.matches && r.matches('.xn-card')) ? [r] : [...r.querySelectorAll('.xn-card')];
@@ -1245,17 +1247,19 @@ function fitNoteImages(root) {
     const body = card.querySelector('.xn-body'); if (!body) return;
     const imgs = [...body.querySelectorAll('.xn-img-item')]; if (!imgs.length) return;
     const run = () => {
-      imgs.forEach(im => { im.style.height = '0px'; });
+      imgs.forEach(im => { im.style.height = '0px'; im.style.width = '0px'; });
       let others = 0;
       [...body.children].forEach(ch => { if (!ch.classList.contains('xn-img-item')) others += ch.offsetHeight + 8; });
-      const avail = body.clientHeight - others - imgs.length * 8;
-      const per = Math.max(60, avail / imgs.length);
+      const cw = body.clientWidth;
+      const per = Math.max(60, (body.clientHeight - others - imgs.length * 8) / imgs.length);
       imgs.forEach(im => {
-        const nat = im.naturalWidth ? im.clientWidth * im.naturalHeight / im.naturalWidth : per;
-        im.style.height = Math.round(Math.min(per, nat || per)) + 'px';
+        if (!im.naturalWidth) { im.style.width = '100%'; im.style.height = per + 'px'; return; }
+        const k = Math.min(cw / im.naturalWidth, per / im.naturalHeight);
+        im.style.width = Math.round(im.naturalWidth * k) + 'px';
+        im.style.height = Math.round(im.naturalHeight * k) + 'px';
       });
     };
-    imgs.forEach(im => { im.style.objectFit = 'cover'; if (!im.complete) im.addEventListener('load', run, { once: true }); });
+    imgs.forEach(im => { im.style.objectFit = 'contain'; if (!im.complete) im.addEventListener('load', run, { once: true }); });
     run();
   });
 }

@@ -340,13 +340,7 @@ function noteSectionBlock(sec) {
     d.appendChild(noteBlockHead(d, '<span class="xn-blabel"><i class="fa-solid fa-image"></i> Imagen de detalle</span>'));
     d._pos = Number.isFinite(sec.pos) ? sec.pos : 50;
     const im = document.createElement('img'); im.className = 'xn-prev'; im.src = sec.image; im.alt = '';
-    im.style.objectPosition = '50% ' + d._pos + '%';
     d.appendChild(im);
-    const lab = document.createElement('label'); lab.className = 'xn-pos';
-    lab.innerHTML = '<span>Encuadre (recorte vertical)</span><input type="range" min="0" max="100" step="1">';
-    const rg = lab.querySelector('input'); rg.value = d._pos;
-    rg.oninput = () => { d._pos = parseInt(rg.value, 10); im.style.objectPosition = '50% ' + d._pos + '%'; };
-    d.appendChild(lab);
     return d;
   }
   d._kind = 'concept'; d._imgs = Array.isArray(sec.images) ? sec.images.slice() : [];   // imágenes antiguas (8.41) dentro del concepto: se conservan
