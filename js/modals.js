@@ -34,6 +34,7 @@ function renderCountryPeriodsList() {
       <input type="text" class="xe-in xe-pin" value="${esc(val)}" oninput="setPendingPeriodName('${pid}', this.value)" aria-label="Nombre del período">
       <button type="button" class="xe-ico xe-ico-s" onclick="moveCountryPeriod('${pid}', -1)" ${i === 0 ? 'disabled' : ''} title="Subir período" aria-label="Subir período"><i class="fa-solid fa-arrow-up"></i></button>
       <button type="button" class="xe-ico xe-ico-s" onclick="moveCountryPeriod('${pid}', 1)" ${i === list.length - 1 ? 'disabled' : ''} title="Bajar período" aria-label="Bajar período"><i class="fa-solid fa-arrow-down"></i></button>
+      <button type="button" class="xe-ico xe-ico-s" onclick="openMovePeriodCountry('${pid}')" title="Cambiar de país" aria-label="Cambiar este período de país"><i class="fa-solid fa-right-left"></i></button>
       <button type="button" class="xe-ico xe-ico-s" onclick="addCoinToPeriodFromCountryModal('${pid}')" title="Añadir moneda a este período" aria-label="Añadir moneda a este período"><i class="fa-solid fa-plus"></i></button>
       ${empty
         ? `<button type="button" class="xe-ico xe-ico-s xe-ico-del" onclick="deleteEmptyPeriodFromCountryModal('${pid}')" title="Eliminar período vacío" aria-label="Eliminar período vacío"><i class="fa-solid fa-trash"></i></button>`
@@ -48,6 +49,48 @@ function moveCountryPeriod(periodId, direction) {
 function addCoinToPeriodFromCountryModal(periodId) {
   if (!periodById(periodId)) return;
   openCreateModal(periodId);   // la ficha nueva se abre por encima; esta ventana queda debajo con sus cambios
+}
+/* ----- v8.46: cambiar un período (con sus monedas) a otro país, existente o nuevo ----- */
+let movePeriodId = '';
+function openMovePeriodCountry(pid) {
+  const p = periodById(pid); if (!p) return;
+  movePeriodId = pid;
+  document.getElementById('move-period-name').textContent = p.name;
+  document.getElementById('move-period-list').innerHTML = countries.filter(c => c.id !== p.countryId)
+    .map(c => `<option value="${esc(prettyName(c.name))}"></option>`).join('');
+  const inp = document.getElementById('move-period-input'); inp.value = '';
+  document.getElementById('move-period-modal').classList.remove('hidden');
+  setTimeout(() => inp.focus(), 50);
+}
+function closeMovePeriodCountry() { document.getElementById('move-period-modal').classList.add('hidden'); movePeriodId = ''; }
+async function confirmMovePeriodCountry() {
+  const p = periodById(movePeriodId); if (!p) { closeMovePeriodCountry(); return; }
+  const name = document.getElementById('move-period-input').value.trim();
+  if (!name) { alert('Escribe o elige el país de destino.'); return; }
+  const from = countryById(p.countryId);
+  const existing = findCountryByName(name);
+  if (existing && existing.id === p.countryId) { alert('El período ya está en ese país.'); return; }
+  const dest = existing || getOrCreateCountry(name);
+  if (!existing && from && from.continent) dest.continent = from.continent;
+  const twin = findPeriodByName(dest.id, p.name);
+  const cs = coinsOfPeriod(p.id);
+  if (twin && !confirm(`"${prettyName(dest.name)}" ya tiene un período "${p.name}". ¿Unir las monedas en ese período?`)) return;
+  if (twin) {
+    cs.forEach(c => { c.countryId = dest.id; c.periodId = twin.id; c.order = nextCoinOrder(twin.id); });
+    periods = periods.filter(x => x.id !== p.id);
+  } else {
+    p.countryId = dest.id;
+    p.order = periodsOfCountry(dest.id).filter(x => x.id !== p.id).reduce((mx, x) => Math.max(mx, x.order ?? 0), -1) + 1;
+    cs.forEach(c => { c.countryId = dest.id; });
+  }
+  delete pendingPeriodNames[p.id];
+  if (from && periodsOfCountry(from.id).length === 0) from.keep = true;
+  if (albumPeriodId === p.id) albumPeriodId = '';
+  closeMovePeriodCountry();
+  try { if (cs.length) await putCoinsToDB(cs); } catch (e) { console.error(e); }
+  await persistMeta();
+  render();
+  renderCountryPeriodsList();
 }
 function deleteEmptyPeriodFromCountryModal(periodId) {
   const p = periodById(periodId);

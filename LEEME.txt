@@ -130,3 +130,6 @@ v8.44 (corrección): (1) Iconos de la barra inferior rotos: el botón «volver»
 v8.45
 - Imágenes de las notas: se ajustan al ALTO libre de la ficha (no al ancho). Se escalan proporcionalmente, centradas y sin recorte; la ficha ya no se alarga.
 - Eliminado el deslizador "Encuadre" del editor de notas (ya no hace falta).
+
+v8.46
+- Editar país → cada período tiene un botón "Cambiar de país" (flechas): escribe o elige otro país (si no existe se crea) y se mueven el período y sus monedas. Si el destino ya tiene un período con el mismo nombre, pregunta si unirlos.

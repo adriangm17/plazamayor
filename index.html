@@ -245,6 +245,19 @@
     </div>
   </div>
 
+  <!-- MODAL CAMBIAR PERÍODO DE PAÍS (v8.46) -->
+  <div id="move-period-modal" class="xe-overlay hidden" style="z-index:60">
+    <div class="xe-sheet">
+      <div class="xe-head"><h2 class="xe-title">Cambiar de país</h2><button type="button" onclick="closeMovePeriodCountry()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="xe-f"><label>Período: <b id="move-period-name"></b></label>
+        <input type="text" id="move-period-input" list="move-period-list" class="xe-in" placeholder="Escribe o elige el país destino" autocomplete="off">
+        <datalist id="move-period-list"></datalist>
+        <p class="xe-note" style="margin-top:6px">Se mueven el período y todas sus monedas. Si el país no existe, se crea.</p></div>
+      <div class="xe-row" style="margin-top:10px"><button type="button" onclick="confirmMovePeriodCountry()" class="xe-btn">Mover</button>
+        <button type="button" onclick="closeMovePeriodCountry()" class="xe-btn xe-soft">Cancelar</button></div>
+    </div>
+  </div>
+
   <!-- MODAL EDITAR ZONA (Explorar) -->
   <div id="edit-zone-modal" class="xe-overlay hidden">
     <div class="xe-sheet xe-narrow">
