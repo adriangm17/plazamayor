@@ -137,3 +137,9 @@ v8.46
 v8.47
 - Ficha de variantes: la imagen de cada variante respeta la forma real de la moneda (agujero, rectangular, transparencias) con la misma sombra que en la ficha del Álbum, en vez de recortarse en círculo.
 - Al tocar la imagen de una variante, gira (anverso/reverso) sin abrir la ficha.
+
+v8.48
+- Ficha de variantes: el desplegable se ordena por la fecha de la moneda (año inicial, luego final; sin fecha al final) en vez de por KM#.
+
+v8.49
+- Hoja "Editar ficha": nuevo botón "Eliminar" (con confirmación) para borrar la moneda sin salir de la edición.

@@ -1,0 +1,1326 @@
+/* ===== VISTA ÁLBUM ===== */
+let pressTimer = null;
+let isLongPress = false;
+let coinHoldSuppressClick = false;
+// Tras una pulsación larga, el clic al soltar no debe tocar lo que haya debajo (p. ej. cerrar la ficha recién abierta)
+window.addEventListener('click', e => {
+  if (coinHoldSuppressClick) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+// En móvil, mantener pulsado no debe abrir el menú del navegador sobre la imagen de la moneda
+window.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.xc')) e.preventDefault(); });
+
+let albumGroup = '';   // (sin uso desde 4.10: ya no hay pestañas ni grupos de períodos; se mantiene vacío por compatibilidad)
+
+// Todos los períodos del país se ven siempre; el desplegable "Épocas" solo lleva a la posición de cada uno
+function periodsInAlbumView() { return periodsOfCountry(currentCountryId); }
+function periodProgressText(p) {
+  const n = completionList(coinsOfPeriod(p.id)).filter(isCompletionNormal);
+  return `${n.filter(c => c.acquired).length}/${n.length}`;
+}
+function validAlbumPeriod() { albumPeriodId = ''; albumGroup = ''; return ''; }
+
+// Años (mín–máx) que cubren las monedas de un período; null si no tiene fechas
+function periodYearSpan(p) {
+  if (p.years) { const r = parseYearRange(p.years.replace(/ACT\.?/i, String(new Date().getFullYear())).replace(/^(\d{4})$/, '$1-$1')); if (r) return { min: r.min, max: r.max }; }   // v8.34: años manuales
+  let min = Infinity, max = -Infinity;
+  coinsOfPeriod(p.id).forEach(c => { const r = parseYearRange(c.range); if (r) { min = Math.min(min, r.min); max = Math.max(max, r.max); } });
+  return min === Infinity ? null : { min, max };
+}
+// Períodos del país de la fecha más reciente a la más antigua; los que no tienen fechas, al final y en el orden de la página
+function periodsByDate() {
+  const all = periodsOfCountry(currentCountryId).map((p, i) => ({ p, i, span: periodYearSpan(p) }));
+  const dated = all.filter(x => x.span).sort((a, b) => (b.span.min - a.span.min) || (b.span.max - a.span.max) || (a.i - b.i));
+  return dated.concat(all.filter(x => !x.span));
+}
+
+function renderTabs() {
+  if (!countryById(currentCountryId)) currentCountryId = null;
+  const country = countryById(currentCountryId);
+  // Sin país elegido se muestra la lista de países y se ocultan cabecera y filtros
+  ['period-bar', 'album-filters'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = country ? '' : 'none';
+  });
+  validAlbumPeriod();
+  if (typeof navSync === 'function') navSync();
+  document.getElementById('album-country-title').innerHTML = country
+    ? `<i class="fa-solid fa-chevron-left"></i>${flagChip(country, 66, 46)}<span>${esc(country.name)}</span>`
+    : '';
+  // v7.09: la burbuja de la cabecera tiene fondo sólido (morado del proyecto, definido en style.css)
+  const bar = document.getElementById('period-bar');
+  if (bar) bar.style.background = '';
+  if (!country) { closePeriodsOverlay(); return; }
+  document.getElementById('btn-periods-open').innerHTML = `<span>ÉPOCAS</span><i class="fa-solid fa-chevron-down"></i>`;
+  if (!document.getElementById('periods-overlay').classList.contains('hidden')) renderPeriodsOverlay();
+}
+
+/* ----- Desplegable "Épocas": pantalla completa con los períodos por fecha ----- */
+function renderPeriodsOverlay() {
+  const country = countryById(currentCountryId);
+  if (!country) return;
+  const list = periodsByDate();
+  document.getElementById('periods-ov-list').innerHTML = list.length === 0
+    ? `<p class="xa-msg">Este país aún no tiene períodos.</p>`
+    : list.map((x, i) => `
+      <button type="button" class="xa-ovrow" onclick="goToPeriod('${jsArg(x.p.id)}')">
+        <span class="xp-num">${String(i + 1).padStart(2, '0')}</span>
+        <span class="xa-ovname">${esc(periodDisplayName(x.p))}${/\d{4}/.test(periodDisplayName(x.p)) ? '' : `<small>${x.span ? (x.span.min === x.span.max ? x.span.min : x.span.min + ' – ' + x.span.max) : 'Sin fechas'}</small>`}</span>
+        <span class="xa-pc">${periodProgressText(x.p)}</span>
+      </button>`).join('');
+}
+function togglePeriodsOverlay() {
+  const el = document.getElementById('periods-overlay');
+  if (el && !el.classList.contains('hidden')) { closePeriodsOverlay(); return; }
+  if (!countryById(currentCountryId)) return;
+  renderPeriodsOverlay();
+  el.classList.remove('hidden');
+  document.getElementById('periods-ov-list').scrollTop = 0;
+  document.getElementById('btn-periods-open').classList.add('xa-open');
+}
+function closePeriodsOverlay() {
+  const el = document.getElementById('periods-overlay');
+  if (el) el.classList.add('hidden');
+  const b = document.getElementById('btn-periods-open');
+  if (b) b.classList.remove('xa-open');
+}
+// Elegir una época: se cierra el desplegable, se abre su sección y se baja hasta ella
+function goToPeriod(periodId) {
+  const p = periodById(periodId);
+  closePeriodsOverlay();
+  if (!p) return;
+  if (p.collapsed) { p.collapsed = false; persistMeta(); }
+  if (coinsOfPeriod(p.id).length === 0) periodForceOpen[p.id] = true;
+  movingCoinId = null;
+  if (typeof BarScroll !== 'undefined') BarScroll.freezeUntil = performance.now() + 1400;   // el desplazamiento automático no cambia el banner
+  renderSections();
+  setTimeout(() => {
+    const el = document.getElementById('period-section-' + periodId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+}
+
+/* ----- Buscador de país con texto predictivo (por inicial del nombre) ----- */
+function alphaCountries() {
+  return [...countries].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+}
+
+function countrySuggestions(query) {
+  const q = normKey(String(query || '').replace(/^\s+/, ''));
+  return alphaCountries().filter(c => normKey(c.name).startsWith(q));   // solo países que EMPIEZAN por lo escrito
+}
+
+/* v8.10: al pulsar el buscador se abre una pantalla completa con los países en dos columnas;
+   al escribir van desapareciendo los que no empiezan por esas letras */
+function openCountryOverlay() {
+  const el = document.getElementById('country-overlay');
+  if (!el || !el.classList.contains('hidden')) return;
+  const bar = document.getElementById('album-country-search'); if (bar) bar.blur();
+  const inp = document.getElementById('country-ov-input'); if (inp) inp.value = '';
+  el.classList.remove('hidden');
+  document.body.classList.add('xc-lock');
+  buildCountryRail();
+  renderCountryOverlay();
+  const list = document.getElementById('country-ov-list'); if (list) list.scrollTop = 0;
+  // v8.12: en móvil no se abre el teclado; se filtra con el índice lateral de letras (en ordenador sí se puede escribir directamente)
+  if (inp && window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches) inp.focus();
+}
+
+/* ----- Índice lateral de letras (semiescondido): al deslizar de arriba abajo filtra los países por esa inicial ----- */
+/* Índice de letras reutilizable (Álbum e Índice): columna recta en reposo; al tocar se forma un arco que sigue al dedo, con burbuja a su izquierda;
+   al soltar el arco se relaja y la burbuja desaparece. cfg: { rail, bubble (ids), onLetter(letra) } */
+function makeAlphaRail(cfg) {
+  const AMP = cfg.arc === false ? 0 : 76, R = 10, GAP = cfg.gap || 40;   // salida máxima del arco (px; 0 = letras fijas), letras que abarca a cada lado, separación de la burbuja
+  const S = { cur: 0, tgt: 0, amp: 0, ampTgt: 0, raf: 0, letter: null, on: false };
+  const railEl = () => document.getElementById(cfg.rail), bubbleEl = () => document.getElementById(cfg.bubble);
+  function geom() {
+    const rail = railEl(); if (!rail || !rail.children.length) return null;
+    const spans = [...rail.children];
+    return { rail, spans, cs: spans.map(sp => sp.offsetTop + sp.offsetHeight / 2) };   // centro de cada letra (la ☆ puede ocupar más hueco)
+  }
+  function apply() {
+    const g = geom(); if (!g) return;
+    g.spans.forEach((sp, j) => {
+      const t = Math.max(0, 1 - Math.abs(j - S.cur) / R);
+      sp.style.transform = AMP && S.amp > 0.001 ? `translateX(${(-AMP * S.amp * Math.pow(t, 1.3)).toFixed(1)}px)` : '';
+    });
+    const b = bubbleEl(); if (!b) return;
+    const r = g.rail.getBoundingClientRect(), sp0 = g.spans[0];
+    const x = r.left + sp0.offsetLeft + sp0.offsetWidth / 2 - AMP * S.amp - GAP;   // a la izquierda del punto más saliente del arco
+    const cs = g.cs, j = Math.max(0, Math.min(cs.length - 2, Math.floor(S.cur)));
+    const y = r.top + (cs.length < 2 ? cs[0] : cs[j] + (S.cur - j) * (cs[j + 1] - cs[j]));
+    b.style.transform = `translate3d(${(x - 22).toFixed(1)}px, ${(y - 22).toFixed(1)}px, 0)`;
+  }
+  function loop() {
+    S.raf = 0;
+    const df = S.tgt - S.cur, da = S.ampTgt - S.amp;
+    if (Math.abs(df) < 0.004 && Math.abs(da) < 0.004) { S.cur = S.tgt; S.amp = S.ampTgt; apply(); return; }
+    S.cur += df * 0.38; S.amp += da * 0.26;
+    apply();
+    S.raf = requestAnimationFrame(loop);
+  }
+  const kick = () => { if (!S.raf) S.raf = requestAnimationFrame(loop); };
+  const fracOf = (g, e) => {
+    const y = e.clientY - g.rail.getBoundingClientRect().top, c = g.cs, n = c.length;
+    if (n < 2 || y <= c[0]) return 0;
+    if (y >= c[n - 1]) return n - 1;
+    let j = 0; while (j < n - 2 && y >= c[j + 1]) j++;
+    return j + (y - c[j]) / (c[j + 1] - c[j]);
+  };
+  function pick(e) {
+    const g = geom(); if (!g) return;
+    const f = fracOf(g, e);
+    S.tgt = f; kick();
+    const l = g.spans[Math.round(f)].dataset.l;
+    if (l === S.letter) return;
+    S.letter = l;
+    const b = bubbleEl(); if (b) b.textContent = l || '☆';
+    if (cfg.onLetter) cfg.onLetter(l);
+    if (navigator.vibrate) { try { navigator.vibrate(4); } catch (err) {} }
+  }
+  return {
+    build(letters) {
+      const rail = railEl(); if (!rail) return;
+      const key = letters.join('');
+      if (rail.dataset.key === key && rail.children.length) return;   // mismas letras: no se reconstruye (así no se corta un arrastre en curso)
+      rail.dataset.key = key;
+      rail.innerHTML = ['☆', ...letters].map((l, i) => `<span class="xc-rl" data-l="${i ? l : ''}">${l}</span>`).join('');
+      cancelAnimationFrame(S.raf); S.raf = 0;
+      S.cur = S.tgt = S.amp = S.ampTgt = 0; S.letter = null; S.on = false;
+      apply();
+    },
+    down(e) {
+      const g = geom(); if (!g) return;
+      e.preventDefault();
+      try { g.rail.setPointerCapture(e.pointerId); } catch (err) {}
+      S.on = true; S.letter = null;
+      S.cur = S.tgt = fracOf(g, e);   // el arco nace donde está el dedo
+      S.ampTgt = 1;
+      const b = bubbleEl(); if (b) b.classList.add('xc-show');
+      pick(e);
+    },
+    move(e) { if (S.on) { e.preventDefault(); pick(e); } },
+    up() {
+      if (!S.on) return;
+      S.on = false; S.ampTgt = 0; kick();
+      const b = bubbleEl(); if (b) b.classList.remove('xc-show');
+    }
+  };
+}
+function alphaLettersOf(list) {
+  const set = new Set();
+  list.forEach(c => { const l = normKey(c.name).charAt(0).toUpperCase(); if (/[A-Z]/.test(l)) set.add(l); });
+  return [...set].sort();
+}
+
+// Buscador de país del Álbum: al elegir letra se filtran los países por esa inicial
+const albumRail = makeAlphaRail({
+  rail: 'country-ov-rail', bubble: 'country-ov-bubble', arc: false, gap: 58,   // igual que el de la pestaña Índice
+  onLetter(l) {
+    const inp = document.getElementById('country-ov-input'); if (inp) inp.value = l;
+    renderCountryOverlay();
+    const list = document.getElementById('country-ov-list'); if (list) list.scrollTop = 0;
+  }
+});
+function buildCountryRail() { albumRail.build(alphaLettersOf(alphaCountries())); }
+const railDown = e => albumRail.down(e), railMove = e => albumRail.move(e), railUp = e => albumRail.up(e);
+function closeCountryOverlay() {
+  const el = document.getElementById('country-overlay');
+  if (el) el.classList.add('hidden');
+  document.body.classList.remove('xc-lock');
+  const inp = document.getElementById('country-ov-input'); if (inp) inp.blur();
+}
+function renderCountryOverlay() {
+  const inp = document.getElementById('country-ov-input'), box = document.getElementById('country-ov-list');
+  if (!box) return;
+  const value = inp ? inp.value.replace(/^\s+/, '') : '';
+  const list = countrySuggestions(value);
+  const n = value.length;
+  box.innerHTML = list.length === 0
+    ? `<div class="xc-none">Ningún país empieza por «${esc(value.trim())}»</div>`
+    : list.map(c => `
+      <button type="button" onclick="pickCountrySuggestion('${jsArg(c.id)}')" class="xi-card xc-card ${c.id === currentCountryId ? 'xc-cur' : ''}">
+        <span class="xi-head"><span class="xi-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}" role="img" aria-label="Bandera de ${esc(c.name)}"></span>
+        <span class="xi-name xc-name"><b>${esc(c.name.slice(0, n))}</b>${esc(c.name.slice(n))}</span></span>
+      </button>`).join('');
+}
+function onCountryOverlayKey(e) {
+  if (e.key === 'Escape') closeCountryOverlay();
+  else if (e.key === 'Enter') {
+    const first = countrySuggestions(e.target.value)[0];
+    if (first) pickCountrySuggestion(first.id);
+  }
+}
+function pickCountrySuggestion(countryId) {
+  closeCountryOverlay();
+  selectCountry(countryId);
+}
+
+function selectCountry(countryId) {
+  resetAlbumFilters();
+  currentCountryId = countryId;
+  albumPeriodId = '';
+  albumGroup = '';
+  movingCoinId = null;
+  expandAlbumPeriods();   // al cambiar de país salen todas las épocas desplegadas
+  render();
+  window.scrollTo(0, 0);
+}
+
+// Un solo botón: si hay algún período abierto los contrae todos; si están todos contraídos, los despliega
+function updateTogglePeriodsButton() {
+  const btn = document.getElementById('btn-toggle-periods');
+  if (!btn) return;
+  const list = periodsOfCountry(currentCountryId);
+  const anyOpen = list.some(p => !periodIsCollapsed(p));
+  btn.title = btn.ariaLabel = anyOpen ? 'Contraer períodos' : 'Desplegar períodos';
+  btn.setAttribute('aria-label', btn.title);
+  btn.innerHTML = `<i class="fa-solid fa-angles-${anyOpen ? 'up' : 'down'}"></i>`;
+}
+function toggleAllPeriods() {
+  const list = periodsOfCountry(currentCountryId);
+  if (list.some(p => !periodIsCollapsed(p))) collapseAllPeriods(); else expandAllPeriods();
+}
+
+function expandAllPeriods() {
+  periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = false; periodForceOpen[p.id] = true; });
+  persistMeta();
+  renderSections();
+}
+
+function collapseAllPeriods() {
+  periodsOfCountry(currentCountryId).forEach(p => { p.collapsed = true; periodForceOpen[p.id] = false; });
+  persistMeta();
+  renderSections();
+}
+
+function toggleCollapse(periodId) {
+  const p = periodById(periodId);
+  if (!p) return;
+  if (coinsOfPeriod(periodId).length === 0) periodForceOpen[periodId] = !periodForceOpen[periodId];
+  else p.collapsed = !p.collapsed;
+  persistMeta();
+  renderSections();
+}
+
+// Gira a la vez todas las monedas visibles del período (si alguna está de cara, las pone todas del reverso; si no, todas de cara)
+function flipPeriodCoins(periodId) {
+  const inners = [...document.querySelectorAll('#period-section-' + CSS.escape(periodId) + ' .coin-inner')];
+  if (!inners.length) return;
+  const toBack = inners.some(el => !el.classList.contains('flipped'));
+  inners.forEach(el => el.classList.toggle('flipped', toBack));
+}
+
+// Filtro "solo las que me faltan" de un período concreto (solo durante la sesión, no se guarda)
+// Los períodos sin monedas salen contraídos por defecto; aquí se recuerdan (solo durante la sesión) los que se abren a propósito
+const periodForceOpen = {};
+function periodIsCollapsed(p) {
+  return coinsOfPeriod(p.id).length === 0 ? !periodForceOpen[p.id] : !!p.collapsed;
+}
+
+const periodOnlyMissing = {};
+function togglePeriodMissing(periodId) {
+  periodOnlyMissing[periodId] = !periodOnlyMissing[periodId];
+  renderSections();
+}
+
+function movePeriod(periodId, direction) {
+  const list = periodsOfCountry(currentCountryId);
+  const idx = list.findIndex(p => p.id === periodId);
+  const target = idx + direction;
+  if (idx < 0 || target < 0 || target >= list.length) return;
+  list.forEach((p, i) => { p.order = i; });
+  [list[idx].order, list[target].order] = [list[target].order, list[idx].order];
+  persistMeta();
+  render();
+}
+
+/* ----- Filtros ----- */
+function isAlbumFilterActive() {
+  return albumSearch.trim() !== '' || albumOnlyMissing || albumOnlyOwned || albumOnlySpecial;
+}
+
+function matchesAlbumFilter(c) {
+  if (albumOnlyMissing && c.acquired) return false;
+  if (albumOnlyOwned && !c.acquired) return false;
+  if (albumOnlySpecial && coinType(c) === DEFAULT_COIN_TYPE) return false;
+  const q = albumSearch.trim().toLowerCase();
+  if (!q) return true;
+  const p = periodById(c.periodId);
+  const itemsText = (c.items || []).map(i => `${i.year} ${i.grade} ${i.notes}`).join(' ');
+  const haystack = [c.denom, c.km, c.cecaMaterial, c.rarity, c.range, p ? p.name : '', itemsText]
+    .map(v => String(v ?? '').toLowerCase()).join(' ');
+  return q.split(/\s+/).every(word => haystack.includes(word));
+}
+
+// Botones-filtro del Álbum (solo icono): activo = ámbar
+function setFilterButtonState(id, active) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.className = 'xp-btn' + (active ? ' xp-on' : '');
+}
+
+// Resetea todos los filtros del Álbum (búsqueda, faltantes, no circulantes y "faltantes" por período).
+// No repinta: quien la llama se encarga de renderizar.
+function resetAlbumFilters() {
+  albumSearch = '';
+  albumOnlyMissing = false;
+  albumOnlyOwned = false;
+  albumOnlySpecial = false;
+  Object.keys(periodOnlyMissing).forEach(k => delete periodOnlyMissing[k]);
+  setFilterButtonState('btn-only-missing', false);
+  setFilterButtonState('btn-only-owned', false);
+  setFilterButtonState('btn-only-special', false);
+}
+
+function toggleOnlyMissing() {
+  albumOnlyMissing = !albumOnlyMissing;
+  if (albumOnlyMissing) { albumOnlyOwned = false; setFilterButtonState('btn-only-owned', false); }   // excluyentes entre sí
+  setFilterButtonState('btn-only-missing', albumOnlyMissing);
+  renderSections();
+}
+
+function toggleOnlyOwned() {
+  albumOnlyOwned = !albumOnlyOwned;
+  if (albumOnlyOwned) { albumOnlyMissing = false; setFilterButtonState('btn-only-missing', false); }
+  setFilterButtonState('btn-only-owned', albumOnlyOwned);
+  renderSections();
+}
+
+function toggleOnlySpecial() {
+  albumOnlySpecial = !albumOnlySpecial;
+  setFilterButtonState('btn-only-special', albumOnlySpecial);
+  renderSections();
+}
+
+/* ----- Interacción con monedas ----- */
+function openCoinOrVariants(el, coinId) {   // ficha base de un grupo de variantes → ficha de variantes; el resto → su ficha
+  if (el && el.dataset && el.dataset.vkey) openVariantsSheet(el.dataset.vkey, el.dataset.vok);
+  else openCoinModal(coinId);
+}
+function handleCoinTouchStart(e, coinId) {
+  isLongPress = false;
+  const cardEl = e && e.currentTarget;
+  if (coinDragAllowed(cardEl)) return;   // v8.25: con permisos, mantener pulsado = arrastrar la ficha (ver más abajo)
+  pressTimer = setTimeout(() => {
+    // Pulsación larga: solo despliega la ficha (mover la moneda se hace desde "Editar ficha")
+    isLongPress = true;
+    coinHoldSuppressClick = true;
+    setTimeout(() => { coinHoldSuppressClick = false; }, 600);
+    if (navigator.vibrate) { try { navigator.vibrate(18); } catch (err) {} }
+    openCoinOrVariants(cardEl, coinId);
+  }, 500);
+}
+
+function handleCoinTouchEnd(e, coinId) {
+  clearTimeout(pressTimer);
+  if (isLongPress) setTimeout(() => { isLongPress = false; }, 400);
+}
+function handleCoinTouchMove(e) { clearTimeout(pressTimer); }
+
+function handleCoinClick(e, coinId) {
+  if (isLongPress) {
+    e.stopPropagation();
+    isLongPress = false;
+    return;
+  }
+  openCoinOrVariants(e.currentTarget, coinId);
+}
+
+/* ----- v8.25: reordenar fichas del Álbum manteniendo pulsado y arrastrando (sin desplegar la ficha) -----
+   Solo con permisos de edición del catálogo (administrador). El miembro conserva la pulsación larga de siempre.
+   Se mueve dentro del mismo período; con filtros activos solo se recolocan las fichas visibles, en los huecos que ya ocupaban. */
+const COIN_HOLD_MS = 450;
+let coinDrag = null;   // { card, pointerId, startX, startY, x, y, timer, active, scrollRaf }
+let coinDragSuppressClick = false;
+
+function catalogEditAllowed() {   // administrador (o sin nube: todo es del propietario)
+  const s = window.PMSync;
+  return !(s && s.enabled && typeof s.role === 'function' && s.role() === 'miembro');
+}
+function coinDragAllowed(card) {
+  if (!card || !card.closest || !card.closest('.xa-grid')) return false;
+  return catalogEditAllowed();
+}
+
+window.addEventListener('pointerdown', e => {
+  if (coinDrag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const card = e.target.closest && e.target.closest('.xa-grid > .xc');
+  if (!card || !coinDragAllowed(card)) return;
+  if (e.target.closest('button, a, input, select, [data-nodrag]')) return;
+  coinDrag = { card, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false, scrollRaf: 0 };
+  coinDrag.timer = setTimeout(coinDragActivate, COIN_HOLD_MS);
+  window.addEventListener('pointermove', coinDragMove);
+  window.addEventListener('pointerup', coinDragEnd);
+  window.addEventListener('pointercancel', coinDragEnd);
+  window.addEventListener('touchmove', coinBlockScroll, { passive: false });
+});
+window.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest('.xa-grid > .xc')) e.preventDefault(); });
+window.addEventListener('click', e => {
+  if (coinDragSuppressClick) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+
+function coinBlockScroll(e) { if (coinDrag && coinDrag.active && e.cancelable) e.preventDefault(); }
+
+function coinDragActivate() {
+  const d = coinDrag;
+  if (!d) return;
+  d.active = true;
+  d.startX = d.x; d.startY = d.y;
+  const s = d.card.style;
+  s.transition = 'none'; s.position = 'relative'; s.zIndex = '60';
+  s.transform = 'scale(1.05)';
+  s.boxShadow = '0 14px 34px rgba(0,0,0,0.45)';
+  s.touchAction = 'none';
+  document.body.style.userSelect = 'none';
+  document.body.style.webkitUserSelect = 'none';
+  try { d.card.setPointerCapture(d.pointerId); } catch (err) {}
+  if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) {} }
+  d.scrollRaf = requestAnimationFrame(coinAutoScroll);
+}
+
+function coinDragMove(e) {
+  const d = coinDrag;
+  if (!d || e.pointerId !== d.pointerId) return;
+  d.x = e.clientX; d.y = e.clientY;
+  if (!d.active) {
+    // Si se mueve antes de tiempo es un scroll normal: se cancela la pulsación larga
+    if (Math.abs(d.x - d.startX) > 8 || Math.abs(d.y - d.startY) > 8) coinDragCleanup();
+    return;
+  }
+  e.preventDefault();
+  coinDragPlace();
+}
+
+/* v8.26: sobre otra ficha hay dos zonas. BORDE (margen exterior): tras una pausa breve se intercambian de sitio (reordenar, como antes).
+   CENTRO: tras una pausa algo mayor la ficha de destino se marca «FUSIONAR»; al soltar se pide confirmación y se fusionan. */
+const COIN_SWAP_MS = 220, COIN_MERGE_MS = 550;
+function coinMergeClear() {
+  const d = coinDrag; if (!d) return;
+  clearTimeout(d.zoneTimer); d.zoneTimer = 0; d.zoneEl = null; d.zoneKind = '';
+  if (d.mergeEl) { d.mergeEl.classList.remove('xc-merge-target'); d.mergeEl = null; d.card.style.opacity = ''; }
+}
+// La ficha sigue al dedo/ratón y se intercambia con la ficha sobre la que pasa el puntero
+function coinDragPlace() {
+  const d = coinDrag;
+  if (!d || !d.active) return;
+  const card = d.card, grid = card.parentElement;
+  const apply = () => { card.style.transform = `translate(${d.x - d.startX}px, ${d.y - d.startY}px) scale(1.05)`; };
+  apply();
+  const under = [...grid.children].find(el => {
+    if (el === card || !el.classList.contains('xc')) return false;
+    const r = el.getBoundingClientRect();
+    return d.x >= r.left && d.x <= r.right && d.y >= r.top && d.y <= r.bottom;
+  });
+  if (!under) { coinMergeClear(); return; }
+  const r = under.getBoundingClientRect();
+  const inCenter = d.x > r.left + r.width * 0.25 && d.x < r.right - r.width * 0.25 && d.y > r.top + r.height * 0.2 && d.y < r.bottom - r.height * 0.2;
+  const kind = inCenter ? 'merge' : 'swap';
+  if (d.zoneEl === under && d.zoneKind === kind) return;   // sigue en la misma zona: el temporizador ya corre
+  coinMergeClear();
+  d.zoneEl = under; d.zoneKind = kind;
+  if (kind === 'merge') {
+    d.zoneTimer = setTimeout(() => {
+      if (!coinDrag || coinDrag !== d || !d.active || d.zoneEl !== under) return;
+      d.mergeEl = under; under.classList.add('xc-merge-target');
+      d.card.style.opacity = '.5';   // translúcida para ver la ficha de destino
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (err) {} }
+    }, COIN_MERGE_MS);
+  } else {
+    d.zoneTimer = setTimeout(() => {
+      if (!coinDrag || coinDrag !== d || !d.active || d.zoneEl !== under) return;
+      d.zoneEl = null; d.zoneKind = '';
+      coinDragSwap(under);
+      coinDragPlace();   // por si tras el cambio el puntero ya está sobre otra ficha
+    }, COIN_SWAP_MS);
+  }
+}
+function coinDragSwap(target) {
+  const d = coinDrag;
+  if (!d || !d.active) return;
+  const card = d.card;
+  const apply = () => { card.style.transform = `translate(${d.x - d.startX}px, ${d.y - d.startY}px) scale(1.05)`; };
+  {
+    const vr = card.getBoundingClientRect();
+    const vcx = vr.left + vr.width / 2, vcy = vr.top + vr.height / 2;
+    const targetIsBefore = !!(card.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_PRECEDING);
+    if (targetIsBefore) target.before(card); else target.after(card);
+    // Se mide la nueva posición natural y se corrige el desplazamiento para que la ficha no salte
+    card.style.transform = 'scale(1.05)';
+    const nr = card.getBoundingClientRect();
+    d.startX = d.x - (vcx - (nr.left + nr.width / 2));
+    d.startY = d.y - (vcy - (nr.top + nr.height / 2));
+    apply();
+  }
+}
+
+function coinAutoScroll() {
+  const d = coinDrag;
+  if (!d || !d.active) return;
+  const edge = 90, vh = window.innerHeight;
+  let step = 0;
+  if (d.y < edge) step = -Math.ceil((edge - d.y) / 6);
+  else if (d.y > vh - edge) step = Math.ceil((d.y - (vh - edge)) / 6);
+  if (step) {
+    const before = window.scrollY;
+    window.scrollBy(0, step);
+    const moved = window.scrollY - before;
+    if (moved) { d.startY -= moved; coinDragPlace(); }
+  }
+  d.scrollRaf = requestAnimationFrame(coinAutoScroll);
+}
+
+function coinDragEnd(e) {
+  const d = coinDrag;
+  if (!d || (e && e.pointerId !== d.pointerId)) return;
+  const wasActive = d.active, grid = d.card.parentElement;
+  const ids = wasActive && grid ? [...grid.children].filter(el => el.classList.contains('xc')).map(el => el.id.replace(/^coin-card-/, '')) : [];
+  const dragId = d.card.id.replace(/^coin-card-/, ''), mergeId = d.mergeEl ? d.mergeEl.id.replace(/^coin-card-/, '') : '';
+  coinDragCleanup();
+  if (!wasActive) return;
+  coinDragSuppressClick = true;
+  setTimeout(() => { coinDragSuppressClick = false; }, 350);
+  applyCoinCardOrder(ids);
+  if (mergeId) confirmMergeCards(dragId, mergeId);
+}
+
+// v8.26: confirmación de la fusión (solo administrador)
+function confirmMergeCards(dragId, targetId) {
+  if (!catalogEditAllowed()) return;
+  const a = coins.find(c => c.id === dragId), b = coins.find(c => c.id === targetId);
+  if (!a || !b) return;
+  const desc = id => { const x = coins.find(c => c.id === id), g = (x && vgGroupOfId(x.id)) || [x]; return g.map(y => `${y.denom} · ${y.km || 'KM#-'}`).join('\n   '); };
+  const ok = confirm('¿Fusionar estas fichas como variantes?\n\n' +
+    '•  ' + desc(targetId) + '\n•  ' + desc(dragId) +
+    '\n\nFuncionarán como variantes de una misma moneda (una sola ficha en el Álbum, un solo cómputo en la compleción), pero cada una conserva su KM#. Se podrá deshacer desde la ficha de variantes.');
+  if (ok) mergeCoinGroups(dragId, targetId);
+}
+
+function coinDragCleanup() {
+  const d = coinDrag;
+  if (!d) return;
+  clearTimeout(d.timer);
+  coinMergeClear();
+  cancelAnimationFrame(d.scrollRaf);
+  if (d.active) {
+    const s = d.card.style;
+    s.transition = s.position = s.zIndex = s.transform = s.boxShadow = s.touchAction = '';
+    document.body.style.userSelect = document.body.style.webkitUserSelect = '';
+    try { d.card.releasePointerCapture(d.pointerId); } catch (err) {}
+  }
+  window.removeEventListener('pointermove', coinDragMove);
+  window.removeEventListener('pointerup', coinDragEnd);
+  window.removeEventListener('pointercancel', coinDragEnd);
+  window.removeEventListener('touchmove', coinBlockScroll);
+  coinDrag = null;
+}
+
+// ids = fichas del período en el orden en que quedaron en pantalla (una por grupo de variantes)
+function applyCoinCardOrder(ids) {
+  const first = coins.find(c => c.id === ids[0]);
+  if (!first) { render(); return; }
+  const periodId = first.periodId;
+  const all = coinsOfPeriod(periodId).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const onlyMissing = !!periodOnlyMissing[periodId];
+  const visible = all.filter(c => matchesAlbumFilter(c) && !(onlyMissing && c.acquired));   // igual que al pintar
+  const visIds = new Set(visible.map(c => c.id));
+  const seq = [], used = new Set();
+  ids.forEach(id => {
+    const c = all.find(x => x.id === id);
+    if (!c || used.has(c.id)) return;
+    const key = compactGroupKey(c);
+    // una ficha de grupo arrastra a todas sus variantes visibles, manteniendo su orden entre ellas
+    const members = key ? visible.filter(x => compactGroupKey(x) === key) : [c];
+    (members.length ? members : [c]).forEach(x => { if (!used.has(x.id) && visIds.has(x.id)) { used.add(x.id); seq.push(x); } });
+  });
+  if (seq.length !== visible.length) { render(); return; }   // algo no cuadra: no se toca nada
+  const merged = all.slice();
+  all.forEach((c, i) => { if (visIds.has(c.id)) merged[i] = null; });
+  let n = 0;
+  for (let i = 0; i < merged.length; i++) if (merged[i] === null) merged[i] = seq[n++];
+  const changed = [];
+  merged.forEach((c, i) => { if ((c.order ?? 0) !== i) { c.order = i; changed.push(c); } });
+  if (changed.length) saveCoins(changed); else render();
+}
+
+function flipGridCoin(event, coinId) {
+  event.stopPropagation();
+  // Se busca dentro de la propia tarjeta: el mismo id puede existir también en la página de estado de Estadísticas (oculta)
+  const host = event.currentTarget && event.currentTarget.querySelector ? event.currentTarget : null;
+  const inner = (host && host.querySelector('.coin-inner')) || document.getElementById(`grid-coin-inner-${coinId}`);
+  if (inner) inner.classList.toggle('flipped');
+}
+
+function moveCoin(coinId, direction) {
+  const coin = coins.find(c => c.id === coinId);
+  if (!coin) return;
+  const same = coinsOfPeriod(coin.periodId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const localIndex = same.findIndex(c => c.id === coinId);
+  const target = localIndex + direction;
+  if (target < 0 || target >= same.length) return;
+
+  const tmp = same[localIndex].order;
+  same[localIndex].order = same[target].order;
+  same[target].order = tmp;
+  same.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  same.forEach((c, idx) => { c.order = idx; });
+  saveCoins(same);
+}
+
+/* ----- Pintado ----- */
+// Lista de países en burbujas (bandera + nombre) para elegir uno cuando aún no hay ninguno seleccionado
+function renderCountryPicker(container) {
+  const list = alphaCountries();
+  if (!list.length) { container.innerHTML = `<div class="xp-empty-msg">Aún no hay países en la colección.</div>`; return; }
+  container.innerHTML = `
+    <span class="xs-kicker block">Álbum</span>
+    <h2 class="xs-h1" style="font-size:30px">Elige un país</h2>
+    <div class="xa-bubbles">${list.map(c => `
+      <button type="button" class="xa-bubble" onclick="selectCountry('${jsArg(c.id)}')">${flagChip(c, 24, 17)}<span>${esc(prettyName(c.name))}</span></button>`).join('')}
+    </div>`;
+}
+
+function renderSections() {
+  const container = document.getElementById('album-sections');
+  if (!countryById(currentCountryId)) { renderCountryPicker(container); return; }
+  const filtered = coinsOfCountry(currentCountryId);
+
+  if (periodsOfCountry(currentCountryId).length === 0) {
+    container.innerHTML = `<div class="xp-empty-msg">Este país aún no tiene períodos. Usa el botón + de arriba para añadir uno.</div>`;
+    return;
+  }
+
+  const filterActive = isAlbumFilterActive();
+
+  validAlbumPeriod();
+  let secNum = 0;
+  const sectionsHtml = periodsInAlbumView().map(p => {
+    const allPeriodCoins = filtered.filter(c => c.periodId === p.id);
+    const onlyMissingHere = !!periodOnlyMissing[p.id];
+    const periodCoins = allPeriodCoins.filter(c => matchesAlbumFilter(c) && !(onlyMissingHere && c.acquired)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (filterActive && periodCoins.length === 0 && !onlyMissingHere) return '';
+
+    const cmpCoins = completionList(allPeriodCoins);   // v7.08: las variantes no cuentan (cada grupo = 1 moneda)
+    const normalCoins = cmpCoins.filter(isCompletionNormal);
+    const acquiredCount = normalCoins.filter(c => c.acquired).length;
+    const totalCount = normalCoins.length;
+    const normalPct = totalCount > 0 ? Math.round((acquiredCount / totalCount) * 100) : 0;
+    const silverCoins = cmpCoins.filter(c => isSilverCoin(c) && !isSetCoin(c));
+    const silverPct = silverCoins.length > 0 ? Math.round((silverCoins.filter(c => c.acquired).length / silverCoins.length) * 100) : 0;
+
+    const isCollapsed = periodIsCollapsed(p);
+    const pid = esc(p.id);
+    const num = String(++secNum).padStart(2, '0');
+    const ptp = periodTitleParts(p);
+
+    return `
+      <section id="period-section-${pid}" class="xa-sec">
+        <div class="xp-head xa-head" onclick="toggleCollapse('${pid}')" role="button" aria-expanded="${!isCollapsed}">
+          <span class="xp-num">${num}</span>
+          <span class="xa-ptitle">
+            <span class="xp-title xa-pname" title="${esc(periodDisplayName(p))}">${esc(ptp.name)}</span>
+            ${ptp.date ? `<span class="xa-pdate">${esc(ptp.date)}</span>` : ''}
+          </span>
+          <span class="xa-tools" onclick="event.stopPropagation()">
+            ${catalogEditAllowed() ? `<button onclick="openCreateModal('${jsArg(p.id)}')" class="xp-btn" title="Añadir moneda a este período" aria-label="Añadir moneda a este período"><i class="fa-solid fa-plus"></i></button>
+            <button onclick="openNoteModal('${jsArg(p.id)}')" class="xp-btn" title="Añadir nota a este período" aria-label="Añadir nota a este período"><i class="fa-solid fa-note-sticky"></i></button>` : ''}
+            <button onclick="flipPeriodCoins('${pid}')" class="xp-btn" title="Girar todas las monedas del período" aria-label="Girar todas las monedas del período"><i class="fa-solid fa-rotate"></i></button>
+            <button onclick="togglePeriodMissing('${pid}')" class="xp-btn ${onlyMissingHere ? 'xp-on' : ''}" title="Ver solo las que me faltan de este período" aria-label="Ver solo las que me faltan de este período"><i class="fa-solid fa-circle-exclamation"></i></button>
+          </span>
+        </div>
+        <div class="xa-prog">
+          <span class="xa-count">${acquiredCount}/${totalCount} · <b>${normalPct}%</b></span>
+          ${indiceBars(normalPct, silverPct, silverCoins.length > 0)}
+        </div>
+
+        <div class="xa-grid ${isCollapsed ? 'hidden' : ''}">
+          ${(!isCollapsed && !filterActive && !onlyMissingHere) ? (p.notes || []).map(n => renderNoteCard(p, n)).join('') : ''}
+          ${(isCollapsed ? [] : buildAlbumCards(periodCoins)).map(x => renderCoinCard(x.coin, { group: x.group, ok: x.ok, base: x.base })).join('')}
+          ${(!isCollapsed && periodCoins.length === 0) ? `<p class="xa-msg">${allPeriodCoins.length === 0 ? 'Este período aún no tiene monedas. Usa el + para añadir la primera.' : 'No hay monedas que mostrar con este filtro.'}</p>` : ''}
+        </div>
+      </section>
+    `;
+  }).join('');
+
+  container.innerHTML = sectionsHtml.trim() !== ''
+    ? sectionsHtml
+    : `<div class="xp-empty-msg">Ninguna moneda coincide con el filtro.</div>`;
+  hydrateImages(container);
+  fitCardYears(container);
+  fitNoteCards(container);
+  updateTogglePeriodsButton();
+  if (typeof navSync === 'function') navSync();
+}
+
+/* ----- Variantes de una misma moneda (KM# 12, 12a, 12.1, 12.2…) -----
+   Se agrupan por país + número base del catálogo. Una ficha con 2 o más del mismo grupo lleva un círculo
+   dividido en tantas porciones como variantes (la original también cuenta); cada una conseguida se pinta de verde y cada hueco (las que faltan) en rojo, en todas las fichas del grupo. */
+let variantCache = null;   // se reconstruye en cada pintado (se vacía al terminar la tarea actual)
+function kmKey(km) {
+  const m = String(km ?? '').match(/^\s*([A-Za-zÀ-ÿ]*)\s*[#.]?\s*(\d+)(.*)$/);
+  if (!m) return null;
+  return { base: (m[1] || 'KM').toUpperCase() + '#' + m[2], suffix: m[3].trim().toLowerCase().replace(/^[\s.\-_/]+/, '') };
+}
+function variantGroupOf(c) {
+  if (c && c.solo) return null;   // v8.34: ficha desvinculada
+  const fused = c && c.id && vgGroupOfId(c.id);   // v8.26: grupo con fichas fusionadas → sus porciones son las del grupo fusionado
+  if (fused && fused.some(x => x.vlink)) return fused;
+  const k = kmKey(c && c.km);
+  if (!k) return null;
+  if (!variantCache) {
+    variantCache = new Map();
+    coins.forEach(x => {
+      const kx = kmKey(x.km); if (!kx || x.solo) return;
+      const key = x.countryId + '|' + kx.base;
+      if (!variantCache.has(key)) variantCache.set(key, []);
+      variantCache.get(key).push({ coin: x, suffix: kx.suffix });
+    });
+    variantCache.forEach(g => g.sort((a, b) => a.suffix.localeCompare(b.suffix, undefined, { numeric: true })));   // la original (sin sufijo) primero
+    Promise.resolve().then(() => { variantCache = null; });
+  }
+  const g = variantCache.get(c.countryId + '|' + k.base);
+  return g && g.length > 1 ? g.map(e => e.coin) : null;
+}
+/* ----- v4.33: una sola ficha por grupo de variantes (mismo país + período + número base de KM) -----
+   El álbum pinta la variante elegida (por defecto la original, sin sufijo) y el círculo partido hace de selector.
+   Cada variante sigue siendo una moneda independiente (conseguida, ejemplares, grado, plata, imágenes, backups). */
+/* v8.26: FUSIÓN. El administrador puede arrastrar una ficha sobre otra y fusionarlas: pasan a ser variantes entre sí
+   aunque su KM# sea distinto (cada una conserva su KM#). La unión se guarda en el campo `vlink` de cada ficha
+   (= id de la ficha líder, que pasa a ser la ficha base del grupo). Un grupo = fichas del mismo país + período
+   unidas por el mismo número base de KM# o por el mismo `vlink` (si una variante nueva comparte KM# con una fusionada, entra también). */
+let _vgCache = null;
+function vgIndex() {
+  if (_vgCache && _vgCache.ref === coins && _vgCache.n === coins.length) return _vgCache;
+  const parent = new Map();
+  const find = id => { while (parent.get(id) !== id) { parent.set(id, parent.get(parent.get(id))); id = parent.get(id); } return id; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  const seenKey = new Map();
+  const link = (key, id) => { if (seenKey.has(key)) union(id, seenKey.get(key)); else seenKey.set(key, id); };
+  coins.forEach(x => parent.set(x.id, x.id));
+  coins.forEach(x => {
+    if (x.solo) return;   // v8.34: desvinculada a mano: no se agrupa ni por KM# ni por fusión
+    const scope = x.periodId + '|' + x.countryId, k = kmKey(x.km);
+    if (k) link('km|' + scope + '|' + k.base, x.id);
+    if (x.vlink) link('vl|' + scope + '|' + x.vlink, x.id);
+  });
+  const comps = new Map();
+  coins.forEach(x => { const r = find(x.id); if (!comps.has(r)) comps.set(r, []); comps.get(r).push(x); });
+  const byKey = new Map(), ofId = new Map();   // clave → grupo (2 o más), id → grupo
+  comps.forEach(list => {
+    if (list.length < 2) return;
+    const entries = list.map(x => { const k = kmKey(x.km); return { coin: x, base: k ? k.base : '', suffix: k ? k.suffix : '' }; });
+    const leaderIds = new Set(list.map(x => x.vlink).filter(Boolean));
+    const lead = e => (e.coin.vlink && leaderIds.has(e.coin.id) && e.coin.vlink === e.coin.id) ? 0 : 1;   // la ficha líder de la fusión va primero
+    entries.sort((a, b) => lead(a) - lead(b)
+      || (!a.base - !b.base)
+      || a.base.localeCompare(b.base, undefined, { numeric: true })
+      || a.suffix.localeCompare(b.suffix, undefined, { numeric: true })
+      || (a.coin.order ?? 0) - (b.coin.order ?? 0));
+    const g = entries.map(e => e.coin), f = entries[0];
+    const key = f.coin.periodId + '|' + f.coin.countryId + '|' + (f.base || 'vl:' + (f.coin.vlink || f.coin.id));
+    byKey.set(key, g);
+    g.forEach(x => ofId.set(x.id, g));
+  });
+  _vgCache = { ref: coins, n: coins.length, byKey, ofId };
+  Promise.resolve().then(() => { _vgCache = null; });
+  return _vgCache;
+}
+function vgGroupOfId(id) { return vgIndex().ofId.get(id) || null; }
+function compactGroupKey(c) {
+  if (!c) return null;
+  const g = vgGroupOfId(c.id);
+  if (g) { const f = g[0], k = kmKey(f.km); return f.periodId + '|' + f.countryId + '|' + (k ? k.base : 'vl:' + (f.vlink || f.id)); }
+  if (c.solo) return null;
+  const k = kmKey(c.km);
+  return k ? c.periodId + '|' + c.countryId + '|' + k.base : null;
+}
+function compactGroupsMap() {   // clave → variantes (2 o más) del mismo período, la ficha base primero
+  return vgIndex().byKey;
+}
+// Distintos KM# base del grupo (en orden): una ficha fusionada puede llevar varios
+function groupBaseKms(g) {
+  const out = [];
+  g.forEach(x => { const l = baseKmLabel(x), k = kmKey(x.km); if (k && !out.includes(l)) out.push(l); });
+  return out.length ? out : [baseKmLabel(g[0])];
+}
+// ¿El grupo contiene fichas fusionadas a mano?
+function groupIsFused(g) { return !!(g && g.some(x => x.vlink)); }
+
+/* Fusionar (solo administrador): la ficha arrastrada y la de destino (con todas sus variantes) pasan a ser un solo grupo */
+function mergeCoinGroups(dragId, targetId) {
+  const a = coins.find(c => c.id === dragId), b = coins.find(c => c.id === targetId);
+  if (!a || !b || a.id === b.id || a.periodId !== b.periodId || a.countryId !== b.countryId) return false;
+  const ga = vgGroupOfId(a.id) || [a], gb = vgGroupOfId(b.id) || [b];
+  if (ga.includes(b)) return false;   // ya están juntas
+  const leader = gb[0];
+  const all = [...gb, ...ga], changed = [];
+  all.forEach(x => { if (x.vlink !== leader.id || x.solo) { x.vlink = leader.id; delete x.solo; changed.push(x); } });
+  _vgCache = null; _cmpCache = null;
+  saveCoins(changed);
+  return true;
+}
+// Deshacer la fusión de un grupo (vuelven a agruparse solo por su número de KM#)
+function unmergeCoinGroup(key) {
+  const g = compactGroupsMap().get(key); if (!g) return;
+  const changed = [];
+  g.forEach(x => { if (x.vlink) { delete x.vlink; changed.push(x); } });
+  _vgCache = null; _cmpCache = null;
+  if (changed.length) saveCoins(changed);
+}
+/* v8.34: DESVINCULAR variantes aunque compartan KM#. La ficha desvinculada lleva `solo: true` (y pierde su `vlink`):
+   deja de agruparse con las demás y pasa a ser una ficha independiente. Volver a fusionarla (arrastrando) quita la marca. */
+function unlinkVariant(id) {
+  const x = coins.find(c => c.id === id); if (!x) return;
+  const g = vgGroupOfId(id); if (!g || g.length < 2) return;
+  if (!confirm(`¿Desvincular ${x.km || 'esta ficha'} de sus variantes?\n\n${x.denom} pasará a ser una ficha independiente aunque comparta número de KM#.`)) return;
+  const key = variantsSheetKey;
+  x.solo = true; delete x.vlink;
+  _vgCache = null; _cmpCache = null; variantCache = null;
+  saveCoins([x]);
+  if (key && compactGroupsMap().get(key)) openVariantsSheet(key); else if (key) closeVariantsSheet();
+}
+function unlinkAllVariants(key) {
+  const g = compactGroupsMap().get(key); if (!g) return;
+  g.forEach(x => { x.solo = true; delete x.vlink; });
+  _vgCache = null; _cmpCache = null; variantCache = null;
+  saveCoins(g.slice());
+}
+/* v7.08: porcentajes de compleción. Cada grupo de variantes (mismo país + período + KM# base) cuenta como UNA moneda:
+   la ficha base, que se da por conseguida si se tiene alguna de sus variantes (igual que se ve en el álbum). */
+let _cmpCache = null;
+function completionList(list) {
+  if (!_cmpCache || _cmpCache.ref !== coins || _cmpCache.n !== coins.length) {
+    _cmpCache = { ref: coins, n: coins.length, map: compactGroupsMap() };
+    Promise.resolve().then(() => { _cmpCache = null; });
+  }
+  const out = [];
+  list.forEach(c => {
+    const key = compactGroupKey(c), g = key && _cmpCache.map.get(key);
+    if (!g) { out.push(c); return; }
+    if (c.id !== g[0].id) return;   // las variantes (no base) no cuentan
+    const any = g.some(x => x.acquired);
+    out.push(!!c.acquired === any ? c : Object.assign({}, c, { acquired: any }));
+  });
+  return out;
+}
+
+// De la lista de monedas visibles de un período devuelve una ficha por grupo (en la posición de su primera variante).
+// Solo se ve la ficha BASE del grupo.
+function buildAlbumCards(list) {
+  const groups = compactGroupsMap(), visibleIds = new Set(list.map(c => c.id)), seen = new Set(), out = [];
+  list.forEach(c => {
+    const key = compactGroupKey(c), g = key && groups.get(key);
+    if (!g) { out.push({ coin: c, group: null }); return; }
+    if (seen.has(key)) return;
+    seen.add(key);
+    const ok = g.filter(x => visibleIds.has(x.id)).map(x => x.id);   // las que no pasan el filtro no se pueden elegir
+    out.push({ coin: g[0], group: g, ok, base: true });   // v4.47: solo existe la ficha base; las variantes se abren desde su desplegable
+  });
+  return out;
+}
+
+// Años de la ficha base: del primer año al último de todas las monedas del grupo
+function unionRange(g) {
+  let lo = Infinity, hi = -Infinity, act = false;
+  g.forEach(x => {
+    const str = String(x.range || ''), m = str.match(/\d{4}/g);
+    if (!m) return;
+    m.forEach(y => { lo = Math.min(lo, +y); hi = Math.max(hi, +y); });
+    if (/ACT/i.test(str)) act = true;
+  });
+  if (lo === Infinity) return formatYearRange(g[0].range);
+  if (act) hi = Math.max(hi, new Date().getFullYear());
+  return formatYearRange(lo === hi ? String(lo) : `${lo}-${hi}`);
+}
+// Ficha base: las rarezas distintas del grupo cada una con su color y su letra, repartidas por igual en la casilla
+function groupRarityHtml(g) {
+  const set = [...new Set(g.map(x => String(x.rarity || '').trim().toUpperCase()).filter(Boolean))];   // en el orden de KM del grupo
+  if (!set.length) return `<div class="xc-cell xc-rar w-[45%]" style="background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);">-</div>`;
+  // v8.33: más de 2 rarezas distintas → «VARIAS» en azul (color que no usa ninguna rareza); el detalle queda en el tooltip
+  if (set.length > 2) return `<div class="xc-cell xc-rar w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="background-color:#3b82f6;color:#ffffff;font-size:11px;font-weight:700;">VARIAS</div>`;
+  const fs = set.length <= 1 ? 12 : 11;
+  return `<div class="xc-cell xc-rar xc-rar-split w-[45%]" title="Rarezas: ${esc(set.join(', '))}" style="font-size:${fs}px">${set.map(r => `<span style="${getRarityStyle(r)}">${r === 'PLATA' ? 'AG' : esc(r)}</span>`).join('')}</div>`;
+}
+function baseKmLabel(c) {   // KM# del que parten las variantes (sin sufijo): KM# 26.1 → KM# 26
+  const k = kmKey(c && c.km);
+  return k ? k.base.replace('#', '# ') : (c && c.km) || 'KM#-';
+}
+
+function variantMarkHtml(c) {
+  const g = variantGroupOf(c);   // todas las variantes del país con ese número base (también las de otros períodos)
+  if (!g) return '';
+  const n = g.length, f = v => v.toFixed(2);
+  // Las porciones van en sentido antihorario desde arriba: la 1.ª variante a la izquierda, la 2.ª a la derecha…
+  const pt = i => { const a = -Math.PI / 2 - 2 * Math.PI * i / n; return [12 + 12 * Math.cos(a), 12 + 12 * Math.sin(a)]; };
+  let fills = '', gaps = '', got = 0;
+  g.forEach((x, i) => {
+    const [x1, y1] = pt(i), [x2, y2] = pt(i + 1);
+    // Conseguida → verde; las que faltan → rojo (igual en todas las fichas del grupo)
+    if (x.acquired) got++;
+    fills += n === 1 ? '' : `<path d="M12 12L${f(x1)} ${f(y1)}A12 12 0 0 0 ${f(x2)} ${f(y2)}Z" style="fill:${x.acquired ? 'var(--xp-have)' : 'var(--xp-miss)'}"/>`;
+    gaps += `M12 12L${f(x1)} ${f(y1)}`;
+  });
+  // Círculo plano sin contorno: las porciones se separan con un hueco del color de la ficha
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">` +
+    `${fills}<path d="${gaps}" fill="none" stroke="var(--xp-plum)" stroke-width="1.4"/></svg>`;
+  return `<span class="xc-var" title="Variantes: ${got} de ${n} conseguidas">${svg}</span>`;
+}
+
+// Número romano de una variante (lo usa la ficha de variantes)
+function toRoman(n) {
+  const t = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let r = ''; t.forEach(([v, l]) => { while (n >= v) { r += l; n -= v; } }); return r;
+}
+
+function renderCoinCard(c, opts) {
+  opts = (opts && typeof opts === 'object') ? opts : {};   // (.map le pasa el índice como 2.º argumento)
+  // Ficha BASE de un grupo de variantes: imagen y KM# de la original; verde si se tiene al menos una variante; años y rarezas del grupo entero
+  const isBase = !!(opts.base && opts.group);
+  if (isBase) {
+    const first = opts.group[0];
+    c = Object.assign({}, first, { acquired: opts.group.some(x => x.acquired), items: opts.group.flatMap(x => Array.isArray(x.items) ? x.items : []) });
+  }
+  let baseStyleClass = 'coin-base-style';
+  const mat = (c.cecaMaterial || '').toLowerCase();
+  if (mat.includes('oro')) baseStyleClass = 'coin-oro-style';
+  if (mat.includes('cobre') || mat.includes('bronce')) baseStyleClass = 'coin-cobre-style';
+
+  const isPlata = isSilverCoin(c);
+  const hasCeca = c.cecaMaterial && c.cecaMaterial.trim() !== '';
+  const cardBorderClass = (c.acquired
+      ? ({ F: 'border-[#a3b84a] shadow-[0_0_10px_rgba(163,184,74,0.28)]',      // F: verde pálido amarillento
+           TBD: 'xc-brd-tbd' }[bestGrade(c)]   // v7.08: TBD, borde #e8e240 (clase propia en style.css)
+         || 'border-[color:var(--xp-have)] shadow-[0_0_10px_rgba(var(--xp-have-rgb),0.25)]')
+      : (isPlata ? 'xc-brd-silver' : 'xc-miss-brd'));   // las que faltan: #ff5757 (v7.01); las de rareza PLATA que faltan: #8f9cbc (v7.08)
+
+  // La ceca/variante siempre es libre; en las de plata, el valor calculado ocupa la casilla de rareza (mismo color de la etiqueta PLATA)
+  const cecaOrValue = hasCeca ? esc(c.cecaMaterial) : '—';
+  const rarityHtml = isPlata ? `<span class="xc-price">${computeCoinSilverValue(c) || '0,00 €'}</span>` : esc(c.rarity || '-');
+
+  const id = esc(c.id);
+  const denom = esc(c.denom);
+  // Esquina superior derecha: tipo (círculo; FAO lleva la palabra). Los circulantes no llevan marca.
+  const type = coinType(c), typeColor = COIN_TYPE_COLORS[type];
+  const typeDot = type === DEFAULT_COIN_TYPE ? '' :
+    type === 'FAO' ? `<span class="xc-fao" title="FAO">FAO</span>` :
+    `<span class="xc-tdot" style="background:${typeColor};border:2px solid ${typeColor}" title="${esc(type)}"></span>`;
+  // Esquina superior izquierda: iconos de formato (solo los distintos del formato por defecto, de los ejemplares que se tienen)
+  const ownedFormats = [...new Set((c.items || []).filter(i => i && String(i.grade || '').trim() !== '').map(i => i.format).filter(f => f && f !== DEFAULT_ITEM_FORMAT && ITEM_FORMATS.some(x => x.id === f)))];
+  // v8.35 (prueba): si no hay formato que mostrar y la ficha tiene valor orientativo calculado, ese valor ocupa la esquina (el formato siempre tiene prioridad)
+  const nvVal = (ownedFormats.length === 0 && window.NumistaValor) ? (isBase ? NumistaValor.groupValue(opts.group) : NumistaValor.cardValue(c)) : null;
+  const topLeft = ownedFormats.length > 0
+    ? `<span class="xc-tl" style="color:var(--xp-sand)" title="${esc(ownedFormats.map(f => ITEM_FORMATS.find(x => x.id === f).label).join(', '))}">${ownedFormats.map(f => itemFormatIcon(f, 15)).join('')}</span>`
+    : (nvVal != null ? `<span class="xc-tl xc-tl-val" title="${isBase ? 'Alguna variante tiene valor orientativo (Numista): se ve al desplegarlas' : 'Valor orientativo (Numista)'}">${isBase ? '≈' : esc(NumistaValor.fmt(nvVal))}</span>` : '');
+
+  // Estado de conservación en la esquina inferior izquierda, justo encima de la denominación (mejor grado de los ejemplares)
+  const grade = bestGrade(c);
+  const gradeMark = !grade ? '' :
+    `<span class="xc-grade xc-g-${grade}" title="Conservación: ${esc(grade)}">${esc(grade)}</span>`;
+
+  return `
+    <div
+      id="coin-card-${id}"
+      ${opts.plain ? `onclick="openCoinModal('${id}')"` : `onmousedown="handleCoinTouchStart(event, '${id}')"
+      onmouseup="handleCoinTouchEnd(event, '${id}')"
+      onmouseleave="handleCoinTouchEnd(event, '${id}')"
+      ontouchstart="handleCoinTouchStart(event, '${id}')"
+      ontouchend="handleCoinTouchEnd(event, '${id}')"
+      ontouchmove="handleCoinTouchMove(event)"
+      onclick="handleCoinClick(event, '${id}')"`}
+      ${isBase ? `data-vkey="${esc(compactGroupKey(c))}" data-vok="${(opts.ok || []).map(esc).join(',')}"` : ''}
+      class="xc ${cardBorderClass}${c.acquired ? ' xc-own' : ''}${(isBase && c.acquired && opts.group.some(x => !x.acquired)) ? ' xc-partial' : ''}">
+
+      ${typeDot}
+      ${topLeft}
+
+      ${opts.extra || ''}
+
+      <div class="relative w-full flex justify-center">
+      ${gradeMark}
+      ${linkWarnHtml(c, opts)}
+      ${variantMarkHtml(c)}
+      <div class="w-28 h-28 sm:w-32 sm:h-32 my-0.5 coin-perspective" onclick="flipGridCoin(event, '${id}')">
+        <div id="grid-coin-inner-${id}" class="coin-inner">
+          <div class="coin-front ${!c.hasFront ? baseStyleClass : 'has-img'} ${!c.acquired ? 'coin-missing' : ''} ${!c.hasFront ? 'shadow-md' : ''}">
+            ${c.hasFront ? imgTag(c.id, 'front') : `<span class="text-2xl font-black font-serif-numis tracking-tight">${denom}</span>`}
+          </div>
+          <div class="coin-back ${!c.hasBack ? baseStyleClass : 'has-img'} ${!c.acquired ? 'coin-missing' : ''} ${!c.hasBack ? 'shadow-md' : ''}">
+            ${c.hasBack ? imgTag(c.id, 'back') : `<span class="text-2xl font-black font-serif-numis tracking-tight">${denom}</span>`}
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div class="w-full mt-2 space-y-1.5">
+        <div class="xc-denom">
+          ${denom}
+        </div>
+
+        <div class="flex gap-1 w-full">
+          <div class="xc-cell xc-soft xc-yr w-[55%]">
+            ${esc(isBase ? unionRange(opts.group) : formatYearRange(c.range))}
+          </div>
+          ${isBase
+            ? groupRarityHtml(opts.group)
+            : `<div class="xc-cell xc-rar w-[45%]" style="${c.rarity ? getRarityStyle(c.rarity) : 'background:rgba(var(--xp-sand-rgb),.16);color:var(--xp-sand);'}">${rarityHtml}</div>`}
+        </div>
+
+        <div class="flex gap-1 w-full">
+          ${(() => {
+            if (!isBase) return `<div class="xc-cell xc-km w-[45%]">${esc(c.km || 'KM#-')}</div>`;
+            const kms = groupBaseKms(opts.group);
+            if (kms.length < 2) return `<div class="xc-cell xc-km w-[45%]">${esc(kms[0])}</div>`;
+            // v8.33: más de 2 KM# distintos → solo «KM# VARIOS» (el detalle queda en el tooltip y en la ficha desplegada)
+            if (kms.length > 2) return `<div class="xc-cell xc-km w-[45%]" title="${esc(kms.join(' · '))}">KM# VARIOS</div>`;
+            // v8.26: grupo fusionado con varios KM#: todos, uno encima de otro, ajustados al hueco
+            const lh = Math.max(7, Math.floor(26 / kms.length));
+            return `<div class="xc-cell xc-km xc-km-multi w-[45%]" style="--kml:${lh}px" title="${esc(kms.join(' · '))}">${kms.map(k => `<span>${esc(k)}</span>`).join('')}</div>`;
+          })()}
+          ${isBase
+            ? `<div class="xc-cell xc-multi w-[55%]" title="${opts.group.length} variantes · toca la ficha para verlas"><i class="fa-solid fa-layer-group"></i><span>${opts.group.length} VARIANTES</span></div>`
+            : `<div class="xc-cell xc-soft w-[55%]" style="font-weight:600;font-size:11px">${cecaOrValue}</div>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
+/* ===== Ficha desplegable de variantes (se abre al pulsar una ficha BASE) =====
+   Una fila por variante: número romano en la esquina (rojo = me falta, verde = la tengo), moneda, KM# + años,
+   ceca/material, rareza · precio de la plata · conservación y botones a Numista / Ucoin. Pulsar la fila abre la ficha completa. */
+let variantsSheetKey = null;
+function openVariantsSheet(key, okStr) {
+  const g0 = compactGroupsMap().get(key); if (!g0) return;
+  // v8.48: el desplegable se ordena por fecha (año inicial, luego final); sin fecha al final; a igualdad se respeta el orden anterior
+  const yrs = x => { const m = String(x.range || '').match(/\d{4}/g); return m ? [Math.min(...m.map(Number)), Math.max(...m.map(Number))] : [Infinity, Infinity]; };
+  const g = g0.map((x, i) => ({ x, i, y: yrs(x) })).sort((a, b) => (a.y[0] - b.y[0]) || (a.y[1] - b.y[1]) || (a.i - b.i)).map(o => o.x);
+  variantsSheetKey = key;
+  const ok = new Set(String(okStr || '').split(',').filter(Boolean));
+  const first = g[0];
+  document.getElementById('variants-title').textContent = first.denom;
+  document.getElementById('variants-subtitle').textContent = [coinCountryName(first), coinPeriodName(first), unionRange(g)].filter(Boolean).join(' · ').toUpperCase();
+  const lk = (url, letter, name) => url
+    ? `<button type="button" class="xp-lk" title="${name}" aria-label="${name}" onclick="event.stopPropagation();openCoinLink('${jsArg(url)}','${name}')">${letter}</button>`
+    : `<span class="xp-lk xp-lk-off" title="${name}: sin enlace">${letter}</span>`;
+  document.getElementById('variants-list').innerHTML = g.map((x, i) => {
+    const off = ok.size && !ok.has(x.id) ? ' xv-off' : '';
+    const grade = bestGrade(x), ceca = x.cecaMaterial && x.cecaMaterial.trim();
+    const silver = isSilverCoin(x), price = silver ? computeCoinSilverValue(x) : '';
+    const rar = silver ? 'AG' : String(x.rarity || '').toUpperCase();
+    return `<div class="xv-row ${x.acquired ? 'xv-own' : 'xv-miss'}${off}" role="button" onclick="openVariantFromSheet('${jsArg(x.id)}')">
+      <span class="xv-tab">${toRoman(i + 1)}</span>
+      <span class="xv-thumb coin-perspective" onclick="flipVariantCoin(event)" title="Tocar para girar">
+        <span class="coin-inner">
+          <span class="coin-front ${x.hasFront ? 'has-img' : 'xv-noimg'}">${x.hasFront ? imgTag(x.id, 'front') : `<em>${esc(x.denom)}</em>`}</span>
+          <span class="coin-back ${x.hasBack ? 'has-img' : 'xv-noimg'}">${x.hasBack ? imgTag(x.id, 'back') : `<em>${esc(x.denom)}</em>`}</span>
+        </span>
+      </span>
+      <span class="xv-rule"></span>
+      <div class="xv-mid">
+        <div class="xv-r1"><span class="xv-km">${esc(x.km || 'KM#-')}</span><span class="xv-yr">${esc(formatYearRange(x.range))}</span></div>
+        <div class="xv-ceca">${ceca ? esc(ceca) : '—'}</div>
+        <div class="xv-r3">
+          ${rar ? `<span class="xv-rar" style="${silver ? getRarityStyle('PLATA') : getRarityStyle(rar)}">${esc(rar)}</span>` : ''}
+          ${silver ? `<span class="xv-price">${esc(price || '0,00 €')}</span>` : ''}
+          ${(() => { const nv = window.NumistaValor && NumistaValor.estimate(x, bestGrade(x)); return nv ? `<span class="xv-price xv-nv" title="Valor orientativo (Numista)">≈ ${esc(NumistaValor.fmt(nv.value))}</span>` : ''; })()}
+          ${grade ? `<span class="xv-grade">${esc(grade)}</span>` : ''}
+        </div>
+      </div>
+      <span class="xv-rule"></span>
+      <div class="xv-links">${lk(x.numistaUrl, 'N', 'Numista')}${lk(x.ucoinUrl, 'U', 'Ucoin')}${(g.length > 1 && catalogEditAllowed()) ? `<button type="button" class="xp-lk xv-unlink" title="Desvincular esta variante" aria-label="Desvincular esta variante" onclick="event.stopPropagation();unlinkVariant('${jsArg(x.id)}')"><i class="fa-solid fa-link-slash"></i></button>` : ''}</div>
+    </div>`;
+  }).join('');
+  const un = document.getElementById('variants-unmerge');
+  if (un) { un.classList.toggle('hidden', !catalogEditAllowed()); un.title = un.ariaLabel = groupIsFused(g) ? 'Deshacer la fusión' : 'Desvincular todas las variantes'; }
+  const ov = document.getElementById('variants-modal');
+  ov.classList.remove('hidden');
+  hydrateImages(ov);
+  fitVariantsSheet();
+}
+/* v8.47: cada variante se gira al tocar su imagen (sin abrir la ficha) */
+function flipVariantCoin(event) {
+  event.stopPropagation();
+  const inner = event.currentTarget.querySelector('.coin-inner');
+  if (inner) inner.classList.toggle('flipped');
+}
+function closeVariantsSheet() { document.getElementById('variants-modal').classList.add('hidden'); }
+function unmergeFromSheet() {
+  const g = compactGroupsMap().get(variantsSheetKey); if (!g) return;
+  const fused = groupIsFused(g);
+  if (!confirm((fused ? '¿Deshacer la fusión de estas fichas?' : '¿Desvincular todas las variantes?') + '\n\n' + g.map(x => (x.km || 'KM#-') + ' · ' + x.denom).join('\n') + (fused
+    ? '\n\nVolverán a ser fichas independientes (cada una con su KM#; las que compartan número base seguirán como variantes; para separar también esas, desvincúlalas una a una).'
+    : '\n\nTodas pasarán a ser fichas independientes aunque compartan número de KM#.'))) return;
+  const key = variantsSheetKey;
+  closeVariantsSheet();
+  if (fused) unmergeCoinGroup(key); else unlinkAllVariants(key);
+}
+function openVariantFromSheet(id) { closeVariantsSheet(); openCoinModal(id); }
+// Añadir una variante nueva: abre el formulario de crear ficha con país, período, denominación y KM# base ya rellenos
+function addVariantFromSheet() {
+  const g = compactGroupsMap().get(variantsSheetKey); if (!g) return;
+  const first = g[0];
+  closeVariantsSheet();
+  openCreateModal(first.periodId);
+  document.getElementById('new-denom').value = first.denom || '';
+  const km = document.getElementById('new-km');
+  km.value = baseKmLabel(first);
+  setTimeout(() => { try { km.focus(); km.setSelectionRange(km.value.length, km.value.length); } catch (e) {} }, 60);
+}
+
+
+/* v8.38: FICHAS DE NOTA. Se guardan dentro del período (p.notes = [{ id, title, text }]), así viajan con la sincronización y las copias.
+   Las ven todos; solo el administrador las crea, edita o borra. Mismo ancho (columna de la cuadrícula) y misma altura que una ficha de moneda. */
+function noteSections(n) {   // formato nuevo: n.sections = [{ title, text }]; las notas de la 8.38 (title/text sueltos) se leen como una sola sección
+  if (Array.isArray(n.sections) && n.sections.length) return n.sections;
+  return (n.title || n.text) ? [{ title: n.title || '', text: n.text || '' }] : [];
+}
+function noteTextHtml(text) {
+  let html = '', inList = false;
+  String(text || '').split('\n').forEach(raw => {
+    const m = raw.match(/^\s*[*\-•]\s+(.*)$/);
+    if (m) { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${esc(m[1])}</li>`; }
+    else { if (inList) { html += '</ul>'; inList = false; } if (raw.trim()) html += `<p>${esc(raw)}</p>`; }
+  });
+  if (inList) html += '</ul>';
+  return html;
+}
+/* v8.40: la nota es una lista de CONCEPTOS (burbujas). Cada concepto puede llevar un contexto opcional: si lo tiene, al pulsar la burbuja la ficha pasa a
+   «título (ancho completo) + texto» y un botón permite volver a todos los conceptos. Con un solo concepto se muestra directamente desplegado.
+   El concepto abierto es solo de la sesión (noteOpenIdx). */
+const noteOpenIdx = {};
+// v8.42: imagen de detalle como elemento de la lista: de lado a lado de la ficha (respetando sus márgenes), con esquinas redondeadas como las burbujas
+function noteImgItem(s) { return (typeof s.image === 'string' && s.image.startsWith('data:image/')) ? `<img class="xn-img xn-img-item" src="${s.image}" alt="">` : ''; }
+function noteHasContext(s) { return !!((s.text && s.text.trim()) || (Array.isArray(s.images) && s.images.length)); }
+// v8.41: imágenes pequeñas dentro del contexto de un concepto; se escalan al ancho de la nota
+function noteImagesHtml(s) {
+  return (Array.isArray(s.images) ? s.images : []).filter(u => typeof u === 'string' && u.startsWith('data:image/')).map(u => `<img class="xn-img" src="${u}" alt="" loading="lazy">`).join('');
+}
+function noteCardHtml(p, n) {
+  const edit = catalogEditAllowed();
+  const secs = noteSections(n);
+  const open = secs.length === 1 ? 0 : (noteOpenIdx[n.id] != null && secs[noteOpenIdx[n.id]] ? noteOpenIdx[n.id] : -1);
+  let body;
+  if (open >= 0) {
+    const s = secs[open];
+    body = s.image ? noteImgItem(s) : `<div class="xn-pill xn-pill-full">${esc(s.title)}</div><div class="xn-text">${noteTextHtml(s.text)}</div>${noteImagesHtml(s)}`;
+  } else {
+    body = secs.map((s, i) => s.image ? noteImgItem(s) : noteHasContext(s)
+      ? `<button type="button" class="xn-pill xn-pill-btn" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',${i})"><span>${esc(s.title)}</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`
+      : `<div class="xn-pill"><span>${esc(s.title)}</span></div>`).join('');
+  }
+  const back = (secs.length > 1 && open >= 0) ? `<button type="button" class="nt-btn xn-back" title="Volver a todos los conceptos" aria-label="Volver a todos los conceptos" onclick="event.stopPropagation();noteOpenConcept('${jsArg(p.id)}','${jsArg(n.id)}',-1)"><i class="fa-solid fa-arrow-left"></i></button>` : '';
+  return `<div class="xn-body">${body}</div>${back ? `<div class="xn-foot">${back}</div>` : ''}`;
+}
+function renderNoteCard(p, n) {
+  return `<div class="xn-card${catalogEditAllowed() ? ' xn-edit' : ''}" data-nid="${esc(n.id)}" data-pid="${esc(p.id)}">${noteCardHtml(p, n)}</div>`;
+}
+/* v8.43: el administrador edita la nota manteniéndola pulsada (0,6 s) — sin botón. Se cancela si el dedo/ratón se mueve (scroll) o se suelta antes. */
+(function () {
+  let timer = 0, sx = 0, sy = 0, fired = false;
+  const clear = () => { clearTimeout(timer); timer = 0; };
+  document.addEventListener('pointerdown', e => {
+    const card = e.target.closest && e.target.closest('.xn-card.xn-edit');
+    if (!card || e.target.closest('.xn-back') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    fired = false; sx = e.clientX; sy = e.clientY; clear();
+    timer = setTimeout(() => { timer = 0; fired = true; if (navigator.vibrate) { try { navigator.vibrate(20); } catch (x) {} } openNoteModal(card.dataset.pid, card.dataset.nid); setTimeout(() => { fired = false; }, 500); }, 600);
+  });
+  document.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clear(); });
+  ['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach(t => document.addEventListener(t, clear, true));
+  document.addEventListener('click', e => { if (fired && e.target.closest && e.target.closest('.xn-card')) { e.stopPropagation(); e.preventDefault(); fired = false; } }, true);   // al soltar tras la pulsación larga no se abre el concepto
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.xn-card.xn-edit')) e.preventDefault(); });
+})();
+function noteOpenConcept(periodId, noteId, idx) {
+  const p = periodById(periodId); const n = p && (p.notes || []).find(x => x.id === noteId); if (!n) return;
+  if (idx < 0) delete noteOpenIdx[noteId]; else noteOpenIdx[noteId] = idx;
+  const el = document.querySelector(`.xn-card[data-nid="${CSS.escape(noteId)}"]`); if (!el) return;
+  el.innerHTML = noteCardHtml(p, n);
+  fitNoteBubbles(el);
+}
+// Las burbujas ocupan todo el ancho de la ficha: el texto se reduce hasta 14 px para que quepa en una línea; si aun así no cabe, pasa a varias líneas
+function fitNoteBubbles(root) {
+  (root || document).querySelectorAll('.xn-pill').forEach(el => {
+    if (!el.clientWidth) return;
+    const full = el.classList.contains('xn-pill-full');
+    let fs = full ? 18 : 16;
+    el.style.whiteSpace = 'nowrap'; el.style.fontSize = fs + 'px';
+    const t = el.querySelector(':scope > span') || el;
+    const over = () => t.scrollWidth > t.clientWidth + 1;
+    while (over() && fs > 14) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    if (over()) el.style.whiteSpace = 'normal';   // demasiado largo aun a 14 px: en vez de reducirlo más, pasa a dos líneas (o más)
+  });
+  fitNoteImages(root);
+}
+/* v8.43: las imágenes de detalle nunca alargan la ficha: ocupan (recortadas, object-fit:cover) el hueco que dejan los demás elementos,
+   con un mínimo de 60 px; el encuadre vertical lo elige el administrador en la ventana de la nota. */
+/* v8.45: las imágenes de detalle se ajustan al ALTO libre de la ficha (lo que queda tras burbujas y demás elementos), sin recortar ni alargar la ficha:
+   se escalan para caber en el hueco (mínimo 60 px de alto) manteniendo su proporción y quedan centradas; si el hueco es ancho, ocupan todo el ancho. */
+function fitNoteImages(root) {
+  const r = root || document;
+  const cards = (r.matches && r.matches('.xn-card')) ? [r] : [...r.querySelectorAll('.xn-card')];
+  cards.forEach(card => {
+    const body = card.querySelector('.xn-body'); if (!body) return;
+    const imgs = [...body.querySelectorAll('.xn-img-item')]; if (!imgs.length) return;
+    const run = () => {
+      imgs.forEach(im => { im.style.height = '0px'; im.style.width = '0px'; });
+      let others = 0;
+      [...body.children].forEach(ch => { if (!ch.classList.contains('xn-img-item')) others += ch.offsetHeight + 8; });
+      const cw = body.clientWidth;
+      const per = Math.max(60, (body.clientHeight - others - imgs.length * 8) / imgs.length);
+      imgs.forEach(im => {
+        if (!im.naturalWidth) { im.style.width = '100%'; im.style.height = per + 'px'; return; }
+        const k = Math.min(cw / im.naturalWidth, per / im.naturalHeight);
+        im.style.width = Math.round(im.naturalWidth * k) + 'px';
+        im.style.height = Math.round(im.naturalHeight * k) + 'px';
+      });
+    };
+    imgs.forEach(im => { im.style.objectFit = 'contain'; if (!im.complete) im.addEventListener('load', run, { once: true }); });
+    run();
+  });
+}
+// La ficha de nota toma la altura de una ficha de moneda de su misma cuadrícula (si no hay ninguna, queda la altura mínima del CSS)
+function fitNoteCards(root) {
+  (root || document).querySelectorAll('.xa-grid').forEach(grid => {
+    const notes = [...grid.querySelectorAll('.xn-card')]; if (!notes.length) return;
+    notes.forEach(n => { n.style.height = ''; });
+    // contain:size → la nota no aporta altura a su fila: la fila la marcan las monedas y la nota se estira hasta ella.
+    // Si una fila no tiene monedas (p. ej. dos notas seguidas), se le da la altura de una ficha de moneda.
+    const coin = grid.querySelector('.xc'); const ch = coin ? coin.offsetHeight : 0;
+    notes.forEach(n => { if (n.offsetHeight < 80) n.style.height = (ch || 240) + 'px'; });
+  });
+  fitNoteBubbles(root);
+}
+window.addEventListener('resize', () => { try { fitNoteCards(document); } catch (e) {} });
+
+/* v7.11: los años de la ficha usan el mayor tamaño de letra que cabe en su casilla (se reduce solo si no entra) */
+function fitCardYears(root) {
+  (root || document).querySelectorAll('.xc-yr').forEach(el => {
+    if (!el.clientWidth) return;   // período contraído: se ajusta al desplegarlo
+    let fs = 14.5;
+    el.style.fontSize = fs + 'px';
+    while (el.scrollWidth > el.clientWidth && fs > 9) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+  });
+}
+window.addEventListener('resize', () => { const c = document.getElementById('album-sections'); if (c) fitCardYears(c); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { const c = document.getElementById('album-sections'); if (c) fitCardYears(c); });
+
+
+/* v7.13: enlaces. Numista solo acepta numista.com y Ucoin solo ucoin.net; si falta alguno o no es válido, la ficha lleva un «!» */
+function linkHostOk(url, domain) {
+  try { const u = new URL(String(url).trim()); return /^https?:$/.test(u.protocol) && (u.hostname === domain || u.hostname.endsWith('.' + domain)); } catch (e) { return false; }
+}
+function numistaUrlOk(url) { return linkHostOk(url, 'numista.com'); }
+function ucoinUrlOk(url) { return linkHostOk(url, 'ucoin.net'); }
+function coinLinkProblems(c) {
+  const out = [];
+  if (!c) return out;
+  const n = String(c.numistaUrl || '').trim(), u = String(c.ucoinUrl || '').trim();
+  if (!n) out.push('Falta el enlace a Numista'); else if (!numistaUrlOk(n)) out.push('El enlace de Numista no es de numista.com');
+  if (!u) out.push('Falta el enlace a Ucoin'); else if (!ucoinUrlOk(u)) out.push('El enlace de Ucoin no es de ucoin.net');
+  return out;
+}
+function linkWarnHtml(c, opts) {
+  const list = (opts && opts.group && opts.group.length > 1) ? opts.group : [c];
+  const probs = [...new Set(list.flatMap(coinLinkProblems))];
+  if (!probs.length) return '';
+  return `<span class="xc-warn" title="${esc(probs.join(' · '))}"><i class="fa-solid fa-exclamation"></i></span>`;
+}

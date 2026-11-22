@@ -1,0 +1,141 @@
+// Versión de la app: se sube en cada iteración (se muestra en la cabecera, junto al aviso de copia)
+const APP_VERSION = '8.49';   // subir en cada entrega: es lo que se ve en Ajustes → Información
+
+/* ===== UTILIDADES GENERALES (sin estado) ===== */
+const GRADES = ['TBD', 'F', 'VF', 'XF', 'AU', 'UNC'];   // de peor a mejor
+/* Formato del ejemplar (solo icono, sin texto). El primero es el valor por defecto.
+   Iconos esquemáticos 24×24, trazo de 1.5 con currentColor, para que cuadren con el resto de la interfaz. */
+const ITEM_FORMATS = [
+  { id: 'carton',   label: 'Encartonada',  svg: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><circle cx="12" cy="12" r="4.6"/><path d="M3.5 12h3M17.5 12h3" stroke-dasharray="0"/>' },
+  { id: 'serie',    label: 'Serie anual',  svg: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="12" r="3"/><circle cx="13.2" cy="12" r="2.3"/><circle cx="18.3" cy="12" r="1.7"/>' },
+  { id: 'capsula',  label: 'Encapsulada',  svg: '<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.8"/><path d="M6.2 5.2a9 9 0 0 1 3-1.5"/>' },
+  { id: 'coincard', label: 'Coincard',     svg: '<rect x="6" y="2.5" width="12" height="19" rx="1.5"/><circle cx="12" cy="9.5" r="3.5"/><path d="M9 16.2h6M9.8 18.7h4.4"/>' }
+];
+const DEFAULT_ITEM_FORMAT = ITEM_FORMATS[0].id;
+function itemFormatIcon(id, size) {
+  const f = ITEM_FORMATS.find(x => x.id === id) || ITEM_FORMATS[0];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.svg}</svg>`;
+}
+const RARITIES =['A', 'B', 'C', 'R', 'RR', 'RRR', 'RRR*', 'UR', 'HR', 'PLATA', 'SET'];
+// Tipo de moneda (solo se edita desde "Editar ficha"). Circulante es el valor por defecto y no lleva marca en las tarjetas.
+const COIN_TYPES = ['Circulante', 'Conmemorativas', 'Colección', 'Falsas de época', 'FAO'];
+const DEFAULT_COIN_TYPE = 'Circulante';
+const COIN_TYPE_COLORS = { 'Circulante': '#45bbff', 'Conmemorativas': '#efde97', 'Colección': '#ff85d0', 'Falsas de época': '#aea0a0', 'FAO': '#7fd1a0' };
+function coinType(c) { return (c && COIN_TYPES.includes(c.type)) ? c.type : DEFAULT_COIN_TYPE; }
+function coinTypeChipStyle(t) { return `background-color: ${COIN_TYPE_COLORS[t] || COIN_TYPE_COLORS[DEFAULT_COIN_TYPE]}; color: #0f172a;`; }
+
+const IMG_MAX_DIM = 300;
+const IMG_QUALITY = 0.75;
+const WHITE_BG_TOLERANCE = 30;
+
+function newId() {
+  return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString() + '-' + Math.floor(Math.random() * 1e9);
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function jsArg(s) {
+  return esc(String(s ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+}
+
+function normName(s) {
+  return String(s ?? '').trim().toLowerCase();
+}
+
+// Mejor estado entre los ejemplares de una ficha ('' si ninguno tiene estado reconocido)
+function bestGrade(c) {
+  let best = -1;
+  (Array.isArray(c && c.items) ? c.items : []).forEach(i => { const k = GRADES.indexOf(String((i && i.grade) || '').trim()); if (k > best) best = k; });
+  return best >= 0 ? GRADES[best] : '';
+}
+
+function isSilverCoin(c) {
+  return Boolean(c.rarity && c.rarity.trim().toUpperCase() === 'PLATA');
+}
+// v8.28: rareza SET (sets/estuches): no cuenta en ninguna estadística de compleción (ni siquiera en la barra de plata)
+function isSetCoin(c) {
+  return Boolean(c && c.rarity && c.rarity.trim().toUpperCase() === 'SET');
+}
+const isCompletionNormal = c => !isSilverCoin(c) && !isSetCoin(c);   // cuenta en la compleción «normal»
+
+function getRarityStyle(rarityStr) {
+  if (!rarityStr) return 'background-color: #1e293b; color: #ffffff;';
+  const cleanRarity = rarityStr.trim().toUpperCase();
+  const colors = {
+    'A': 'background-color: #00bf63; color: #ffffff;',
+    'B': 'background-color: #5bb336; color: #ffffff;',
+    'C': 'background-color: #8ac926; color: #ffffff;',
+    'R': 'background-color: #ffde59; color: #0f172a;',
+    'RR': 'background-color: #ffbd59; color: #0f172a;',
+    'RRR': 'background-color: #ff914d; color: #0f172a;',
+    'RRR*': 'background-color: #e2a9f1; color: #0f172a;',
+    'UR': 'background-color: #ff5757; color: #ffffff;',
+    'HR': 'background-color: #8c52ff; color: #ffffff;',
+    'PLATA': 'background-color: #64748b; color: #ffffff;',
+    'SET': 'background-color: #cb6ce6; color: #ffffff;'
+  };
+  return colors[cleanRarity] || 'background-color: #1e293b; color: #ffffff;';
+}
+
+function formatYearRange(rangeStr) {
+  if (!rangeStr) return 'S/F';
+  const cleanStr = rangeStr.trim();
+  const matches = cleanStr.match(/\d{4}/g);
+  if (matches && matches.length >= 2) {
+    const startYear = parseInt(matches[0]);
+    const endYear = parseInt(matches[1]);
+    if (endYear >= new Date().getFullYear() || cleanStr.toUpperCase().includes('ACT')) {
+      return `${startYear}–ACT.`;
+    }
+  }
+  return cleanStr;
+}
+
+function parseYearRange(rangeStr) {
+  if (!rangeStr) return null;
+  const now = new Date().getFullYear();
+  const matches = rangeStr.match(/\d{4}/g);
+  if (matches && matches.length >= 2) {
+    return { min: parseInt(matches[0]), max: Math.min(now, parseInt(matches[1])) };
+  } else if (matches && matches.length === 1) {
+    const start = parseInt(matches[0]);
+    return { min: start, max: rangeStr.toUpperCase().includes('ACT') ? now : start };
+  }
+  return null;   // "S/F" u otro texto sin años: no hay rango que aplicar
+}
+
+/* ----- Ajusta la fuente de un texto al hueco disponible (p. ej. KM# muy largos en móvil) ----- */
+function fitText(el, minPx) {
+  if (!el || !el.isConnected) return;
+  el.style.fontSize = '';
+  if (el.clientWidth === 0) return;
+  let size = parseFloat(getComputedStyle(el).fontSize) || 14;
+  const min = minPx || 7;
+  const inner = el.firstElementChild && el.firstElementChild.classList.contains('fit-in') ? el.firstElementChild : el;
+  const over = () => inner.scrollWidth > el.clientWidth + 0.5;
+  let guard = 40;
+  while (over() && size > min && guard-- > 0) { size -= 0.5; el.style.fontSize = size + 'px'; }
+}
+// Burbuja "N VARIANTES": se ajusta al hueco; si aun así quedaría muy pequeña, se oculta el icono para dar sitio al texto
+function fitMulti(el) {
+  el.classList.remove('xc-noicon');
+  fitText(el, 7);
+  if ((parseFloat(el.style.fontSize) || 99) < 9) { el.classList.add('xc-noicon'); fitText(el, 7); }
+}
+function fitAllText() {
+  document.querySelectorAll('.xc-km, .xc-rar, #modal-grid-km').forEach(el => fitText(el, 7));
+  document.querySelectorAll('.xc-multi').forEach(fitMulti);
+}
+let _fitQueued = false;
+function queueFitText() {
+  if (_fitQueued) return;
+  _fitQueued = true;
+  requestAnimationFrame(() => { _fitQueued = false; fitAllText(); });
+}
+// Se reajusta tras cualquier cambio de la página y al girar/redimensionar
+window.addEventListener('DOMContentLoaded', () => {
+  new MutationObserver(queueFitText).observe(document.body, { childList: true, subtree: true, characterData: true });
+});
+window.addEventListener('resize', queueFitText);
