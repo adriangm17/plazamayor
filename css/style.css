@@ -1411,3 +1411,12 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 
 .xn-pos { display:flex; flex-direction:column; gap:2px; margin-top:6px; font-size:12px; font-weight:600; color:var(--xp-plum); }
 .xn-pos input { width:100%; }
+
+/* v8.51: historial */
+.hist-list { max-height:60vh; overflow:auto; display:flex; flex-direction:column; gap:6px; }
+.hist-row { padding:8px 10px; border-radius:12px; background:rgba(var(--xp-plum-rgb),.08); }
+.hist-top { display:flex; align-items:center; gap:8px; font-size:12px; }
+.hist-when { margin-left:auto; opacity:.6; font-size:11px; }
+.hist-act { padding:1px 8px; border-radius:999px; font-weight:800; font-size:10px; text-transform:uppercase; background:var(--xp-plum); color:var(--xp-sand-l); }
+.hist-act.hist-añadió { background:#2e9b57; color:#fff; } .hist-act.hist-quitó { background:#c0392b; color:#fff; }
+.hist-coin { font-weight:700; font-size:13px; margin-top:2px; } .hist-where { font-size:11px; opacity:.65; }

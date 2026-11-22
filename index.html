@@ -65,6 +65,7 @@
               <div id="xm-tokens"></div>
             </div>
 
+            <button type="button" id="xm-hist" class="xm-row hidden" onclick="closeSettingsMenu(); openHistorial();"><i class="fa-solid fa-clock-rotate-left"></i><span>Historial</span></button>
             <button type="button" class="xm-row" onclick="closeSettingsMenu(); openThemeModal();"><i class="fa-solid fa-palette"></i><span>Temas</span></button>
             <button type="button" class="xm-row" onclick="closeSettingsMenu(); openOptionsModal();"><i class="fa-solid fa-sliders"></i><span>Opciones</span></button>
             <button type="button" class="xm-row xm-danger" onclick="closeSettingsMenu(); confirmLogout();"><i class="fa-solid fa-right-from-bracket"></i><span>Cerrar sesión</span></button>
@@ -255,6 +256,16 @@
         <p class="xe-note" style="margin-top:6px">Se mueven el período y todas sus monedas. Si el país no existe, se crea.</p></div>
       <div class="xe-row" style="margin-top:10px"><button type="button" onclick="confirmMovePeriodCountry()" class="xe-btn">Mover</button>
         <button type="button" onclick="closeMovePeriodCountry()" class="xe-btn xe-soft">Cancelar</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL HISTORIAL (v8.51, solo admin) -->
+  <div id="hist-modal" class="xe-overlay hidden" onclick="if(event.target===this)closeHistorial()">
+    <div class="xe-sheet xe-wide">
+      <div class="xe-head"><h2 class="xe-title">Historial de usuarios</h2><button type="button" onclick="closeHistorial()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="xe-row" style="margin-bottom:8px"><select id="hist-user" class="xe-in" onchange="renderHistorial()" style="max-width:260px"><option value="">Todos los usuarios</option></select></div>
+      <div id="hist-list" class="hist-list"></div>
+      <div class="xe-foot"><button type="button" onclick="clearHistorial()" class="xe-btn xe-soft"><i class="fa-solid fa-trash-can"></i> Vaciar</button><span class="xe-sp"></span><button type="button" onclick="closeHistorial()" class="xe-btn xe-main">Cerrar</button></div>
     </div>
   </div>
 

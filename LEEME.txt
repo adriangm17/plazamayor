@@ -146,3 +146,6 @@ v8.49
 
 v8.50
 - Sincronización: reordenar zonas, crear/renombrar/borrar zonas propias o cambiar su continente ahora se sube a la nube (antes solo se guardaba en el dispositivo y no se sincronizaba hasta otro cambio). Hay que reordenar/guardar una vez en el dispositivo admin para que se suba.
+
+v8.51
+- Ajustes → Historial (solo admin): lista de cambios de los usuarios no admin (añadir/quitar/modificar ejemplares de monedas), con filtro por usuario y botón Vaciar. Requiere ejecutar supabase/historial.sql una vez en Supabase.

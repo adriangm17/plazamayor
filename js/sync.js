@@ -10,6 +10,8 @@
   const API = {
     enabled: !!(CFG && typeof supabase !== 'undefined' && supabase.createClient),
     boot, syncNow, login, logout, role: () => role, user: () => user, status: () => status, client: () => sb, touch: () => markDirty(),
+    historial: async (limit) => { const { data, error } = await sb.from('historial').select('*').order('creado', { ascending: false }).limit(limit || 300); if (error) throw error; return data || []; },
+    clearHistorial: async () => { const { error } = await sb.from('historial').delete().not('id', 'is', null); if (error) throw error; },
     _test: {}
   };
   window.PMSync = API;
@@ -110,6 +112,7 @@
     if (dot) { dot.className = 'xs-dot xs-' + status.state; dot.title = status.text; }
     const acct = document.getElementById('xm-acct'), st = document.getElementById('xm-sync');
     const nvb = document.getElementById('xm-nv'); if (nvb) nvb.classList.toggle('hidden', !user);
+    const hb = document.getElementById('xm-hist'); if (hb) hb.classList.toggle('hidden', !(user && role === 'admin'));
     if (acct) acct.innerHTML = user ? `<b>${esc(user.email || '')}</b>${role ? ` <span class="xs-role xs-role-${role === 'admin' ? 'admin' : 'miembro'}">${role === 'admin' ? 'admin' : 'miembro'}</span>` : ''}` : 'Sin sesión';
     if (st) {
       let when = '';
@@ -313,7 +316,7 @@
     const rows = { catalogo: [], coleccion: [] }, keyOf = new Map(), newRec = new Map(), tombs = [];
     desired.forEach((e, k) => {
       const h = hashEntry(e);
-      if (!syn[k] || syn[k][0] !== h) { const r = toRow(e); rows[e.tabla].push(r); keyOf.set(r, k); newRec.set(k, [h, e.tipo, e.padre || null, h]); }
+      if (!syn[k] || syn[k][0] !== h) { const r = toRow(e); rows[e.tabla].push(r); keyOf.set(r, k); newRec.set(k, [h, e.tipo, e.padre || null, h, e.tabla === 'coleccion' ? ((e.datos.items || []).length) : undefined]); }
     });
     Object.keys(syn).forEach(k => {
       if (desired.has(k)) return;
@@ -329,6 +332,17 @@
     } else if (blockedDeletes && tombs.length) {
       throw new Error('Borrado masivo cancelado: la nube no se ha tocado.');
     }
+    // v8.51: historial de cambios de los usuarios no admin (se calcula antes de actualizar `syn` y se guarda tras subir con éxito)
+    const histEvents = [];
+    if (role === 'miembro') {
+      rows.coleccion.forEach(r => {
+        const k = keyOf.get(r), prev = syn[k], c = coins.find(x => x.id === r.id) || {};
+        let accion;
+        if (r.eliminado) accion = 'quitó';
+        else { const n = ((r.datos && r.datos.items) || []).length, pn = prev ? prev[4] : 0; accion = !prev ? 'añadió' : (pn === undefined || pn === null ? 'modificó' : n > pn ? 'añadió' : n < pn ? 'quitó' : 'modificó'); }
+        histEvents.push({ usuario_id: user.id, email: user.email || '', ficha_id: r.id, accion, detalle: { pais: coinCountryName(c) || '', periodo: coinPeriodName(c) || '', denom: c.denom || '', km: c.km || '', rango: c.range || '' } });
+      });
+    }
     for (const tabla of ['catalogo', 'coleccion']) {
       const list = rows[tabla]; if (!list.length) continue;
       let done = 0;
@@ -341,6 +355,7 @@
       }
       await saveSyn();
     }
+    if (histEvents.length) { try { for (let i = 0; i < histEvents.length; i += 200) { const { error } = await sb.from('historial').insert(histEvents.slice(i, i + 200)); if (error) throw error; } } catch (e) { console.warn('Historial no guardado (¿falta la tabla? ver supabase/historial.sql):', e); } }
     blockedDeletes = false;
     if (admin) await pushImages();
     else if (Object.keys(pendingImg).length) { pendingImg = {}; saveImgState(true); }

@@ -1307,3 +1307,34 @@ function processCSVImport() {
     alert(skipped > 0 && invalid === 0 ? 'Todas las monedas del CSV ya estaban en tu colección.' : 'Formato CSV no válido: cada línea necesita 7 columnas (país;período;denominación;ceca;rareza;rango;KM#).');
   }
 }
+
+
+/* ----- v8.51: historial de cambios de los usuarios no admin (solo lo ve el administrador) ----- */
+let histRows = [];
+async function openHistorial() {
+  const ov = document.getElementById('hist-modal'), box = document.getElementById('hist-list');
+  ov.classList.remove('hidden'); box.innerHTML = '<p class="xe-note">Cargando…</p>';
+  try { histRows = await PMSync.historial(300); }
+  catch (e) { histRows = []; box.innerHTML = '<p class="xe-note">No se pudo leer el historial. ¿Has ejecutado supabase/historial.sql en Supabase?</p>'; return; }
+  const sel = document.getElementById('hist-user'), cur = sel.value;
+  const users = [...new Set(histRows.map(r => r.email).filter(Boolean))];
+  sel.innerHTML = '<option value="">Todos los usuarios</option>' + users.map(u => `<option value="${esc(u)}"${u === cur ? ' selected' : ''}>${esc(u)}</option>`).join('');
+  renderHistorial();
+}
+function renderHistorial() {
+  const box = document.getElementById('hist-list'), u = document.getElementById('hist-user').value;
+  const list = histRows.filter(r => !u || r.email === u);
+  if (!list.length) { box.innerHTML = '<p class="xe-note">Aún no hay cambios de usuarios.</p>'; return; }
+  box.innerHTML = list.map(r => {
+    const d = r.detalle || {}, f = new Date(r.creado);
+    const when = f.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    const coin = [d.denom, d.km, d.rango].filter(Boolean).join(' · ');
+    const where = [d.pais, d.periodo].filter(Boolean).join(' › ');
+    return `<div class="hist-row"><div class="hist-top"><b>${esc((r.email || '').split('@')[0])}</b> <span class="hist-act hist-${esc(r.accion)}">${esc(r.accion)}</span><span class="hist-when">${when}</span></div><div class="hist-coin">${esc(coin || 'Ficha')}</div>${where ? `<div class="hist-where">${esc(where)}</div>` : ''}</div>`;
+  }).join('');
+}
+async function clearHistorial() {
+  if (!confirm('¿Vaciar todo el historial?')) return;
+  try { await PMSync.clearHistorial(); histRows = []; renderHistorial(); } catch (e) { alert('No se pudo vaciar: ' + (e.message || e)); }
+}
+function closeHistorial() { document.getElementById('hist-modal').classList.add('hidden'); }
