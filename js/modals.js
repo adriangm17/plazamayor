@@ -849,10 +849,11 @@ function removeCoinItem(i) {
   saveCoins(coin);
 }
 
-async function deleteCurrentCoin() {
-  if (!activeCoinId) return;
-  if (!confirm('¿Eliminar de la colección?')) return;
-  const id = activeCoinId;
+async function deleteCurrentCoin(fromEdit) {
+  const id = fromEdit ? document.getElementById('edit-coin-id').value : activeCoinId;
+  if (!id) return;
+  const cc = coins.find(c => c.id === id);
+  if (!confirm(fromEdit && cc ? `¿Eliminar "${cc.denom || 'esta moneda'}" ${cc.km || ''} de la colección?` : '¿Eliminar de la colección?')) return;
   clearTimeout(silverSaveTimer);
   clearTimeout(itemSaveTimer);
   coins = coins.filter(c => c.id !== id);
@@ -860,6 +861,7 @@ async function deleteCurrentCoin() {
   await deleteCoinFromDB(id);
   if (pruneEmpty()) await persistMeta();
   activeCoinId = null;
+  if (fromEdit) closeCreateModal();
   closeModal();
   render();
 }
@@ -868,6 +870,7 @@ async function deleteCurrentCoin() {
 function openCreateModal(periodId) {
   document.getElementById('edit-coin-id').value = '';
   document.getElementById('edit-coin-move-box').classList.add('hidden');
+  document.getElementById('btn-delete-edit-coin').classList.add('hidden');
   document.getElementById('create-modal-title').innerText = 'Añadir Hueco al Álbum';
   document.getElementById('create-form').reset();
   document.getElementById('new-img-front').value = '';
@@ -908,6 +911,7 @@ async function openAdvancedEditFromModal() {
 
   document.getElementById('edit-coin-id').value = coin.id;
   document.getElementById('edit-coin-move-box').classList.remove('hidden');
+  document.getElementById('btn-delete-edit-coin').classList.remove('hidden');
   updateCoinMoveUI(coin.id);
   document.getElementById('create-modal-title').innerText = 'Editar Hueco';
   document.getElementById('new-country').value = coinCountryName(coin);

@@ -1090,7 +1090,10 @@ function renderCoinCard(c, opts) {
    ceca/material, rareza · precio de la plata · conservación y botones a Numista / Ucoin. Pulsar la fila abre la ficha completa. */
 let variantsSheetKey = null;
 function openVariantsSheet(key, okStr) {
-  const g = compactGroupsMap().get(key); if (!g) return;
+  const g0 = compactGroupsMap().get(key); if (!g0) return;
+  // v8.48: el desplegable se ordena por fecha (año inicial, luego final); sin fecha al final; a igualdad se respeta el orden anterior
+  const yrs = x => { const m = String(x.range || '').match(/\d{4}/g); return m ? [Math.min(...m.map(Number)), Math.max(...m.map(Number))] : [Infinity, Infinity]; };
+  const g = g0.map((x, i) => ({ x, i, y: yrs(x) })).sort((a, b) => (a.y[0] - b.y[0]) || (a.y[1] - b.y[1]) || (a.i - b.i)).map(o => o.x);
   variantsSheetKey = key;
   const ok = new Set(String(okStr || '').split(',').filter(Boolean));
   const first = g[0];
