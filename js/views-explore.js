@@ -35,14 +35,16 @@ let customZones = (() => {
   try { const a = JSON.parse(localStorage.getItem('numis_custom_zones') || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()) : []; }
   catch (e) { return []; }
 })();
-function saveCustomZones() { try { localStorage.setItem('numis_custom_zones', JSON.stringify(customZones)); } catch (e) {} }
+/* v8.50: los cambios de zonas (orden, zonas propias, continentes) solo tocaban localStorage y no avisaban a la sincronización: ahora la marcan para subir */
+function zonesToCloud() { try { if (window.PMSync && PMSync.touch) PMSync.touch(); } catch (e) {} }
+function saveCustomZones() { try { localStorage.setItem('numis_custom_zones', JSON.stringify(customZones)); } catch (e) {} zonesToCloud(); }
 
 /* Orden de las zonas en Explorar (se cambia manteniendo pulsada una zona y arrastrándola) */
 let zoneOrder = (() => {
   try { const a = JSON.parse(localStorage.getItem('numis_zone_order') || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.trim()) : []; }
   catch (e) { return []; }
 })();
-function saveZoneOrder() { try { localStorage.setItem('numis_zone_order', JSON.stringify(zoneOrder)); } catch (e) {} }
+function saveZoneOrder() { try { localStorage.setItem('numis_zone_order', JSON.stringify(zoneOrder)); } catch (e) {} zonesToCloud(); }
 function applyZoneOrder(list) {
   const idx = k => { const i = zoneOrder.indexOf(k); return i < 0 ? Infinity : i; };
   return list.map((k, n) => [k, n]).sort((a, b) => (idx(a[0]) - idx(b[0])) || (a[1] - b[1])).map(x => x[0]);
@@ -57,7 +59,7 @@ let zoneContinents = (() => {
   try { const o = JSON.parse(localStorage.getItem('numis_zone_continents') || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
   catch (e) { return {}; }
 })();
-function saveZoneContinents() { try { localStorage.setItem('numis_zone_continents', JSON.stringify(zoneContinents)); } catch (e) {} }
+function saveZoneContinents() { try { localStorage.setItem('numis_zone_continents', JSON.stringify(zoneContinents)); } catch (e) {} zonesToCloud(); }
 
 function zoneContinent(zone) {
   const ex = zoneContinents[zone];

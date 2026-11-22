@@ -9,7 +9,7 @@
   const CFG = (typeof PM_CLOUD !== 'undefined') ? PM_CLOUD : null;
   const API = {
     enabled: !!(CFG && typeof supabase !== 'undefined' && supabase.createClient),
-    boot, syncNow, login, logout, role: () => role, user: () => user, status: () => status, client: () => sb,
+    boot, syncNow, login, logout, role: () => role, user: () => user, status: () => status, client: () => sb, touch: () => markDirty(),
     _test: {}
   };
   window.PMSync = API;

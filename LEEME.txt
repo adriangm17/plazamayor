@@ -143,3 +143,6 @@ v8.48
 
 v8.49
 - Hoja "Editar ficha": nuevo botón "Eliminar" (con confirmación) para borrar la moneda sin salir de la edición.
+
+v8.50
+- Sincronización: reordenar zonas, crear/renombrar/borrar zonas propias o cambiar su continente ahora se sube a la nube (antes solo se guardaba en el dispositivo y no se sincronizaba hasta otro cambio). Hay que reordenar/guardar una vez en el dispositivo admin para que se suba.
