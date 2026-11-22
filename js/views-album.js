@@ -1106,7 +1106,12 @@ function openVariantsSheet(key, okStr) {
     const rar = silver ? 'AG' : String(x.rarity || '').toUpperCase();
     return `<div class="xv-row ${x.acquired ? 'xv-own' : 'xv-miss'}${off}" role="button" onclick="openVariantFromSheet('${jsArg(x.id)}')">
       <span class="xv-tab">${toRoman(i + 1)}</span>
-      <span class="xv-thumb">${x.hasFront ? imgTag(x.id, 'front') : `<em>${esc(x.denom)}</em>`}</span>
+      <span class="xv-thumb coin-perspective" onclick="flipVariantCoin(event)" title="Tocar para girar">
+        <span class="coin-inner">
+          <span class="coin-front ${x.hasFront ? 'has-img' : 'xv-noimg'}">${x.hasFront ? imgTag(x.id, 'front') : `<em>${esc(x.denom)}</em>`}</span>
+          <span class="coin-back ${x.hasBack ? 'has-img' : 'xv-noimg'}">${x.hasBack ? imgTag(x.id, 'back') : `<em>${esc(x.denom)}</em>`}</span>
+        </span>
+      </span>
       <span class="xv-rule"></span>
       <div class="xv-mid">
         <div class="xv-r1"><span class="xv-km">${esc(x.km || 'KM#-')}</span><span class="xv-yr">${esc(formatYearRange(x.range))}</span></div>
@@ -1128,6 +1133,12 @@ function openVariantsSheet(key, okStr) {
   ov.classList.remove('hidden');
   hydrateImages(ov);
   fitVariantsSheet();
+}
+/* v8.47: cada variante se gira al tocar su imagen (sin abrir la ficha) */
+function flipVariantCoin(event) {
+  event.stopPropagation();
+  const inner = event.currentTarget.querySelector('.coin-inner');
+  if (inner) inner.classList.toggle('flipped');
 }
 function closeVariantsSheet() { document.getElementById('variants-modal').classList.add('hidden'); }
 function unmergeFromSheet() {

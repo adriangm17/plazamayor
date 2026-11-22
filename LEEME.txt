@@ -133,3 +133,7 @@ v8.45
 
 v8.46
 - Editar país → cada período tiene un botón "Cambiar de país" (flechas): escribe o elige otro país (si no existe se crea) y se mueven el período y sus monedas. Si el destino ya tiene un período con el mismo nombre, pregunta si unirlos.
+
+v8.47
+- Ficha de variantes: la imagen de cada variante respeta la forma real de la moneda (agujero, rectangular, transparencias) con la misma sombra que en la ficha del Álbum, en vez de recortarse en círculo.
+- Al tocar la imagen de una variante, gira (anverso/reverso) sin abrir la ficha.

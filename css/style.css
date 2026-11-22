@@ -668,8 +668,11 @@ select.xe-in { cursor:pointer; }
 .xv-tab { position:absolute; top:-3px; left:-3px; z-index:2; min-width:28px; height:23px; padding:0 8px 0 7px; border-radius:18px 0 12px 0; display:flex; align-items:center; justify-content:center; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:12px; letter-spacing:.03em; line-height:1; }
 .xv-own .xv-tab { background:var(--xp-have); color:#fff; }
 .xv-miss .xv-tab { background:var(--xp-miss); color:var(--xp-plum-d); }
-.xv-thumb { flex:none; width:74px; height:74px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--xp-plum); color:var(--xp-sand); }
-.xv-thumb img { width:100%; height:100%; object-fit:cover; }
+.xv-thumb { flex:none; width:74px; height:74px; display:block; cursor:pointer; }
+.xv-thumb .coin-inner, .xv-thumb .coin-front, .xv-thumb .coin-back { display:block; }
+.xv-thumb .coin-front, .xv-thumb .coin-back { display:flex; }
+.xv-thumb .coin-front.has-img img, .xv-thumb .coin-back.has-img img { width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 4px 5px rgba(0,0,0,.55)); }
+.xv-thumb .xv-noimg { border-radius:50%; background:var(--xp-plum) !important; color:var(--xp-sand); box-shadow:inset 0 2px 4px rgba(255,255,255,.8), inset 0 -3px 6px rgba(0,0,0,.5); }
 .xv-thumb em { font-style:italic; font-weight:800; font-size:11px; font-family:'Poppins',sans-serif; text-align:center; padding:0 4px; line-height:1.1; }
 .xv-miss .xv-thumb { filter:grayscale(45%); opacity:.75; }
 .xv-rule { flex:none; align-self:stretch; width:2px; margin:2px 1px; border-radius:2px; background:var(--xp-plum); }
