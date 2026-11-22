@@ -2,33 +2,42 @@
    Formato v2: { version: 2, countries, periods, coins } con las imágenes incrustadas (base64).
    Se siguen aceptando copias v1 (monedas con país/período en texto + preferences). */
 async function exportBackup() {
-  const stored = await getAllFromStore('coins');
-  const allCoins = [];
-  for (const c of stored) {
-    const copy = { ...c, country: coinCountryName(c), period: coinPeriodName(c) };  // nombres solo por legibilidad
-    for (const [flag, field, side] of [['hasFront', 'imgFront', 'front'], ['hasBack', 'imgBack', 'back']]) {
-      if (c[flag]) {
-        const blob = await dbGetImage(imgKey(c.id, side));
-        copy[field] = blob ? await blobToDataURL(blob) : '';
-      } else {
-        copy[field] = '';
+  // v8.53: la copia se arma por trozos (un Blob de fragmentos) en vez de un único texto gigante, para no quedarse sin memoria con bases grandes
+  const st = document.getElementById('backup-status');
+  const say = t => { if (st) st.textContent = t; };
+  try {
+    const stored = await getAllFromStore('coins');
+    const parts = [`{"version":2,"date":${JSON.stringify(new Date().toISOString())},"countries":${JSON.stringify(countries)},"periods":${JSON.stringify(periods)},"zones":${JSON.stringify(customZones)},"zoneOrder":${JSON.stringify(zoneOrder)},"zoneContinents":${JSON.stringify(zoneContinents)},"coins":[`];
+    let i = 0;
+    for (const c of stored) {
+      const copy = { ...c, country: coinCountryName(c), period: coinPeriodName(c) };  // nombres solo por legibilidad
+      for (const [flag, field, side] of [['hasFront', 'imgFront', 'front'], ['hasBack', 'imgBack', 'back']]) {
+        if (c[flag]) {
+          let blob = null;
+          try { blob = await dbGetImage(imgKey(c.id, side)); } catch (e) { blob = null; }
+          copy[field] = blob ? await blobToDataURL(blob) : '';
+        } else {
+          copy[field] = '';
+        }
       }
+      parts.push((i ? ',' : '') + JSON.stringify(copy));
+      if (++i % 50 === 0) { say(`Exportando ${i}/${stored.length}…`); await new Promise(r => setTimeout(r, 0)); }
     }
-    allCoins.push(copy);
+    parts.push(']}');
+    const blob = new Blob(parts, { type: 'application/json' });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `PlazaMayor_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    try { localStorage.setItem('numis_last_backup', new Date().toISOString()); } catch (e) {}
+  } catch (err) {
+    console.error('Exportar:', err);
+    alert('No se pudo exportar la copia:\n' + ((err && err.message) || err) + '\n\nSi se repite, cierra otras pestañas/apps y prueba desde el ordenador.');
   }
-  const backupData = { version: 2, date: new Date().toISOString(), countries, periods, zones: customZones, zoneOrder, zoneContinents, coins: allCoins };
-
-  const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = `PlazaMayor_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-
-  try { localStorage.setItem('numis_last_backup', new Date().toISOString()); } catch (e) {}
   updateBackupStatus();
 }
 

@@ -206,3 +206,14 @@ window.addEventListener('DOMContentLoaded', () => {
   const pb = document.getElementById('period-bar');
   if (pb && window.ResizeObserver) new ResizeObserver(updateAlbumBarVars).observe(pb);
 });
+
+
+/* v8.53: forzar la última versión (borra la caché del service worker y recarga; no toca tus datos) */
+async function forceAppUpdate() {
+  if (!confirm('Se borrará la caché de la app y se recargará para cargar la última versión. Tus datos no se tocan.\n\n¿Continuar?')) return;
+  try {
+    if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); }
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+  } catch (e) { console.error(e); }
+  location.reload();
+}

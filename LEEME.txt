@@ -149,3 +149,7 @@ v8.50
 
 v8.51
 - Ajustes → Historial (solo admin): lista de cambios de los usuarios no admin (añadir/quitar/modificar ejemplares de monedas), con filtro por usuario y botón Vaciar. Requiere ejecutar supabase/historial.sql una vez en Supabase.
+
+v8.53 (parte de la 8.51; se descarta el "Rellenar desde Numista" de la 8.52)
+- Exportar copia: se arma por trozos (menos memoria, con bases grandes), muestra progreso y, si falla, enseña el error.
+- Ajustes → Información → "Forzar actualización": borra la caché del service worker y recarga (no toca los datos).
