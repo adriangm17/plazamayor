@@ -172,3 +172,14 @@ v9.01 (parte de la 8.54)
 - Sincronización: durante el arranque ya no se marca "hay cambios sin subir" sin haber tocado nada.
 - Al guardar una foto (admin), la nueva revisión también se guarda en la ficha local, para que no se desfase con la nube.
 - Protección de admin ampliada: mover zonas, eliminar país, eliminar moneda e importar CSV quedan bloqueados para cuentas no admin.
+
+v9.02
+- Estadísticas: nuevo "Pasaporte numismático" (en cuántos países tienes monedas, con la lista de los países a 0 monedas) y "Últimas incorporaciones" (las 5 últimas monedas marcadas, en línea de tiempo y con lo que llevas de su país; la fecha se empieza a registrar con esta versión). Quitados "Progreso global" y "Valor orientativo". "Tipo de moneda" más pequeño y compacto.
+- Variantes: botón "COMPARAR": eliges dos variantes y se ven lado a lado en grande (anverso con anverso, reverso con reverso).
+- Índice: el globo queda centrado dentro del círculo.
+
+v9.03
+- Explorar: nueva vista "Jukebox / Pasaporte" (por defecto). Una ficha de pasaporte por país a casi pantalla completa, deslizable con scroll-snap (un toque suave pasa a la siguiente, un golpe fuerte avanza varias); las vecinas asoman por los lados más pequeñas y atenuadas.
+  · Ficha: arriba el "visado" (bandera, nombre, zona · continente y anillo con el % real); en el centro la foto del país (sin foto: la bandera atenuada); abajo hasta 4 épocas en píldoras rellenas según su % ("+ N épocas más"); sello COMPLETADO al 100 % y POR EXPLORAR si no tienes ninguna moneda. Un toque abre el Álbum en ese país. Admin: lápiz de editar en la foto y ficha final "Añadir país".
+  · Con un continente elegido sale una tira de zonas (Todas + sus zonas): al tocar una se filtra; con "Todas", la zona de la ficha que ves se resalta y se centra sola. Contador "n / total" con barra de posición.
+  · Botón en la cabecera de Explorar para cambiar entre Pasaporte y la vista anterior por zonas (que conserva ordenar zonas, mover países y añadir zona).

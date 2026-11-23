@@ -3,6 +3,7 @@
    (aunque aún no tenga estado o año): los repetidos cuentan en el total, el peso y el valor, pero no en las únicas. */
 const STATS_PAGE_SIZE = 40;  // fichas por hoja en la página de un estado
 let statsGradePage = 1;
+let statsPassOpen = false;   // v9.02: lista de países a 0 monedas (pasaporte)
 let statsNoYearOpen = false; // lista desplegable de monedas sin año
 let statsGrade = '';        // estado de conservación elegido ('' = ninguno)
 let statsType = '';         // tipo de moneda elegido ('' = ninguno)
@@ -85,6 +86,7 @@ function attachStatsChart() {
   svg.addEventListener('contextmenu', e => { e.preventDefault(); statsRange = null; renderEstadisticas(); });
 }
 
+function togglePassport() { statsPassOpen = !statsPassOpen; renderEstadisticas(); }
 function toggleNoYear() { statsNoYearOpen = !statsNoYearOpen; renderEstadisticas(); }
 function setStatsGradePage(n) { statsGradePage = n; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 function pickStatsGrade(g) { statsErrors = ''; statsGrade = g; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
@@ -212,6 +214,43 @@ function nvSection(sec) {
   return sec('07', 'Valor orientativo', hint, inner + btn);
 }
 
+
+/* v9.02: Pasaporte numismático — en cuántos países tienes al menos una moneda y cuáles te faltan por estrenar */
+function passportHTML(sec, s) {
+  const have = new Set(Object.keys(s.byCountry));
+  const nCat = countries.length, nHave = countries.filter(c => have.has(c.id)).length;
+  const zero = countries.filter(c => !have.has(c.id)).sort((a, b) => String(a.name).localeCompare(String(b.name), 'es', { sensitivity: 'base' }));
+  const pct = nCat ? Math.round(nHave / nCat * 100) : 0;
+  const rows = zero.map(c => `<button type="button" onclick="jumpToCountry('${jsArg(c.id)}')" class="xs-pass-row">${flagChip(c, 22, 16)}<span class="xs-name truncate">${esc(prettyName(c.name))}</span><span class="xs-dim" style="font-size:11px">${coinsOfCountry(c.id).length} fichas</span></button>`).join('');
+  return sec('01', 'Pasaporte numismático', '', `
+    <div class="xs-pass"><span class="xs-pass-n">${nHave}</span><span class="xs-pass-t">${nHave === 1 ? 'país con monedas' : 'países con monedas'}<br><small>de ${nCat} en el catálogo · ${pct} %</small></span></div>
+    <div class="xs-track" style="margin:10px 0 2px"><i style="width:${pct}%"></i></div>
+    ${zero.length ? `<button onclick="togglePassport()" class="xs-btn2 w-full" style="margin-top:10px"><i class="fa-solid fa-suitcase-rolling mr-1"></i>${statsPassOpen ? 'Ocultar' : 'Ver'} los ${zero.length} ${zero.length === 1 ? 'país' : 'países'} a 0 monedas</button>
+      ${statsPassOpen ? `<div class="xs-pass-list">${rows}</div>` : ''}` : '<p class="xs-hint" style="margin-top:8px">¡Tienes monedas de todos los países del catálogo!</p>'}`);
+}
+/* v9.02: últimas 5 incorporaciones (por fecha en que se marcó el estado) con su contexto dentro del país */
+function recentHTML(sec, s) {
+  const rows = [];
+  coins.forEach(c => (Array.isArray(c.items) ? c.items : []).forEach(it => { if (it && it.at && String(it.grade || '').trim()) rows.push({ c, it }); }));
+  rows.sort((a, b) => b.it.at - a.it.at);
+  const top = rows.slice(0, 5);
+  if (!top.length) return sec('02', 'Últimas incorporaciones', '', '<p class="xs-hint">Aquí aparecerán tus últimas 5 monedas conseguidas. Se empieza a registrar la fecha con esta versión: marca el estado de una moneda y saldrá.</p>');
+  const ago = t => { const d = Math.floor((Date.now() - t) / 86400000); return d <= 0 ? 'hoy' : d === 1 ? 'ayer' : d < 30 ? `hace ${d} d` : d < 365 ? `hace ${Math.floor(d / 30)} m` : `hace ${Math.floor(d / 365)} a`; };
+  const html = top.map(({ c, it }, i) => {
+    const co = countryById(c.countryId), p = periodById(c.periodId);
+    const cs = coinsOfCountry(c.countryId), got = cs.filter(x => x.acquired).length;
+    const pc = cs.length ? Math.round(got / cs.length * 100) : 0;
+    return `<div class="xs-rec" onclick="openCoinModal('${jsArg(c.id)}')">
+      <span class="xs-rec-dot${i === 0 ? ' xs-rec-new' : ''}"></span>
+      <div class="xs-rec-body">
+        <div class="flex items-center gap-2 min-w-0">${co ? flagChip(co, 20, 14) : ''}<span class="xs-name truncate">${esc(c.denom || '')}</span><span class="xs-rec-grade">${esc(it.grade)}</span><span class="xs-dim ml-auto shrink-0" style="font-size:11px">${ago(it.at)}</span></div>
+        <div class="xs-dim truncate" style="font-size:11px">${esc(co ? prettyName(co.name) : '')}${p ? ' · ' + esc(periodDisplayName(p)) : ''}${c.km ? ' · ' + esc(c.km) : ''}${it.year ? ' · ' + esc(it.year) : ''}</div>
+        <div class="xs-rec-ctx"><div class="xs-track" style="height:5px"><i style="width:${Math.max(2, pc)}%"></i></div><span>${got}/${cs.length} de ${esc(co ? prettyName(co.name) : 'su país')}</span></div>
+      </div></div>`;
+  }).join('');
+  return sec('02', 'Últimas incorporaciones', 'Las 5 monedas que has marcado más recientemente, con lo que llevas de su país.', `<div class="xs-recent">${html}</div>`);
+}
+
 function renderEstadisticas() {
   if (typeof navSync === 'function') navSync();
   const box = document.getElementById('estadisticas-content'); if (!box) return;
@@ -300,18 +339,19 @@ function renderEstadisticas() {
       ${card('euro-sign', 'Plata (valor)', `${fmtN(s.eur)} €`, `${fmtN(currentSilverPricePerGram)} €/g · ${srcTxt}`)}
     </div>
     ${s.silverNoWeight ? `<p class="xs-warn"><i class="fa-solid fa-circle-info mr-1"></i>${s.silverNoWeight} ${s.silverNoWeight === 1 ? 'moneda de plata no tiene' : 'monedas de plata no tienen'} peso indicado y no se suma${s.silverNoWeight === 1 ? '' : 'n'}.</p>` : ''}
-    ${sec('01', 'Progreso global', '', `<div class="space-y-3.5">${bar('Monedas', s.prog.n, '')}${s.prog.s.t ? bar('Monedas de plata', s.prog.s, 'silver-gradient-fill') : ''}</div>`)}
-    ${sec('02', 'Estado de conservación', 'Toca un estado para ver todas las fichas que tienes en él.', `
+    ${passportHTML(sec, s)}
+    ${recentHTML(sec, s)}
+    ${sec('03', 'Estado de conservación', 'Toca un estado para ver todas las fichas que tienes en él.', `
       <div class="grid grid-cols-3 gap-2">${['UNC', 'AU', 'XF'].map(tile).join('')}</div>
       <div class="grid grid-cols-3 gap-2 mt-2">${['VF', 'F', 'TBD'].map(tile).join('')}</div>
       ${s.noGrade ? `<p class="xs-hint" style="margin-top:10px">${s.noGrade} ${s.noGrade === 1 ? 'ejemplar sin estado indicado' : 'ejemplares sin estado indicado'}.</p>` : ''}`)}
-    ${sec('03', 'Tipo de moneda', 'Las circulantes no se cuentan. Toca <span class="xs-dotkey xs-reg"></span> las registradas o <span class="xs-dotkey xs-got"></span> las obtenidas para verlas.', `<div class="xs-types">${typeRows}</div>`)
+    ${sec('04', 'Tipo de moneda', 'Las circulantes no se cuentan. Toca <span class="xs-dotkey xs-reg"></span> las registradas o <span class="xs-dotkey xs-got"></span> las obtenidas para verlas.', `<div class="xs-types">${typeRows}</div>`)
     }
-    ${sec('04', 'Mapa de la colección', 'Cuanto más oscuro, más monedas. Pellizca (o usa + / −) para ampliar y arrastra para moverte.', `<div id="stats-map-box">${statsMapInner()}</div>`)}
-    ${sec('05', 'Ranking de países', `${statsRankAll ? `Todos (${rank.length})` : `Top ${Math.min(10, rank.length)}`} · monedas`, `
+    ${sec('05', 'Mapa de la colección', 'Cuanto más oscuro, más monedas. Pellizca (o usa + / −) para ampliar y arrastra para moverte.', `<div id="stats-map-box">${statsMapInner()}</div>`)}
+    ${sec('06', 'Ranking de países', `${statsRankAll ? `Todos (${rank.length})` : `Top ${Math.min(10, rank.length)}`} · monedas`, `
       <div class="space-y-3">${rankHTML}</div>
       ${rank.length > 10 ? `<button onclick="toggleStatsRank()" class="xs-btn2 w-full" style="margin-top:14px"><i class="fa-solid fa-chevron-${statsRankAll ? 'up' : 'down'} mr-1"></i>${statsRankAll ? 'Ver solo el top 10' : `Ver todos los países (${rank.length})`}</button>` : ''}`)}
-    ${sec('06', 'Monedas por año', `Arrastra sobre el gráfico para ampliar. ${statsRange ? 'Pulsa «Restablecer» (o clic derecho) para volver.' : ''}`, `
+    ${sec('07', 'Monedas por año', `Arrastra sobre el gráfico para ampliar. ${statsRange ? 'Pulsa «Restablecer» (o clic derecho) para volver.' : ''}`, `
       ${statsRange ? `<div class="flex justify-end mb-1"><button onclick="resetStatsZoom()" class="xs-btn2"><i class="fa-solid fa-magnifying-glass-minus mr-1"></i>Restablecer</button></div>` : ''}
       ${statsChartHTML(s.byYear)}
       ${s.noYear ? `
@@ -319,7 +359,7 @@ function renderEstadisticas() {
           <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${s.noYear} ${s.noYear === 1 ? 'moneda sin año' : 'monedas sin año'} (no ${s.noYear === 1 ? 'aparece' : 'aparecen'} en el gráfico)</span>
           <i class="fa-solid fa-chevron-${statsNoYearOpen ? 'up' : 'down'} text-[10px]"></i>
         </button>
-        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}${nvSection(sec)}${errSection}`;
+        ${statsNoYearOpen ? `<div class="space-y-1.5" style="margin-top:8px">${noYearRows}</div>` : ''}` : ''}`)}${errSection}`;
   attachStatsChart();
   ensureWorldMap();
 }

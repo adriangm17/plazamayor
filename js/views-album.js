@@ -1094,7 +1094,7 @@ function openVariantsSheet(key, okStr) {
   // v8.48: el desplegable se ordena por fecha (año inicial, luego final); sin fecha al final; a igualdad se respeta el orden anterior
   const yrs = x => { const m = String(x.range || '').match(/\d{4}/g); return m ? [Math.min(...m.map(Number)), Math.max(...m.map(Number))] : [Infinity, Infinity]; };
   const g = g0.map((x, i) => ({ x, i, y: yrs(x) })).sort((a, b) => (a.y[0] - b.y[0]) || (a.y[1] - b.y[1]) || (a.i - b.i)).map(o => o.x);
-  variantsSheetKey = key;
+  variantsSheetKey = key; variantCompare = false; variantCmpSel = [];
   const ok = new Set(String(okStr || '').split(',').filter(Boolean));
   const first = g[0];
   document.getElementById('variants-title').textContent = first.denom;
@@ -1107,7 +1107,7 @@ function openVariantsSheet(key, okStr) {
     const grade = bestGrade(x), ceca = x.cecaMaterial && x.cecaMaterial.trim();
     const silver = isSilverCoin(x), price = silver ? computeCoinSilverValue(x) : '';
     const rar = silver ? 'AG' : String(x.rarity || '').toUpperCase();
-    return `<div class="xv-row ${x.acquired ? 'xv-own' : 'xv-miss'}${off}" role="button" onclick="openVariantFromSheet('${jsArg(x.id)}')">
+    return `<div class="xv-row ${x.acquired ? 'xv-own' : 'xv-miss'}${off}" role="button" data-vid="${esc(x.id)}" onclick="variantRowClick('${jsArg(x.id)}')">
       <span class="xv-tab">${toRoman(i + 1)}</span>
       <span class="xv-thumb coin-perspective" onclick="flipVariantCoin(event)" title="Tocar para girar">
         <span class="coin-inner">
@@ -1130,6 +1130,7 @@ function openVariantsSheet(key, okStr) {
       <div class="xv-links">${lk(x.numistaUrl, 'N', 'Numista')}${lk(x.ucoinUrl, 'U', 'Ucoin')}${(g.length > 1 && catalogEditAllowed()) ? `<button type="button" class="xp-lk xv-unlink" title="Desvincular esta variante" aria-label="Desvincular esta variante" onclick="event.stopPropagation();unlinkVariant('${jsArg(x.id)}')"><i class="fa-solid fa-link-slash"></i></button>` : ''}</div>
     </div>`;
   }).join('');
+  const cb = document.getElementById('variants-compare'); if (cb) { cb.classList.toggle('hidden', g.length < 2); cb.classList.remove('xv-on'); cb.innerHTML = '<i class="fa-solid fa-code-compare"></i> COMPARAR'; }
   const un = document.getElementById('variants-unmerge');
   if (un) { un.classList.toggle('hidden', !catalogEditAllowed()); un.title = un.ariaLabel = groupIsFused(g) ? 'Deshacer la fusión' : 'Desvincular todas las variantes'; }
   const ov = document.getElementById('variants-modal');
@@ -1154,6 +1155,35 @@ function unmergeFromSheet() {
   closeVariantsSheet();
   if (fused) unmergeCoinGroup(key); else unlinkAllVariants(key);
 }
+/* v9.02: comparar dos variantes lado a lado (anverso con anverso, reverso con reverso) */
+let variantCompare = false, variantCmpSel = [];
+function toggleVariantCompare() {
+  variantCompare = !variantCompare; variantCmpSel = [];
+  document.querySelectorAll('#variants-list .xv-row').forEach(r => r.classList.remove('xv-sel'));
+  const cb = document.getElementById('variants-compare');
+  cb.classList.toggle('xv-on', variantCompare);
+  cb.innerHTML = variantCompare ? '<i class="fa-solid fa-hand-pointer"></i> ELIGE 2' : '<i class="fa-solid fa-code-compare"></i> COMPARAR';
+}
+function variantRowClick(id) {
+  if (!variantCompare) { openVariantFromSheet(id); return; }
+  const i = variantCmpSel.indexOf(id);
+  if (i >= 0) variantCmpSel.splice(i, 1); else variantCmpSel.push(id);
+  document.querySelectorAll('#variants-list .xv-row').forEach(r => r.classList.toggle('xv-sel', variantCmpSel.includes(r.dataset.vid)));
+  if (variantCmpSel.length === 2) { const [a, b] = variantCmpSel; openVariantCompare(a, b); variantCmpSel = []; document.querySelectorAll('#variants-list .xv-row').forEach(r => r.classList.remove('xv-sel')); }
+}
+function openVariantCompare(idA, idB) {
+  const A = coins.find(c => c.id === idA), B = coins.find(c => c.id === idB); if (!A || !B) return;
+  const head = x => `<div class="cmp-h">${esc(x.km || 'KM#-')}<small>${esc(formatYearRange(x.range))}${x.cecaMaterial && x.cecaMaterial.trim() ? ' · ' + esc(x.cecaMaterial.trim()) : ''}</small></div>`;
+  const cell = (x, side) => `<div class="cmp-img">${x[side === 'front' ? 'hasFront' : 'hasBack'] ? imgTag(x.id, side) : '<span class="cmp-none">Sin foto</span>'}</div>`;
+  document.getElementById('compare-body').innerHTML = `
+    <div class="xv-head"><h2 class="xv-title">${esc(A.denom)}</h2></div>
+    <div class="cmp-grid">${head(A)}${head(B)}
+      <div class="cmp-side">Anverso</div>${cell(A, 'front')}${cell(B, 'front')}
+      <div class="cmp-side">Reverso</div>${cell(A, 'back')}${cell(B, 'back')}
+    </div>`;
+  const ov = document.getElementById('compare-modal'); ov.classList.remove('hidden'); hydrateImages(ov);
+}
+function closeVariantCompare() { document.getElementById('compare-modal').classList.add('hidden'); }
 function openVariantFromSheet(id) { closeVariantsSheet(); openCoinModal(id); }
 // Añadir una variante nueva: abre el formulario de crear ficha con país, período, denominación y KM# base ya rellenos
 function addVariantFromSheet() {

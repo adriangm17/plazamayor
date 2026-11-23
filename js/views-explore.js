@@ -80,8 +80,18 @@ function zoneContinent(zone) {
 }
 
 let exploreContinent = '';   // continente filtrado ('' = todos)
+/* v9.03: Explorar tiene dos vistas: 'jukebox' (una ficha de pasaporte por país, deslizable) y 'zonas' (la cartelera de filas por zona de antes) */
+let exploreView = (() => { try { return localStorage.getItem('numis_explore_view') === 'zonas' ? 'zonas' : 'jukebox'; } catch (e) { return 'jukebox'; } })();
+let exploreZone = '';        // zona elegida en la tira de chips ('' = todas)
+let exploreJukeId = '';      // país que está a la vista en el jukebox (para volver al mismo con «atrás»)
+function toggleExploreView() {
+  exploreView = exploreView === 'jukebox' ? 'zonas' : 'jukebox';
+  try { localStorage.setItem('numis_explore_view', exploreView); } catch (e) {}
+  renderExplorar();
+}
 function setExploreContinent(c) {
   exploreContinent = (exploreContinent === c) ? '' : c;
+  exploreZone = '';
   renderExplorar();
   if (typeof navSync === 'function') navSync();   // v8.29: el continente elegido queda en el historial (así "atrás" desde un país vuelve a él)
 }
@@ -214,7 +224,10 @@ function toggleAllZones() {
   if ([...allZones(), UNCLASSIFIED].some(k => !exploreClosed[k])) collapseAllZones(); else expandAllZones();
 }
 function updateExploreToggle() {
+  const vb = document.getElementById('explorar-view');
+  if (vb) { const j = exploreView === 'jukebox'; vb.innerHTML = `<i class="fa-solid fa-${j ? 'table-list' : 'clone'}"></i>`; vb.title = vb.ariaLabel = j ? 'Ver por zonas (lista)' : 'Ver como pasaporte (una ficha por país)'; }
   const btn = document.getElementById('explorar-toggle'); if (!btn) return;
+  btn.style.display = exploreView === 'jukebox' ? 'none' : '';
   const anyOpen = [...allZones(), UNCLASSIFIED].some(k => !exploreClosed[k]);
   const t = anyOpen ? 'Contraer todo' : 'Desplegar todo';
   btn.title = t; btn.setAttribute('aria-label', t);
@@ -235,6 +248,7 @@ function toggleExploreContinent(c) { exploreClosed[c] = !exploreClosed[c]; rende
 
 // v8.04: «Mover zonas» (menú de la cabecera): contrae todas las zonas, que así se pueden arrastrar (mantener pulsado)
 function startZoneSortMode() {
+  if (exploreView !== 'zonas') { exploreView = 'zonas'; try { localStorage.setItem('numis_explore_view', 'zonas'); } catch (e) {} }
   collapseAllZones();
   window.scrollTo(0, 0);
   const row = document.getElementById('xp-addzone'); if (row) row.classList.remove('xp-open');
@@ -344,6 +358,121 @@ function countryCardHtml(c) {
     </div></div>`;
 }
 
+
+/* =====================================================================
+   v9.03 · EXPLORAR «JUKEBOX / PASAPORTE»
+   Un carrusel de fichas de pasaporte (una por país) con scroll-snap: un toque suave pasa a la siguiente y un golpe fuerte avanza varias.
+   Las vecinas asoman por los lados (más pequeñas y atenuadas). Con un continente elegido sale una tira de zonas sincronizada con la ficha que ves.
+   ===================================================================== */
+function jukeData() {
+  const zones = allZones();
+  const groups = {};
+  sortedCountries().forEach(c => { (groups[continentOf(c)] ||= []).push(c); });
+  let order = applyZoneOrder([...zones, UNCLASSIFIED].filter(k => groups[k] || !BUILTIN_ZONES.includes(k) && k !== UNCLASSIFIED));
+  if (exploreContinent) order = order.filter(k => k !== UNCLASSIFIED && zoneContinent(k) === exploreContinent);
+  const q = normKey(String(exploreSearch || '').trim());
+  const chipZones = order.filter(k => (groups[k] || []).length);
+  let items = [];
+  order.forEach(z => {
+    if (exploreZone && exploreContinent && z !== exploreZone) return;
+    let list = groups[z] || [];
+    if (q && !normKey(z).startsWith(q)) list = list.filter(c => normKey(c.name).startsWith(q));
+    list.forEach(c => items.push({ c, zone: z }));
+  });
+  return { items, chipZones, groups };
+}
+function jukeRing(pct, label) {
+  const r = 21, L = 2 * Math.PI * r;
+  return `<svg class="xj-ring" viewBox="0 0 50 50" aria-hidden="true"><circle cx="25" cy="25" r="${r}" class="xj-ring-bg"/><circle cx="25" cy="25" r="${r}" class="xj-ring-fg" style="stroke-dasharray:${(L * Math.min(100, pct) / 100).toFixed(1)} ${L.toFixed(1)}"/><text x="25" y="26.5" text-anchor="middle" dominant-baseline="middle" class="xj-ring-t">${label}</text></svg>`;
+}
+function jukeCardHtml(c, zone, i) {
+  const s = countryStats(c), name = prettyName(c.name), id = jsArg(c.id);
+  const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
+  const pers = periodsOfCountry(c.id);
+  const ranked = pers.map(p => ({ p, n: coinsOfPeriod(p.id).length, pc: periodPctOf(p) }));
+  const main = (ranked.length > 4 ? ranked.slice().sort((a, b) => b.n - a.n).slice(0, 4).sort((a, b) => (a.p.order ?? 0) - (b.p.order ?? 0)) : ranked);
+  const more = ranked.length - main.length;
+  const pills = main.map(({ p, pc }) => `<div class="xj-pill" style="--p:${pc}"><span class="xj-pill-n">${esc(periodDisplayName(p))}</span><b>${pc}%</b></div>`).join('')
+    + (more > 0 ? `<div class="xj-more">+ ${more} ${more === 1 ? 'época más' : 'épocas más'}</div>` : '')
+    + (!ranked.length ? '<div class="xj-more">Aún sin épocas</div>' : '');
+  const stamp = (s.t > 0 && s.pct >= 100) ? '<div class="xj-stamp xj-stamp-ok">COMPLETADO</div>' : (s.a === 0 ? '<div class="xj-stamp xj-stamp-0">POR EXPLORAR</div>' : '');
+  const zc = zoneContinent(zone);
+  const edit = (typeof catalogEditAllowed === 'function' && catalogEditAllowed()) ? `<button type="button" class="xj-edit" onclick="event.stopPropagation(); editCountryCard('${id}')" aria-label="Editar ${esc(name)}" title="Editar"><i class="fa-solid fa-pen"></i></button>` : '';
+  return `<div class="xj-card${s.a === 0 ? ' xj-zero' : ''}" data-cid="${esc(c.id)}" data-i="${i}" data-zone="${esc(zone)}" onclick="jukeOpen('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${s.t ? s.pct + '% completado' : 'sin monedas'}">
+    <div class="xj-visa">
+      <span class="xj-flag" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span>
+      <div class="xj-id"><div class="xj-name ${name.length > 16 ? 'xj-long' : ''}">${esc(name)}</div><div class="xj-zone">${esc(zone === UNCLASSIFIED ? 'Sin clasificar' : zone)}${zc && zc !== zone ? ' · ' + esc(zc) : ''}</div></div>
+      ${jukeRing(s.pct, s.t ? s.pct + '%' : '-')}
+    </div>
+    <div class="xj-photo ${photo ? '' : 'xj-nophoto'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : `style="background:${flagLayers(c).replace(/"/g, '&quot;')}"`}>${stamp}${edit}${photo ? '' : '<i class="fa-solid fa-landmark xj-ph-ico"></i>'}</div>
+    <div class="xj-eras">${pills}</div>
+  </div>`;
+}
+function renderJukebox() {
+  const { items, chipZones, groups } = jukeData();
+  const total = chipZones.reduce((m, z) => m + (groups[z] || []).length, 0);
+  const admin = typeof catalogEditAllowed === 'function' && catalogEditAllowed();
+  if (!items.length) {
+    const q = String(exploreSearch || '').trim();
+    return `<div class="xp-empty-msg">${q ? `Nada coincide con «${esc(q)}».` : exploreContinent ? `Aún no hay países de ${esc(exploreContinent)}.` : 'Aún no hay países.'}</div>`;
+  }
+  const chips = exploreContinent ? `<div class="xj-chips" id="xj-chips">
+      <button type="button" class="xj-chip${!exploreZone ? ' xj-sel' : ''}" data-z="" onclick="jukeZone('')">Todas <small>${total}</small></button>
+      ${chipZones.map(z => `<button type="button" class="xj-chip${exploreZone === z ? ' xj-sel' : ''}" data-z="${esc(z)}" onclick="jukeZone('${jsArg(z)}')">${esc(z)} <small>${(groups[z] || []).length}</small></button>`).join('')}
+    </div>` : '';
+  const cards = items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')
+    + (admin ? `<button type="button" class="xj-card xj-add" onclick="toggleAddCountryRow()"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir país</button>` : '');
+  return `${chips}<div class="xj-track" id="xj-track">${cards}</div>
+    <div class="xj-pos"><span id="xj-count">1 / ${items.length}</span><div class="xj-posbar"><i id="xj-posfill" style="width:${(100 / items.length).toFixed(1)}%"></i></div></div>`;
+}
+function jukeZone(z) {
+  exploreZone = z; exploreJukeId = '';
+  renderExplorar();
+}
+function jukeOpen(id) { exploreJukeId = id; jumpToCountry(id); }
+let _jukeRaf = 0;
+function jukeInit(box) {
+  const track = box.querySelector('#xj-track'); if (!track) return;
+  const cards = [...track.querySelectorAll('.xj-card')];
+  const fit = () => {
+    const W = track.clientWidth; if (!W) return;
+    const cw = Math.min(Math.round(W * 0.84), 440);
+    const top = track.getBoundingClientRect().top, nav = (document.querySelector('.xn-bar') || { offsetHeight: 72 }).offsetHeight || 72;
+    const h = Math.max(380, Math.min(680, window.innerHeight - top - nav - 62));
+    track.style.setProperty('--xj-cw', cw + 'px'); track.style.setProperty('--xj-h', h + 'px');
+    track.style.paddingLeft = track.style.paddingRight = Math.max(0, Math.round((W - cw) / 2)) + 'px';
+  };
+  fit();
+  const update = () => {
+    _jukeRaf = 0;
+    const mid = track.scrollLeft + track.clientWidth / 2;
+    let best = 0, bd = Infinity;
+    cards.forEach((el, i) => {
+      const c = el.offsetLeft + el.offsetWidth / 2, d = Math.min(1, Math.abs(c - mid) / (el.offsetWidth * 0.9));
+      el.style.transform = `scale(${(1 - d * 0.1).toFixed(3)})`; el.style.opacity = (1 - d * 0.5).toFixed(2);
+      if (Math.abs(c - mid) < bd) { bd = Math.abs(c - mid); best = i; }
+    });
+    const cur = cards[best]; if (!cur || cur.classList.contains('xj-add')) return;
+    exploreJukeId = cur.dataset.cid;
+    const n = cards.filter(x => !x.classList.contains('xj-add')).length;
+    const cnt = document.getElementById('xj-count'); if (cnt) cnt.textContent = `${best + 1} / ${n}`;
+    const pf = document.getElementById('xj-posfill'); if (pf) pf.style.width = ((best + 1) / n * 100).toFixed(1) + '%';
+    const chips = document.getElementById('xj-chips');
+    if (chips) {
+      const z = exploreZone || cur.dataset.zone;
+      chips.querySelectorAll('.xj-chip').forEach(b => b.classList.toggle('xj-cur', !exploreZone && b.dataset.z === z));
+      const on = chips.querySelector(`.xj-chip[data-z="${CSS.escape ? CSS.escape(z) : z}"]`) || null;
+      if (on && !exploreZone) { const target = on.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2; if (Math.abs(chips.scrollLeft - target) > 4) chips.scrollTo({ left: Math.max(0, target), behavior: 'smooth' }); }
+    }
+  };
+  track.addEventListener('scroll', () => { if (!_jukeRaf) _jukeRaf = requestAnimationFrame(update); }, { passive: true });
+  const target = cards.find(c => c.dataset.cid === exploreJukeId) || cards[0];
+  track.style.scrollBehavior = 'auto';
+  track.scrollLeft = target.offsetLeft - (track.clientWidth - target.offsetWidth) / 2;
+  update();
+  if (!jukeInit.bound) { jukeInit.bound = true; window.addEventListener('resize', () => { if (currentTab === 'explorar' && exploreView === 'jukebox') renderExplorar(); }); }
+}
+
 function renderExplorar() {
   const box = document.getElementById('explorar-content');
   if (!box) return;
@@ -351,6 +480,7 @@ function renderExplorar() {
   syncContinentButtons();
   const nc = document.getElementById('new-zone-continent');
   if (nc && !nc.options.length) nc.innerHTML = continentOptionsHtml('');
+  if (exploreView === 'jukebox') { box.innerHTML = renderJukebox(); jukeInit(box); updateExploreToggle(); return; }
   box.innerHTML = renderContinents();
   restoreRowScroll(box);
   hydrateImages(box);

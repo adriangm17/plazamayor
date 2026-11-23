@@ -813,6 +813,7 @@ function onItemGrade(i, grade) {
   if (!coin) return;
   const it = coinItems(coin)[i];
   it.grade = grade;
+  if (grade && !it.at) it.at = Date.now();   // v9.02: fecha en que se consigue (para «últimas incorporaciones»)
   if (grade && !it.year) {
     const r = parseYearRange(coin.range);
     if (r) it.year = String(r.min);

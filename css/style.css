@@ -1421,3 +1421,82 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 
 /* v8.54: el «todos los países» del índice de letras es un globo en vez de una estrella */
 .xi-rail .xc-rl:first-child i { font-size:18px; line-height:1; }
+
+/* v9.02: globo del índice centrado en el círculo naranja */
+.xi-rail .xc-rl:first-child { padding-top:0 !important; align-items:flex-start; justify-content:center; }
+.xi-rail .xc-rl:first-child i { display:block; width:34px; height:34px; line-height:34px; text-align:center; font-size:18px; }
+/* v9.02: tipos de moneda más pequeños y compactos */
+.xs-types { gap:6px; }
+.xs-type { flex-direction:row; align-items:center; justify-content:space-between; gap:6px; padding:6px 8px; border-radius:11px; }
+.xs-type .xs-typechip { font-size:10px; padding:1px 6px; align-self:center; }
+.xs-type-btns { gap:4px; flex:none; }
+.xs-type-btns .xs-count { flex:none; min-width:28px; height:24px; padding:0 7px; border-radius:8px; font-size:12px; }
+/* v9.02: pasaporte numismático */
+.xs-pass { display:flex; align-items:center; gap:14px; }
+.xs-pass-n { font-family:'Poppins',sans-serif; font-style:italic; font-weight:900; font-size:56px; line-height:1; color:var(--xp-orange); }
+.xs-pass-t { font-weight:800; font-size:15px; line-height:1.2; } .xs-pass-t small { font-weight:600; opacity:.65; font-size:12px; }
+.xs-pass-list { display:flex; flex-direction:column; gap:4px; margin-top:8px; max-height:50vh; overflow-y:auto; scrollbar-width:none; }
+.xs-pass-row { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px; border:0; background:rgba(var(--xp-plum-rgb),.07); text-align:left; cursor:pointer; min-width:0; }
+/* v9.02: últimas incorporaciones (línea de tiempo) */
+.xs-recent { position:relative; display:flex; flex-direction:column; gap:10px; padding-left:18px; }
+.xs-recent::before { content:''; position:absolute; left:5px; top:8px; bottom:8px; width:2px; background:rgba(var(--xp-plum-rgb),.22); }
+.xs-rec { position:relative; cursor:pointer; }
+.xs-rec-dot { position:absolute; left:-18px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--xp-plum); border:2px solid var(--xp-sand-l); box-sizing:border-box; }
+.xs-rec-new { background:var(--xp-orange); box-shadow:0 0 0 3px rgba(255,111,0,.25); }
+.xs-rec-grade { flex:none; padding:0 6px; border-radius:6px; background:var(--xp-have); color:#fff; font-weight:800; font-size:10px; line-height:16px; }
+.xs-rec-ctx { display:flex; align-items:center; gap:8px; margin-top:4px; font-size:10.5px; opacity:.8; } .xs-rec-ctx .xs-track { flex:1; } .xs-rec-ctx span { flex:none; }
+/* v9.02: comparador de variantes */
+.xv-row.xv-sel { outline:4px solid var(--xp-orange); outline-offset:-1px; }
+.xv-add.xv-on { background:var(--xp-orange); border-color:var(--xp-orange); color:var(--xp-plum-d); }
+.xv-cmp { max-width:46rem; padding:14px 12px; }
+.cmp-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; margin-top:10px; }
+.cmp-h { text-align:center; padding:6px 4px; border-radius:14px; background:var(--xp-plum); color:var(--xp-sand); font-family:'Poppins',sans-serif; font-weight:800; font-size:13px; line-height:1.2; }
+.cmp-h small { display:block; font-weight:600; opacity:.8; font-size:11px; }
+.cmp-img { display:flex; align-items:center; justify-content:center; aspect-ratio:1; border-radius:16px; background:rgba(var(--xp-plum-rgb),.08); overflow:hidden; padding:6px; box-sizing:border-box; }
+.cmp-img img { max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 5px 7px rgba(0,0,0,.5)); }
+.cmp-none { font-size:12px; opacity:.55; font-weight:700; }
+.cmp-side { grid-column:1 / -1; text-align:center; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.6; margin:2px 0 -2px; }
+
+/* =============== v9.03 · Explorar Jukebox / Pasaporte =============== */
+.xj-chips { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin:10px 0 2px; padding:2px 2px; }
+.xj-chips::-webkit-scrollbar { display:none; }
+.xj-chip { flex:none; height:32px; padding:0 12px; border-radius:999px; border:2px solid var(--xp-plum); background:transparent; color:var(--xp-plum); font-family:'Poppins',sans-serif; font-weight:800; font-size:12px; white-space:nowrap; cursor:pointer; }
+.xj-chip small { opacity:.65; font-weight:700; margin-left:3px; }
+.xj-chip.xj-cur { background:rgba(var(--xp-plum-rgb),.14); }
+.xj-chip.xj-sel { background:var(--xp-plum); color:var(--xp-sand); }
+.xj-track { --xj-cw:300px; --xj-h:480px; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; padding:12px 0 8px; box-sizing:border-box; }
+.xj-track::-webkit-scrollbar { display:none; }
+.xj-card { flex:0 0 var(--xj-cw); width:var(--xj-cw); height:var(--xj-h); scroll-snap-align:center; box-sizing:border-box; display:flex; flex-direction:column; gap:8px; padding:10px; border-radius:26px; background:var(--xp-sand-l); border:3px solid var(--xp-plum); color:var(--xp-plum); cursor:pointer; transition:transform .12s ease-out, opacity .12s ease-out; -webkit-tap-highlight-color:transparent; text-align:left; font-family:inherit; }
+.xj-card.xj-zero { background:color-mix(in srgb, var(--xp-sand-l) 82%, var(--xp-plum) 18%); }
+.xj-visa { flex:none; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:18px; background:var(--xp-plum); color:var(--xp-sand); }
+.xj-flag { flex:none; width:52px; height:36px; border-radius:6px; box-shadow:0 0 0 2px rgba(255,255,255,.25); background-size:cover; background-position:center; }
+.xj-id { flex:1; min-width:0; }
+.xj-name { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:21px; line-height:1.05; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-name.xj-long { font-size:16px; }
+.xj-zone { font-size:11px; font-weight:700; opacity:.75; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-ring { flex:none; width:46px; height:46px; transform:rotate(-90deg); }
+.xj-ring-bg { fill:none; stroke:rgba(255,255,255,.18); stroke-width:5; }
+.xj-ring-fg { fill:none; stroke:var(--xp-orange); stroke-width:5; stroke-linecap:round; }
+.xj-ring-t { transform:rotate(90deg); transform-origin:25px 25px; fill:var(--xp-sand); font:800 12px 'Poppins',sans-serif; }
+.xj-photo { position:relative; flex:1 1 auto; min-height:0; border-radius:20px; background:var(--xp-plum) center/cover no-repeat; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 0 2px rgba(var(--xp-plum-rgb),.25); }
+.xj-card.xj-zero .xj-photo:not(.xj-nophoto) { filter:saturate(.55) brightness(.92); }
+.xj-ph-ico { font-size:64px; color:rgba(var(--xp-sand-rgb),.35); }
+.xj-edit { position:absolute; left:10px; bottom:10px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.xj-stamp { position:absolute; right:12px; top:16px; padding:5px 12px; border:3px solid; border-radius:10px; font-family:'Poppins',sans-serif; font-weight:900; font-size:15px; letter-spacing:.1em; transform:rotate(-12deg); background:rgba(255,255,255,.72); text-align:center; pointer-events:none; }
+.xj-stamp-ok { color:#1f8f4a; border-color:#1f8f4a; }
+.xj-stamp-0 { color:#8a7766; border-color:#8a7766; font-size:13px; }
+.xj-eras { flex:none; display:flex; flex-direction:column; gap:5px; }
+.xj-pill { position:relative; display:flex; align-items:center; justify-content:space-between; gap:8px; height:28px; padding:0 12px; border-radius:999px; background:rgba(var(--xp-plum-rgb),.12); overflow:hidden; font-size:12.5px; font-weight:800; }
+.xj-pill::before { content:''; position:absolute; left:0; top:0; bottom:0; width:calc(var(--p) * 1%); background:var(--xp-orange); opacity:.85; }
+.xj-pill > * { position:relative; }
+.xj-pill-n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.xj-pill b { flex:none; font-family:'Poppins',sans-serif; }
+.xj-more { text-align:center; font-size:11.5px; font-weight:700; opacity:.7; }
+.xj-add { align-items:center; justify-content:center; border-style:dashed; background:transparent; font-weight:800; font-size:16px; gap:10px; }
+.xj-pos { display:flex; align-items:center; gap:10px; padding:2px 14px 6px; font-family:'Poppins',sans-serif; font-weight:800; font-size:12px; color:var(--xp-plum); }
+.xj-posbar { flex:1; height:5px; border-radius:3px; background:rgba(var(--xp-plum-rgb),.18); overflow:hidden; }
+.xj-posbar i { display:block; height:100%; background:var(--xp-orange); border-radius:3px; transition:width .15s; }
+
+.xj-nophoto::before { content:''; position:absolute; inset:0; background:linear-gradient(rgba(var(--xp-plum-rgb),.62), rgba(var(--xp-plum-rgb),.78)); }
+.xj-nophoto > * { position:relative; }
+.xj-nophoto .xj-edit, .xj-photo .xj-stamp { position:absolute; }

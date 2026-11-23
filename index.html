@@ -105,6 +105,7 @@
         <input type="search" id="explorar-search" oninput="onExploreSearch(this.value)" placeholder="Zona o país..." aria-label="Buscar zona geográfica o país" autocomplete="off">
       </div>
       <div class="xp-tools">
+        <button type="button" id="explorar-view" class="xp-btn" onclick="toggleExploreView()" title="Cambiar de vista" aria-label="Cambiar de vista"><i class="fa-solid fa-table-list"></i></button>
         <button type="button" id="explorar-toggle" class="xp-btn" onclick="toggleAllZones()" title="Desplegar todo" aria-label="Desplegar todo"><i class="fa-solid fa-angles-down"></i></button>
       </div>
       </div>
@@ -339,9 +340,18 @@
       <div id="variants-list" class="xv-list"></div>
       <div class="xv-foot">
         <button type="button" class="xv-add" onclick="addVariantFromSheet()">+ AÑADIR VARIANTE</button>
+        <button type="button" id="variants-compare" class="xv-add hidden" style="flex:0 0 auto;padding:0 14px" onclick="toggleVariantCompare()"><i class="fa-solid fa-code-compare"></i> COMPARAR</button>
         <button type="button" id="variants-unmerge" class="xv-unmerge hidden" onclick="unmergeFromSheet()" title="Deshacer la fusión" aria-label="Deshacer la fusión"><i class="fa-solid fa-link-slash"></i></button>
         <button type="button" class="xv-close" onclick="closeVariantsSheet()" aria-label="Cerrar">X</button>
       </div>
+    </div>
+  </div>
+
+  <!-- COMPARADOR DE VARIANTES (v9.02) -->
+  <div id="compare-modal" class="xm-overlay hidden" style="z-index:70" onclick="if(event.target===this)closeVariantCompare()">
+    <div class="xm-sheet xv-cmp">
+      <div id="compare-body"></div>
+      <div class="xv-foot"><button type="button" class="xv-add" onclick="closeVariantCompare()">VOLVER A LAS VARIANTES</button><button type="button" class="xv-close" onclick="closeVariantCompare()" aria-label="Cerrar">X</button></div>
     </div>
   </div>
 
