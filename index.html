@@ -149,7 +149,7 @@
         </div>
         <div class="xa-filters xa-r2" id="album-filters">
           <div class="relative flex-1 min-w-0" id="country-search-wrap">
-            <input type="text" id="album-country-search" readonly autocomplete="off" onclick="openCountryOverlay()" onfocus="openCountryOverlay()" placeholder="Buscar país…" title="Ir a otro país" aria-label="Buscar país" class="xa-input">
+            <input type="text" id="album-country-search" readonly autocomplete="off" onclick="openCountryOverlay()" placeholder="Buscar país…" title="Ir a otro país" aria-label="Buscar país" class="xa-input">
           </div>
           <div class="flex items-center gap-1.5 shrink-0 xa-fbtns">
           <button id="btn-only-missing" onclick="toggleOnlyMissing()" title="Solo las que me faltan" aria-label="Solo las que me faltan" class="xp-btn"><i class="fa-solid fa-circle-exclamation"></i></button>
@@ -249,13 +249,13 @@
 
   <!-- MODAL CAMBIAR PERÍODO DE PAÍS (v8.46) -->
   <div id="move-period-modal" class="xe-overlay hidden" style="z-index:60">
-    <div class="xe-sheet">
+    <div class="xe-sheet xe-narrow">
       <div class="xe-head"><h2 class="xe-title">Cambiar de país</h2><button type="button" onclick="closeMovePeriodCountry()" class="xe-x" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="xe-f"><label>Período: <b id="move-period-name"></b></label>
         <input type="text" id="move-period-input" list="move-period-list" class="xe-in" placeholder="Escribe o elige el país destino" autocomplete="off">
         <datalist id="move-period-list"></datalist>
         <p class="xe-note" style="margin-top:6px">Se mueven el período y todas sus monedas. Si el país no existe, se crea.</p></div>
-      <div class="xe-row" style="margin-top:10px"><button type="button" onclick="confirmMovePeriodCountry()" class="xe-btn">Mover</button>
+      <div class="xe-row" style="margin-top:10px"><button type="button" onclick="confirmMovePeriodCountry()" class="xe-btn xe-main">Mover</button>
         <button type="button" onclick="closeMovePeriodCountry()" class="xe-btn xe-soft">Cancelar</button></div>
     </div>
   </div>
@@ -312,7 +312,7 @@
       <div class="xe-f"><label>Nombre del período</label>
         <input type="text" id="input-edit-period-name" class="xe-in xe-strong"></div>
       <div class="xe-f" style="margin-top:8px"><label>Años (opcional)</label>
-        <input type="text" id="input-edit-period-years" maxlength="14" inputmode="numeric" placeholder="1965-1990 · 1999-ACT · vacío = según las monedas" onkeydown="if(event.key==='Enter')saveEditedPeriodName()" class="xe-in"></div>
+        <input type="text" id="input-edit-period-years" maxlength="14" inputmode="text" placeholder="1965-1990 · 1999-ACT · vacío = según las monedas" onkeydown="if(event.key==='Enter')saveEditedPeriodName()" class="xe-in"></div>
       <div class="xe-f" id="edit-period-move-box"><label>Posición en el país</label>
         <div class="xe-row">
           <button type="button" id="btn-period-up" onclick="movePeriodFromModal(-1)" class="xe-ico" title="Subir período" aria-label="Subir período"><i class="fa-solid fa-arrow-up"></i></button>
@@ -426,9 +426,9 @@
         <input type="hidden" id="edit-coin-id">
         <div class="xe-grid">
           <div class="xe-f xe-c4"><label>País</label>
-            <input type="text" id="new-country" required placeholder="Ej: España" class="xe-in"></div>
+            <input type="text" id="new-country" required placeholder="Ej: España" class="xe-in" list="dl-countries" autocomplete="off" oninput="refreshPeriodSuggestions()" onchange="refreshPeriodSuggestions()"><datalist id="dl-countries"></datalist></div>
           <div class="xe-f xe-c4"><label>Época / período</label>
-            <input type="text" id="new-period" placeholder="Ej: Alfonso XII" class="xe-in"></div>
+            <input type="text" id="new-period" placeholder="Ej: Alfonso XII" class="xe-in" list="dl-periods" autocomplete="off"><datalist id="dl-periods"></datalist></div>
           <div class="xe-f xe-c4"><label>Denominación</label>
             <input type="text" id="new-denom" required placeholder="Ej: 25 ptas" class="xe-in"></div>
           <div class="xe-f xe-c4"><label>Ceca / variante</label>
@@ -491,7 +491,7 @@
           </div></div>
         </div>
         <div class="xe-foot">
-          <button type="button" id="btn-delete-edit-coin" onclick="deleteCurrentCoin(true)" class="xe-btn xe-soft hidden" title="Eliminar esta moneda"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
+          <button type="button" id="btn-delete-edit-coin" onclick="deleteCurrentCoin(true)" class="xe-btn xe-danger hidden" title="Eliminar esta moneda"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
           <span class="xe-sp"></span>
           <button type="button" onclick="closeCreateModal()" class="xe-btn xe-soft">Cancelar</button>
           <button type="submit" class="xe-btn xe-main">Guardar</button>

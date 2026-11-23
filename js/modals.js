@@ -77,6 +77,7 @@ async function confirmMovePeriodCountry() {
   if (twin && !confirm(`"${prettyName(dest.name)}" ya tiene un período "${p.name}". ¿Unir las monedas en ese período?`)) return;
   if (twin) {
     cs.forEach(c => { c.countryId = dest.id; c.periodId = twin.id; c.order = nextCoinOrder(twin.id); });
+    if (Array.isArray(p.notes) && p.notes.length) twin.notes = [...(twin.notes || []), ...p.notes];   // v8.54: no perder las notas al unir
     periods = periods.filter(x => x.id !== p.id);
   } else {
     p.countryId = dest.id;
@@ -687,6 +688,7 @@ function openCoinModal(id) {
 }
 
 function closeModal() {
+  flushItemSave();   // v8.54: si se cierra antes de los 400 ms, se guarda ya lo escrito
   document.getElementById('coin-modal').classList.add('hidden');
 }
 
@@ -792,12 +794,18 @@ function renderCoinItems() {
 }
 
 let itemSaveTimer = null;
+function flushItemSave() {
+  if (!itemSaveTimer) return;
+  clearTimeout(itemSaveTimer); itemSaveTimer = 0;
+  const coin = coins.find(c => c.id === activeCoinId);
+  if (coin) saveCoins(coin);
+}
 function onItemField(i, field, value) {
   const coin = coins.find(c => c.id === activeCoinId);
   if (!coin) return;
   coinItems(coin)[i][field] = value;
   clearTimeout(itemSaveTimer);
-  itemSaveTimer = setTimeout(() => { if (coins.includes(coin)) saveCoins(coin); }, 400);
+  itemSaveTimer = setTimeout(() => { itemSaveTimer = 0; if (coins.includes(coin)) saveCoins(coin); }, 400);
 }
 
 function onItemGrade(i, grade) {
@@ -867,18 +875,35 @@ async function deleteCurrentCoin(fromEdit) {
 }
 
 /* ----- Crear / editar ficha ----- */
+/* v8.54: sugerencias de país y período al escribir en la hoja de ficha (se puede escribir uno nuevo igualmente) */
+function refreshCountrySuggestions() {
+  const dl = document.getElementById('dl-countries'); if (!dl) return;
+  dl.innerHTML = countries.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'es')).map(c => `<option value="${esc(c.name)}"></option>`).join('');
+}
+function refreshPeriodSuggestions() {
+  const dl = document.getElementById('dl-periods'); if (!dl) return;
+  const c = findCountryByName(document.getElementById('new-country').value);
+  dl.innerHTML = c ? periodsOfCountry(c.id).map(p => `<option value="${esc(p.name)}"></option>`).join('') : '';
+}
+/* Nombre parecido a uno existente (p. ej. «Arabia Saudita» vs «Arabia Saudi»): se pregunta antes de crear un duplicado */
+function similarExisting(name, list) {
+  const n = normName(name); if (!n) return null;
+  return list.find(x => { const m = normName(x.name); if (m === n) return false; if (Math.min(m.length, n.length) >= 4 && (m.startsWith(n) || n.startsWith(m))) return true;
+    if (Math.abs(m.length - n.length) > 2) return false; let i = 0, d = 0; const L = Math.max(m.length, n.length); for (i = 0; i < L; i++) if (m[i] !== n[i]) d++; return d <= 2 && L >= 5; }) || null;
+}
 function openCreateModal(periodId) {
   document.getElementById('edit-coin-id').value = '';
   document.getElementById('edit-coin-move-box').classList.add('hidden');
   document.getElementById('btn-delete-edit-coin').classList.add('hidden');
   document.getElementById('create-modal-title').innerText = 'Añadir Hueco al Álbum';
   document.getElementById('create-form').reset();
-  document.getElementById('new-img-front').value = '';
-  document.getElementById('new-img-back').value = '';
+  document.getElementById('new-img-front').value = ''; document.getElementById('new-img-front').dataset.orig = '';
+  document.getElementById('new-img-back').value = ''; document.getElementById('new-img-back').dataset.orig = '';
   document.getElementById('label-file-front').innerText = 'JPG, PNG, WEBP';
   document.getElementById('label-file-back').innerText = 'JPG, PNG, WEBP';
   const country = countryById(currentCountryId);
   document.getElementById('new-country').value = country ? country.name : '';
+  refreshCountrySuggestions(); refreshPeriodSuggestions();
   const preset = (typeof periodId === 'string') ? periodById(periodId) : null;   // desde el + de un período
   if (preset) {
     const owner = countryById(preset.countryId);
@@ -934,7 +959,9 @@ async function openAdvancedEditFromModal() {
       document.getElementById(hid).value = await blobToDataURL(blob);
       document.getElementById(lab).innerText = 'Imagen actual (toca para cambiarla)';
     }
+    document.getElementById(hid).dataset.orig = document.getElementById(hid).value;   // v8.54: para no resubir fotos que no se han tocado
   }
+  refreshCountrySuggestions(); refreshPeriodSuggestions();
   document.getElementById('create-modal').classList.remove('hidden');
 }
 
@@ -1175,6 +1202,13 @@ async function handleSaveCoin(e) {
   const countryName = document.getElementById('new-country').value.trim();
   const periodName = document.getElementById('new-period').value.trim() || 'General';
   if (!countryName) return;
+  if (!findCountryByName(countryName)) {
+    const sim = similarExisting(countryName, countries);
+    if (sim && confirm(`"${countryName}" no existe, pero hay un país parecido: "${sim.name}".\n\nAceptar = usar "${sim.name}"\nCancelar = crear "${countryName}" como país nuevo`)) { document.getElementById('new-country').value = sim.name; return handleSaveCoin(e); }
+  } else {
+    const cc = findCountryByName(countryName), simP = !findPeriodByName(cc.id, periodName) ? similarExisting(periodName, periodsOfCountry(cc.id)) : null;
+    if (simP && confirm(`"${periodName}" no existe en ${cc.name}, pero hay un período parecido: "${simP.name}".\n\nAceptar = usar "${simP.name}"\nCancelar = crear "${periodName}" como período nuevo`)) { document.getElementById('new-period').value = simP.name; return handleSaveCoin(e); }
+  }
   const numVal = document.getElementById('new-numista-url').value.trim(), ucoVal = document.getElementById('new-ucoin-url').value.trim();
   if (numVal && !numistaUrlOk(numVal)) { checkLinkField(document.getElementById('new-numista-url'), numistaUrlOk); alert('El enlace de Numista tiene que ser de numista.com (por ejemplo https://en.numista.com/…).'); document.getElementById('new-numista-url').focus(); return; }
   if (ucoVal && !ucoinUrlOk(ucoVal)) { checkLinkField(document.getElementById('new-ucoin-url'), ucoinUrlOk); alert('El enlace de Ucoin tiene que ser de ucoin.net (por ejemplo https://en.ucoin.net/…).'); document.getElementById('new-ucoin-url').focus(); return; }
@@ -1222,7 +1256,8 @@ async function handleSaveCoin(e) {
     for (const [side, flag, val] of [['front', 'hasFront', imgFront], ['back', 'hasBack', imgBack]]) {
       const key = imgKey(savedCoin.id, side);
       try {
-        if (val && val.startsWith('data:')) {
+        const unchanged = val && val === (document.getElementById(side === 'front' ? 'new-img-front' : 'new-img-back').dataset.orig || '');
+        if (val && val.startsWith('data:') && !unchanged) {
           await dbPutImage(key, dataURLToBlob(val));
           forgetImageUrl(key);
           savedCoin[flag] = true;
@@ -1257,7 +1292,7 @@ function handleCSVFileSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) { document.getElementById('import-csv-data').value = e.target.result; };
+  reader.onload = function(e) { document.getElementById('import-csv-data').value = String(e.target.result || '').replace(/^\uFEFF/, ''); event.target.value = ''; };
   reader.readAsText(file, 'UTF-8');
 }
 
@@ -1280,11 +1315,11 @@ function processCSVImport() {
     const period = getOrCreatePeriod(country.id, parts[1] || 'General');
     const rarity = RARITIES.includes(parts[4].toUpperCase()) ? parts[4].toUpperCase() : 'C';
     const dup = coins.some(x => x.periodId === period.id && normName(x.denom) === normName(parts[2]) &&
-      normName(x.km) === normName(parts[6]) && normName(x.range) === normName(parts[5]) && normName(x.cecaMaterial) === normName(parts[3]));
+      normName(x.km) === normName(cleanKmValue(parts[6])) && normName(x.range) === normName(parts[5]) && normName(x.cecaMaterial) === normName(parts[3]));
     if (dup) { skipped++; continue; }
     const coin = {
       id: newId(), countryId: country.id, periodId: period.id,
-      denom: parts[2], cecaMaterial: parts[3], rarity, type: DEFAULT_COIN_TYPE, range: parts[5], km: parts[6],
+      denom: parts[2], cecaMaterial: parts[3], rarity, type: DEFAULT_COIN_TYPE, range: parts[5], km: cleanKmValue(parts[6]),
       numistaUrl: '', ucoinUrl: '', acquired: false, year: '', grade: '', hasFront: false, hasBack: false,
       order: nextCoinOrder(period.id), silverWeight: '', silverPurity: '900'
     };
@@ -1330,7 +1365,7 @@ function renderHistorial() {
     const when = f.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ' + f.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     const coin = [d.denom, d.km, d.rango].filter(Boolean).join(' · ');
     const where = [d.pais, d.periodo].filter(Boolean).join(' › ');
-    return `<div class="hist-row"><div class="hist-top"><b>${esc((r.email || '').split('@')[0])}</b> <span class="hist-act hist-${esc(r.accion)}">${esc(r.accion)}</span><span class="hist-when">${when}</span></div><div class="hist-coin">${esc(coin || 'Ficha')}</div>${where ? `<div class="hist-where">${esc(where)}</div>` : ''}</div>`;
+    return `<div class="hist-row"><div class="hist-top"><b>${esc((r.email || '').split('@')[0])}</b> <span class="hist-act hist-${r.accion === 'añadió' ? 'add' : r.accion === 'quitó' ? 'del' : 'mod'}">${esc(r.accion)}</span><span class="hist-when">${when}</span></div><div class="hist-coin">${esc(coin || 'Ficha')}</div>${where ? `<div class="hist-where">${esc(where)}</div>` : ''}</div>`;
   }).join('');
 }
 async function clearHistorial() {

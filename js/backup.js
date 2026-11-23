@@ -2,27 +2,33 @@
    Formato v2: { version: 2, countries, periods, coins } con las imágenes incrustadas (base64).
    Se siguen aceptando copias v1 (monedas con país/período en texto + preferences). */
 async function exportBackup() {
-  // v8.53: la copia se arma por trozos (un Blob de fragmentos) en vez de un único texto gigante, para no quedarse sin memoria con bases grandes
-  const st = document.getElementById('backup-status');
-  const say = t => { if (st) st.textContent = t; };
+  // v8.54: fotos leídas varias a la vez, progreso en un cartel flotante visible y marcas hasFront/hasBack coherentes con lo exportado
+  let toast = document.getElementById('bk-progress');
+  if (!toast) { toast = document.createElement('div'); toast.id = 'bk-progress'; toast.style.cssText = 'position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:300;padding:10px 18px;border-radius:999px;background:#2b1b2e;color:#fff;font:700 13px Inter,system-ui,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.45);max-width:90vw;text-align:center'; document.body.appendChild(toast); }
+  const say = t => { toast.textContent = t; toast.style.display = 'block'; };
   try {
     const stored = await getAllFromStore('coins');
     const parts = [`{"version":2,"date":${JSON.stringify(new Date().toISOString())},"countries":${JSON.stringify(countries)},"periods":${JSON.stringify(periods)},"zones":${JSON.stringify(customZones)},"zoneOrder":${JSON.stringify(zoneOrder)},"zoneContinents":${JSON.stringify(zoneContinents)},"coins":[`];
-    let i = 0;
-    for (const c of stored) {
+    const total = stored.length, texts = new Array(total);
+    let next = 0, done = 0, missing = 0;
+    const one = async idx => {
+      const c = stored[idx];
       const copy = { ...c, country: coinCountryName(c), period: coinPeriodName(c) };  // nombres solo por legibilidad
       for (const [flag, field, side] of [['hasFront', 'imgFront', 'front'], ['hasBack', 'imgBack', 'back']]) {
+        copy[field] = '';
         if (c[flag]) {
           let blob = null;
           try { blob = await dbGetImage(imgKey(c.id, side)); } catch (e) { blob = null; }
-          copy[field] = blob ? await blobToDataURL(blob) : '';
-        } else {
-          copy[field] = '';
+          if (blob) copy[field] = await blobToDataURL(blob); else { copy[flag] = false; missing++; }
         }
       }
-      parts.push((i ? ',' : '') + JSON.stringify(copy));
-      if (++i % 50 === 0) { say(`Exportando ${i}/${stored.length}…`); await new Promise(r => setTimeout(r, 0)); }
-    }
+      texts[idx] = JSON.stringify(copy);
+      done++; if (done % 10 === 0 || done === total) say(`Exportando copia… ${done}/${total}`);
+    };
+    const worker = async () => { while (next < total) { const idx = next++; await one(idx); } };
+    say(`Exportando copia… 0/${total}`);
+    await Promise.all(Array.from({ length: 6 }, worker));
+    for (let i = 0; i < total; i++) { parts.push(i ? ',' : ''); parts.push(texts[i]); texts[i] = null; }
     parts.push(']}');
     const blob = new Blob(parts, { type: 'application/json' });
     const blobUrl = URL.createObjectURL(blob);
@@ -34,8 +40,11 @@ async function exportBackup() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     try { localStorage.setItem('numis_last_backup', new Date().toISOString()); } catch (e) {}
+    say(missing ? `Copia lista (${missing} foto${missing === 1 ? '' : 's'} no disponible${missing === 1 ? '' : 's'})` : 'Copia lista ✓');
+    setTimeout(() => { toast.style.display = 'none'; }, missing ? 6000 : 2500);
   } catch (err) {
     console.error('Exportar:', err);
+    toast.style.display = 'none';
     alert('No se pudo exportar la copia:\n' + ((err && err.message) || err) + '\n\nSi se repite, cierra otras pestañas/apps y prueba desde el ordenador.');
   }
   updateBackupStatus();
@@ -77,6 +86,7 @@ function importBackup(event) {
       const backup = JSON.parse(e.target.result);
       if (!backup || !Array.isArray(backup.coins)) { alert('Archivo no válido.'); input.value = ''; return; }
       if (!confirm('Restaurar reemplazaría toda tu colección actual. ¿Continuar?')) { input.value = ''; return; }
+      window.__pmImporting = true;
 
       let list = backup.coins.filter(c => c && typeof c === 'object' && c.denom);
       list.forEach(c => { if (!c.id) c.id = newId(); });
@@ -105,6 +115,9 @@ function importBackup(event) {
       console.error(err);
       alert('Error al leer el archivo de respaldo.');
       try { await loadData(); } catch (e3) {}
+    } finally {
+      window.__pmImporting = false;
+      try { if (window.PMSync && PMSync.touch) PMSync.touch(); } catch (e4) {}
     }
     input.value = '';
   };

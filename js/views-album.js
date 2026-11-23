@@ -173,7 +173,7 @@ function makeAlphaRail(cfg) {
     const l = g.spans[Math.round(f)].dataset.l;
     if (l === S.letter) return;
     S.letter = l;
-    const b = bubbleEl(); if (b) b.textContent = l || '☆';
+    const b = bubbleEl(); if (b) { if (l) b.textContent = l; else b.innerHTML = '<i class="fa-solid fa-earth-europe"></i>'; }
     if (cfg.onLetter) cfg.onLetter(l);
     if (navigator.vibrate) { try { navigator.vibrate(4); } catch (err) {} }
   }
@@ -183,7 +183,7 @@ function makeAlphaRail(cfg) {
       const key = letters.join('');
       if (rail.dataset.key === key && rail.children.length) return;   // mismas letras: no se reconstruye (así no se corta un arrastre en curso)
       rail.dataset.key = key;
-      rail.innerHTML = ['☆', ...letters].map((l, i) => `<span class="xc-rl" data-l="${i ? l : ''}">${l}</span>`).join('');
+      rail.innerHTML = ['', ...letters].map((l, i) => `<span class="xc-rl" data-l="${i ? l : ''}">${i ? l : '<i class="fa-solid fa-earth-europe"></i>'}</span>`).join('');
       cancelAnimationFrame(S.raf); S.raf = 0;
       S.cur = S.tgt = S.amp = S.ampTgt = 0; S.letter = null; S.on = false;
       apply();

@@ -207,7 +207,7 @@
   }
 
   /* ---------- Orquestación ---------- */
-  function markDirty() { dirty = true; dirtyGen++; if (ready && user) { if (status.state === 'ok') setStatus('pending'); scheduleSync(2500); } }
+  function markDirty() { if (!ready) return; dirty = true; dirtyGen++; if (ready && user) { if (status.state === 'ok') setStatus('pending'); scheduleSync(2500); } }
   function scheduleSync(ms) { clearTimeout(pushTimer); pushTimer = setTimeout(() => syncNow({ pullToo: false }), ms); }
 
   async function ensureRole() {
@@ -221,6 +221,7 @@
 
   async function syncNow(opts) {
     opts = opts || {};
+    if (window.__pmImporting) { dirty = true; return; }   // v8.54: no sincronizar a mitad de una restauración
     if (running) { if (opts.pullToo) dirty = true; return; }
     if (!sb || !user || !ready) return;
     if (!navigator.onLine) { setStatus(dirty || Object.keys(pendingImg || {}).length ? 'pending' : 'offline', 'Sin conexión' + (dirty ? ': los cambios se subirán al volver' : '')); return; }
@@ -523,7 +524,11 @@
         if (c) c[side === 'front' ? 'imgFrontRev' : 'imgBackRev'] = rev;
         pendingImg[key] = { op: 'put', rev }; imgRev[key] = rev; saveImgState();
       }
-      return rawPutImage(key, blob).then(v => { markDirty(); return v; });
+      return rawPutImage(key, blob).then(v => {
+        // v9.01: la nueva «rev» de la foto también se guarda en la ficha local (si no, otro flujo que guardara la ficha antes podría dejarla sin rev)
+        try { const [cid] = splitKey(key), c = coins.find(x => x.id === cid); if (c && role !== 'miembro' && typeof putCoinsToDB === 'function') putCoinsToDB([c]); } catch (e) {}
+        markDirty(); return v;
+      });
     };
     window.dbDeleteImage = function (key) {
       if (role !== 'miembro' && pendingImg) { pendingImg[key] = { op: 'del' }; delete imgRev[key]; saveImgState(); }
@@ -569,7 +574,7 @@
         return f.apply(this, a);
       };
     };
-    ['openCreateModal', 'openNoteModal', 'openEditCountryModal', 'openAddPeriodModal', 'openEditPeriodModal', 'openEditZoneModal', 'openImportModal', 'openAdvancedEditFromModal', 'addZone', 'toggleAddZoneRow', 'addEmptyCountry', 'toggleAddCountryRow', 'importBackup', 'mergeCoinGroups', 'unmergeCoinGroup'].forEach(n => guard(n));
+    ['openCreateModal', 'openNoteModal', 'openEditCountryModal', 'openAddPeriodModal', 'openEditPeriodModal', 'openEditZoneModal', 'openImportModal', 'openAdvancedEditFromModal', 'addZone', 'toggleAddZoneRow', 'addEmptyCountry', 'toggleAddCountryRow', 'importBackup', 'mergeCoinGroups', 'unmergeCoinGroup', 'startZoneSortMode', 'deleteCurrentCountry', 'deleteCurrentCoin', 'processCSVImport'].forEach(n => guard(n));
     guard('zoneDragStart', true);
   }
 

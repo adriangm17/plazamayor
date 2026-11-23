@@ -153,3 +153,22 @@ v8.51
 v8.53 (parte de la 8.51; se descarta el "Rellenar desde Numista" de la 8.52)
 - Exportar copia: se arma por trozos (menos memoria, con bases grandes), muestra progreso y, si falla, enseña el error.
 - Ajustes → Información → "Forzar actualización": borra la caché del service worker y recarga (no toca los datos).
+
+v8.54
+- Estadísticas → Auditoría del catálogo (antes "Errores en enlaces"): fichas con problemas por categoría: faltan fotos, sin KM#, sin años, enlaces, estado TBD.
+- Hoja de ficha: al escribir país y período salen sugerencias de los existentes (se puede escribir uno nuevo) y, si el nombre es parecido a uno existente (p. ej. "Arabia Saudi" / "Arabia Saudita"), pregunta antes de crear un duplicado.
+- Índice y buscador de país: "todos los países" pasa de estrella a un globo terráqueo.
+- Editar ficha: ya no se resuben a la nube las fotos que no se han tocado.
+- Exportar copia: fotos en paralelo (mucho más rápido), progreso en un cartel flotante visible, y si una foto no está disponible no se marca como existente.
+- Importar copia: se pausa la sincronización mientras se restaura.
+- Cambiar período de país: al unir con un período existente se conservan las notas.
+- Importar CSV: KM# sin espacios, se quita el BOM y se puede volver a elegir el mismo archivo.
+- Ficha: si cierras antes de 0,4 s, se guarda lo último escrito (año/notas).
+- Estadísticas: zoom del gráfico acotado, nombres de país bonitos, la auditoría se cierra al abrir otro estado/tipo.
+- Identificar: ejemplares sin estado ya salen en "Tengo en mi colección" (con "—").
+- Arreglos visuales: ventana "Cambiar de país" estrecha y con botón naranja; "Eliminar" de la ficha en rojo; años de época con teclado normal (permite guion y ACT); cartel FUSIONAR visible con la marca visual; buscador del Álbum sin doble evento; CSS huérfano limpiado.
+
+v9.01 (parte de la 8.54)
+- Sincronización: durante el arranque ya no se marca "hay cambios sin subir" sin haber tocado nada.
+- Al guardar una foto (admin), la nueva revisión también se guarda en la ficha local, para que no se desfase con la nube.
+- Protección de admin ampliada: mover zonas, eliminar país, eliminar moneda e importar CSV quedan bloqueados para cuentas no admin.

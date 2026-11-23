@@ -101,7 +101,7 @@ function navApply(S) {
   } else if (S.t === 'explorar') {
     exploreContinent = S.xc || '';   // v8.29: también al volver desde otra pestaña (antes solo si ya se estaba en Explorar y el continente se perdía)
   } else if (S.t === 'estadisticas' && sameTab) {
-    statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsErrors = !!S.se; statsGradePage = 1;
+    statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsErrors = S.se || ''; statsGradePage = 1;
   }
   showTab(S.t);
   render();

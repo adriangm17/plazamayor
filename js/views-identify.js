@@ -41,7 +41,7 @@ function identBumpUsage() { identLsSet(IDENT_USAGE_LS, JSON.stringify({ d: ident
    1) NORMALIZACIÓN Y CRUCE CON EL CATÁLOGO (sin red, probado contra todo el catálogo)
    ===================================================================== */
 function identNorm(s) {
-  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/['’`´]/g, '').replace(/[^a-z0-9\/½¼¾⅓⅔⅛.,\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
@@ -719,14 +719,14 @@ function identRarityChip(c) {
 function identMineHtml(g) {
   const rows = [];
   (g.vcands || g.coins).forEach(c => (Array.isArray(c.items) ? c.items : []).forEach(it => {
-    if (it && String(it.grade || '').trim()) rows.push({ c, it });
+    if (it) rows.push({ c, it });
   }));
   if (!rows.length) return '';
   const multi = g.coins.length > 1;
   return `<div class="xf-card xf-mine xid-mine">
     <div class="xid-minetitle"><i class="fa-solid fa-circle-check"></i> Tengo en mi colección</div>
     ${rows.map(({ c, it }) => `<div class="xid-it">
-      <span class="xid-ity">${esc(it.year || 's/f')}</span><span class="xid-ig">${esc(it.grade)}</span>
+      <span class="xid-ity">${esc(it.year || 's/f')}</span><span class="xid-ig">${esc(it.grade || '—')}</span>
       <span class="xid-ifm">${itemFormatIcon(it.format, 16)}</span>
       <span class="xid-in2">${esc(it.notes || (multi ? c.km : '') || '')}</span></div>`).join('')}
   </div>`;
@@ -826,7 +826,7 @@ function identResultHtml() {
       + `<div class="xid-cands">${identCandsHtml(m.contenders)}</div>` + refineBtn;
   }
   const have = m.state === 'have';
-  const owned = have ? (top.vcands || top.coins).flatMap(c => (Array.isArray(c.items) ? c.items : []).filter(i => i && String(i.grade || '').trim()).map(i => i.year || 's/f')) : [];
+  const owned = have ? (top.vcands || top.coins).flatMap(c => (Array.isArray(c.items) ? c.items : []).filter(i => i).map(i => i.year || 's/f')) : [];
   const sub = have
     ? (owned.length ? 'Ya está en tu colección · ejemplares: ' + [...new Set(owned)].map(esc).join(', ') : 'Ya está en tu colección.')
     : (top.variant && top.coins.some(x => x !== top.variant && x.acquired)

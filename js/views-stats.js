@@ -9,7 +9,7 @@ let statsType = '';         // tipo de moneda elegido ('' = ninguno)
 let statsTypeHave = false;  // false = todas las fichas registradas del tipo; true = solo las obtenidas
 let statsByCountry = {};    // monedas por país (para el mapa)
 let statsRankAll = false;   // ranking de países: false = top 10, true = todos
-let statsErrors = false;    // página de monedas con errores en los enlaces
+let statsErrors = '';    // v8.54: auditoría del catálogo: '' = cerrada · 'all' o la categoría abierta (foto, km, rango, enlace, tbd)
 let statsRange = null;   // [añoDesde, añoHasta] al ampliar la línea de tiempo
 
 function collectionStats() {
@@ -79,7 +79,7 @@ function attachStatsChart() {
     if (x0 === null) return;
     const x1 = px(e), lo = Math.min(x0, x1), hi = Math.max(x0, x1); x0 = null; sel.setAttribute('width', 0);
     if (hi - lo < 4) return;
-    const slot = pw / n, y0 = a + Math.floor(lo / slot), y1 = a + Math.floor(hi / slot);
+    const slot = pw / n, y0 = a + Math.floor(lo / slot), y1 = Math.min(a + n - 1, a + Math.floor(hi / slot));
     if (y1 > y0) { statsRange = [y0, y1]; renderEstadisticas(); }
   });
   svg.addEventListener('contextmenu', e => { e.preventDefault(); statsRange = null; renderEstadisticas(); });
@@ -87,10 +87,10 @@ function attachStatsChart() {
 
 function toggleNoYear() { statsNoYearOpen = !statsNoYearOpen; renderEstadisticas(); }
 function setStatsGradePage(n) { statsGradePage = n; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function pickStatsGrade(g) { statsGrade = g; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function pickStatsType(t, have) { statsType = t; statsTypeHave = !!have; statsGrade = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function pickStatsErrors() { statsErrors = true; statsGrade = ''; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
-function closeStatsGrade() { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = false; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function pickStatsGrade(g) { statsErrors = ''; statsGrade = g; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function pickStatsType(t, have) { statsErrors = ''; statsType = t; statsTypeHave = !!have; statsGrade = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function pickStatsErrors(cat) { statsErrors = cat || 'all'; statsGrade = ''; statsType = ''; statsGradePage = 1; renderEstadisticas(); window.scrollTo({ top: 0 }); }
+function closeStatsGrade() { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = ''; renderEstadisticas(); window.scrollTo({ top: 0 }); }
 
 // Lista paginada de fichas (40 por hoja) compartida por la página de un estado y la de un tipo
 function renderCoinListPage(box, cfg) {
@@ -127,7 +127,7 @@ function sortCoinsForList(arr) {
 // Cabecera de cada tarjeta: bandera, país · época (y, si hace falta, un detalle)
 function coinListHead(c, rightHtml, detail) {
   const co = countryById(c.countryId), p = periodById(c.periodId);
-  return `<div class="w-full flex items-center gap-1.5 px-0.5 pb-0.5 min-w-0">${co ? flagChip(co, 18, 13) : ''}<span class="text-[10px] font-bold text-slate-300 truncate flex-1">${esc(co ? co.name : '')}${p ? ' · ' + esc(periodDisplayName(p)) : ''}</span>${rightHtml}</div>
+  return `<div class="w-full flex items-center gap-1.5 px-0.5 pb-0.5 min-w-0">${co ? flagChip(co, 18, 13) : ''}<span class="text-[10px] font-bold text-slate-300 truncate flex-1">${esc(co ? prettyName(co.name) : '')}${p ? ' · ' + esc(periodDisplayName(p)) : ''}</span>${rightHtml}</div>
       <div class="w-full text-[10px] text-[color:var(--xp-orange)] font-bold px-0.5 truncate">${detail}</div>`;
 }
 
@@ -162,15 +162,35 @@ function renderTypePage(box) {
     }
   });
 }
-// v8.08: monedas con algún enlace que falta o no es válido (las que salen con «!» en el Álbum)
-function coinsWithLinkErrors() { return coins.filter(c => coinLinkProblems(c).length); }
+// v8.54: auditoría del catálogo por tipo de problema (foto, KM#, años, enlaces, estado TBD)
+const AUDIT_CATS = [
+  ['foto', 'Faltan fotos', 'fa-image'],
+  ['km', 'Sin KM#', 'fa-hashtag'],
+  ['rango', 'Sin años', 'fa-calendar'],
+  ['enlace', 'Enlaces', 'fa-link'],
+  ['tbd', 'Estado TBD', 'fa-circle-question']
+];
+function coinAudit(c) {
+  const out = {};
+  const f = !c.hasFront, b = !c.hasBack;
+  if (f || b) out.foto = f && b ? 'Sin fotos' : f ? 'Falta el anverso' : 'Falta el reverso';
+  if (!String(c.km || '').replace(/KM#?/i, '').trim()) out.km = 'Falta el KM#';
+  if (!String(c.range || '').trim() || /^s\/?f$/i.test(String(c.range).trim())) out.rango = 'Faltan los años';
+  const lp = coinLinkProblems(c);
+  if (lp.length) out.enlace = lp.map(t => t.replace('Falta el enlace a ', 'Falta ').replace(/^El enlace de (\w+) no es de .*/, '$1 no válido')).join(' · ');
+  if ((c.items || []).some(i => i && String(i.grade || '').trim().toUpperCase() === 'TBD')) out.tbd = 'Estado por determinar (TBD)';
+  return out;
+}
+function coinsAudited(cat) { return coins.filter(c => { const a = coinAudit(c); return cat === 'all' ? Object.keys(a).length : a[cat]; }); }
+function coinsWithLinkErrors() { return coinsAudited('all'); }
 function renderErrorsPage(box) {
-  const list = sortCoinsForList(coinsWithLinkErrors());
+  const cat = statsErrors, name = (AUDIT_CATS.find(x => x[0] === cat) || [0, 'Todos los problemas'])[1];
+  const list = sortCoinsForList(coinsAudited(cat));
   renderCoinListPage(box, {
-    list, kicker: 'Errores en enlaces',
-    titleHtml: `${list.length} ${list.length === 1 ? 'ficha con error' : 'fichas con error'}`,
-    emptyMsg: 'No hay ninguna ficha con errores en los enlaces.',
-    extraFor: c => coinListHead(c, '', esc(coinLinkProblems(c).map(t => t.replace('Falta el enlace a ', 'Falta ').replace(/^El enlace de (\w+) no es de .*/, '$1 no válido')).join(' · ')))
+    list, kicker: 'Auditoría del catálogo · ' + name,
+    titleHtml: `${list.length} ${list.length === 1 ? 'ficha' : 'fichas'}`,
+    emptyMsg: 'No hay ninguna ficha con este problema.',
+    extraFor: c => { const a = coinAudit(c); return coinListHead(c, '', esc((cat === 'all' ? Object.values(a) : [a[cat]]).join(' · '))); }
   });
 }
 function toggleStatsRank() { statsRankAll = !statsRankAll; renderEstadisticas(); }
@@ -195,19 +215,20 @@ function nvSection(sec) {
 function renderEstadisticas() {
   if (typeof navSync === 'function') navSync();
   const box = document.getElementById('estadisticas-content'); if (!box) return;
-  if (statsErrors) { if (coinsWithLinkErrors().length) { renderErrorsPage(box); return; } statsErrors = false; }   // sin errores: se vuelve a Estadísticas
+  if (statsErrors) { if (coinsAudited(statsErrors).length) { renderErrorsPage(box); return; } statsErrors = ''; }   // sin errores: se vuelve a Estadísticas
   if (statsGrade) { renderGradePage(box); return; }
   if (statsType) { renderTypePage(box); return; }
   const nErr = coinsWithLinkErrors().length;
   const errSection = nErr ? `
     <section class="xs-sec">
-      <div class="xp-head" style="cursor:default"><span class="xp-num">08</span><span class="xp-title" style="font-size:20px">Errores en enlaces</span></div>
-      <p class="xs-hint">Fichas a las que les falta el enlace de Numista o Ucoin, o no es válido (salen con «!» en el Álbum). Toca para verlas todas.</p>
+      <div class="xp-head" style="cursor:default"><span class="xp-num">08</span><span class="xp-title" style="font-size:20px">Auditoría del catálogo</span></div>
+      <p class="xs-hint">Fichas con datos por completar: fotos, KM#, años, enlaces de Numista/Ucoin o estado TBD. Toca una categoría para ver las fichas.</p>
       <div class="xs-panel">
-        <button onclick="pickStatsErrors()" class="xs-warn w-full flex items-center justify-between gap-2 text-left" style="margin:0">
-          <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${nErr} ${nErr === 1 ? 'moneda con error' : 'monedas con error'}</span>
+        <button onclick="pickStatsErrors('all')" class="xs-warn w-full flex items-center justify-between gap-2 text-left" style="margin:0 0 6px">
+          <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${nErr} ${nErr === 1 ? 'ficha con algún problema' : 'fichas con algún problema'}</span>
           <i class="fa-solid fa-chevron-right text-[10px]"></i>
         </button>
+        ${AUDIT_CATS.map(([k, l, ic]) => { const n = coinsAudited(k).length; return n ? `<button onclick="pickStatsErrors('${k}')" class="xs-btn2 w-full flex items-center justify-between gap-2 text-left" style="margin:0 0 4px"><span><i class="fa-solid ${ic} mr-1"></i>${l}</span><b>${n}</b></button>` : ''; }).join('')}
       </div>
     </section>` : '';
   const s = collectionStats();

@@ -118,7 +118,7 @@ window.addEventListener('resize', updateAlbumBarVars);
 // Limpia los filtros de TODAS las pestañas (así, al volver, no parece que falten monedas)
 function resetAllFilters() {
   if (typeof resetAlbumFilters === 'function') resetAlbumFilters();
-  if (typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = false; statsGradePage = 1; statsNoYearOpen = false; statsRange = null; }
+  if (typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = ''; statsGradePage = 1; statsNoYearOpen = false; statsRange = null; }
   indiceSearchText = '';
   const is = document.getElementById('indice-search'); if (is) is.value = '';
   if (typeof exploreSearch !== 'undefined') exploreSearch = '';
@@ -139,7 +139,7 @@ function resetViewFolds(tabName) {
 function switchTab(tabName) {
   if (tabName === 'explorar' && currentTab !== 'explorar' && typeof resetRowScroll === 'function') resetRowScroll();   // v8.30
   if (tabName !== currentTab && typeof navRememberScroll === 'function') navRememberScroll();   // v8.29: se recuerda dónde se estaba para el botón atrás
-  if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = false; }   // tocar de nuevo la pestaña vuelve al resumen
+  if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = ''; }   // tocar de nuevo la pestaña vuelve al resumen
   if (tabName !== currentTab) resetAllFilters();   // al cambiar de pestaña no se mantiene ningún filtro
   const changed = tabName !== currentTab;
   if (changed) { window.scrollTo(0, 0); resetBarScroll(); resetViewFolds(tabName); }    // v8.04: al cambiar de pestaña la cabecera vuelve a verse
