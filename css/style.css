@@ -1467,30 +1467,8 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xj-track { --xj-cw:300px; --xj-h:480px; display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; padding:12px 0 8px; box-sizing:border-box; }
 .xj-track::-webkit-scrollbar { display:none; }
 .xj-card { flex:0 0 var(--xj-cw); width:var(--xj-cw); height:var(--xj-h); scroll-snap-align:center; box-sizing:border-box; display:flex; flex-direction:column; gap:8px; padding:10px; border-radius:26px; background:var(--xp-sand-l); border:3px solid var(--xp-plum); color:var(--xp-plum); cursor:pointer; transition:transform .12s ease-out, opacity .12s ease-out; -webkit-tap-highlight-color:transparent; text-align:left; font-family:inherit; }
-.xj-card.xj-zero { background:color-mix(in srgb, var(--xp-sand-l) 82%, var(--xp-plum) 18%); }
-.xj-visa { flex:none; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:18px; background:var(--xp-plum); color:var(--xp-sand); }
-.xj-flag { flex:none; width:52px; height:36px; border-radius:6px; box-shadow:0 0 0 2px rgba(255,255,255,.25); background-size:cover; background-position:center; }
-.xj-id { flex:1; min-width:0; }
-.xj-name { font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:21px; line-height:1.05; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.xj-name.xj-long { font-size:16px; }
-.xj-zone { font-size:11px; font-weight:700; opacity:.75; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.xj-ring { flex:none; width:46px; height:46px; transform:rotate(-90deg); }
-.xj-ring-bg { fill:none; stroke:rgba(255,255,255,.18); stroke-width:5; }
-.xj-ring-fg { fill:none; stroke:var(--xp-orange); stroke-width:5; stroke-linecap:round; }
-.xj-ring-t { transform:rotate(90deg); transform-origin:25px 25px; fill:var(--xp-sand); font:800 12px 'Poppins',sans-serif; }
 .xj-photo { position:relative; flex:1 1 auto; min-height:0; border-radius:20px; background:var(--xp-plum) center/cover no-repeat; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 0 2px rgba(var(--xp-plum-rgb),.25); }
-.xj-card.xj-zero .xj-photo:not(.xj-nophoto) { filter:saturate(.55) brightness(.92); }
-.xj-ph-ico { font-size:64px; color:rgba(var(--xp-sand-rgb),.35); }
 .xj-edit { position:absolute; left:10px; bottom:10px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-.xj-stamp { position:absolute; right:12px; top:16px; padding:5px 12px; border:3px solid; border-radius:10px; font-family:'Poppins',sans-serif; font-weight:900; font-size:15px; letter-spacing:.1em; transform:rotate(-12deg); background:rgba(255,255,255,.72); text-align:center; pointer-events:none; }
-.xj-stamp-ok { color:#1f8f4a; border-color:#1f8f4a; }
-.xj-stamp-0 { color:#8a7766; border-color:#8a7766; font-size:13px; }
-.xj-eras { flex:none; display:flex; flex-direction:column; gap:5px; }
-.xj-pill { position:relative; display:flex; align-items:center; justify-content:space-between; gap:8px; height:28px; padding:0 12px; border-radius:999px; background:rgba(var(--xp-plum-rgb),.12); overflow:hidden; font-size:12.5px; font-weight:800; }
-.xj-pill::before { content:''; position:absolute; left:0; top:0; bottom:0; width:calc(var(--p) * 1%); background:var(--xp-orange); opacity:.85; }
-.xj-pill > * { position:relative; }
-.xj-pill-n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-.xj-pill b { flex:none; font-family:'Poppins',sans-serif; }
 .xj-more { text-align:center; font-size:11.5px; font-weight:700; opacity:.7; }
 .xj-add { align-items:center; justify-content:center; border-style:dashed; background:transparent; font-weight:800; font-size:16px; gap:10px; }
 .xj-pos { display:flex; align-items:center; gap:10px; padding:2px 14px 6px; font-family:'Poppins',sans-serif; font-weight:800; font-size:12px; color:var(--xp-plum); }
@@ -1500,3 +1478,128 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xj-nophoto::before { content:''; position:absolute; inset:0; background:linear-gradient(rgba(var(--xp-plum-rgb),.62), rgba(var(--xp-plum-rgb),.78)); }
 .xj-nophoto > * { position:relative; }
 .xj-nophoto .xj-edit, .xj-photo .xj-stamp { position:absolute; }
+
+/* =============== v9.04 · Jukebox: ficha como las de la vista por zonas, barra «atrás + subtipos», escritorio =============== */
+/* Estadísticas · Tipo de moneda: una línea por tipo («Conmemorativas 41/111») */
+.xs-types { display:flex; flex-direction:column; gap:6px; }
+.xs-type { width:100%; flex-direction:row; align-items:center; justify-content:flex-start; gap:10px; padding:9px 12px; text-align:left; cursor:pointer; font-family:inherit; color:var(--xp-plum); -webkit-tap-highlight-color:transparent; }
+.xs-type:disabled { opacity:.5; cursor:default; }
+.xs-type:not(:disabled):active { transform:scale(.985); }
+.xs-type .xs-typechip { font-size:12.5px; padding:2px 10px; border-radius:7px; text-transform:none; letter-spacing:.01em; }
+.xs-type-n { font-family:'Poppins',sans-serif; font-weight:800; font-size:14px; }
+.xs-type-go { margin-left:auto; font-size:11px; opacity:.5; }
+
+/* Barra de subtipos del continente (sustituye a la de continentes) */
+.xj-subbar { display:flex; align-items:flex-start; gap:8px; margin:12px 0 2px; }
+.xj-back { flex:none; width:44px; height:44px; border-radius:12px; border:2px solid var(--xp-orange); background:var(--xp-plum); color:var(--xp-orange); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; }
+.xj-back:active { transform:scale(.94); }
+.xj-subbar .xj-chips { flex:1; min-width:0; flex-wrap:wrap; overflow:visible; margin:0; padding:0; gap:6px; align-content:flex-start; }
+.xj-subbar .xj-chip { height:32px; }
+.xj-chips.xj-cs-m .xj-chip { height:28px; padding:0 9px; font-size:11px; border-width:1.5px; }
+.xj-chips.xj-cs-s { gap:4px; } .xj-chips.xj-cs-s .xj-chip { height:25px; padding:0 7px; font-size:10px; border-width:1.5px; }
+.xj-chips.xj-cs-xs { gap:3px; } .xj-chips.xj-cs-xs .xj-chip { height:22px; padding:0 6px; font-size:9px; border-width:1.5px; }
+.xj-chips.xj-cs-s .xj-chip small, .xj-chips.xj-cs-xs .xj-chip small { margin-left:2px; }
+
+/* Tira a todo el ancho de pantalla (la ficha queda centrada en la pantalla, también en ordenador) */
+.xj-stage { position:relative; }
+.xj-track { cursor:grab; }
+.xj-track.xj-drag { scroll-snap-type:none; scroll-behavior:auto; cursor:grabbing; user-select:none; }
+.xj-arrow { display:none; position:absolute; top:50%; z-index:3; width:46px; height:46px; margin-top:-23px; border-radius:50%; border:2px solid var(--xp-orange); background:var(--xp-plum); color:var(--xp-orange); font-size:18px; cursor:pointer; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+.xj-prev { left:max(12px, calc(50% - 260px - 70px)); } .xj-next { right:max(12px, calc(50% - 260px - 70px)); }
+@media (hover:hover) and (pointer:fine) { .xj-arrow { display:flex; } }
+
+/* Ficha: nombre grande + zona en burbuja · foto grande · bandera con bolitas por período */
+.xj-card { gap:0; padding:5px; border:0; border-radius:calc(16px*1.3); background:var(--xp-plum); color:var(--xp-sand); overflow:hidden; }
+.xj-head { flex:none; display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 8px 9px; text-align:center; }
+.xj-photo { flex:1 1 auto; min-height:0; border-radius:12px 12px 0 0; background:var(--xp-plum-2) center/cover no-repeat; box-shadow:none; }
+.xj-photo.xj-nophoto { background:repeating-linear-gradient(135deg,var(--xp-glow) 0 10px,var(--xp-bg2) 10px 20px); }
+.xj-photo.xj-nophoto::before { display:none; }
+.xj-photo.xj-nophoto::after { content:"\f03e"; font-family:"Font Awesome 6 Free"; font-weight:900; font-size:40px; color:rgba(var(--xp-sand-rgb),.28); position:relative; }
+.xj-add { background:transparent; color:var(--xp-plum); border:3px dashed rgba(var(--xp-plum-rgb),.36); }
+
+/* =============== v9.05 · Jukebox estilo pasaporte; subzonas compactas =============== */
+/* subzonas: una sola línea desplazable, con botón para desplegarlas */
+.xj-subbar { align-items:center; gap:6px; margin:10px 0 0; }
+.xj-back { width:34px; height:34px; border-radius:10px; font-size:14px; }
+.xj-more { flex:none; width:34px; height:34px; border-radius:10px; border:2px solid var(--xp-plum); background:transparent; color:var(--xp-plum); font-size:12px; cursor:pointer; }
+.xj-subbar .xj-chips { flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; gap:5px; align-content:center; -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent); mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent); }
+.xj-subbar .xj-chips.xj-open { flex-wrap:wrap; overflow:visible; -webkit-mask-image:none; mask-image:none; }
+.xj-subbar { align-items:flex-start; }
+.xj-subbar .xj-chip, .xj-chips.xj-cs-m .xj-chip, .xj-chips.xj-cs-s .xj-chip, .xj-chips.xj-cs-xs .xj-chip { height:26px; padding:0 9px; font-size:11px; border-width:1.5px; }
+.xj-subbar .xj-chips:not(.xj-open) { height:34px; align-items:center; }
+.xj-subbar .xj-chips.xj-open .xj-chip { height:26px; }
+
+/* ficha pasaporte */
+.xj-card { padding:0; gap:0; border-radius:20px; background:var(--xp-sand-l); color:var(--xp-plum); border:3px solid var(--xp-plum); }
+.xj-photo { margin:0 14px; flex:1 1 auto; min-height:0; border-radius:10px; border:2px solid var(--xp-plum); box-shadow:0 0 0 3px var(--xp-sand-l), 0 0 0 4.5px rgba(var(--xp-plum-rgb),.35); background:var(--xp-plum-2) center/cover no-repeat; }
+.xj-subbar .xj-more { opacity:1; display:flex; align-items:center; justify-content:center; }
+
+/* =============== v9.06 · Ficha pasaporte: color plano del tema + patrón de seguridad, mapa, bolitas con aviso =============== */
+.xj-card { position:relative; display:flex; flex-direction:column; gap:7px; padding:9px 9px 0; border:0; border-radius:22px; background:var(--xp-plum); color:var(--xp-sand-l); overflow:hidden; }
+.xj-card.xj-add { background:transparent; border:3px dashed rgba(var(--xp-plum-rgb),.36); color:var(--xp-plum); padding:10px; }
+.xj-card > :not(.xj-sec) { position:relative; z-index:1; }
+.xj-sec { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; color:rgba(var(--xp-sand-rgb),.2); }
+.xj-top { flex:none; display:flex; align-items:center; gap:8px; }
+.xj-fl { flex:none; width:60px; height:42px; border-radius:9px; background-size:cover; background-position:center; box-shadow:0 0 0 2px var(--xp-sand-l); }
+.xj-nm { flex:1; min-width:0; height:42px; display:flex; align-items:center; justify-content:center; padding:0 14px; border-radius:999px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:center; box-shadow:0 2px 0 rgba(0,0,0,.18); }
+.xj-nm span { display:block; max-width:100%; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:23px; line-height:1.05; letter-spacing:.01em; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-nm.xj-n2 span { font-size:19px; } .xj-nm.xj-n3 span { font-size:15.5px; } .xj-nm.xj-n4 span { font-size:12.5px; white-space:normal; line-height:1.05; }
+.xj-card .xj-photo { flex:1 1 auto; min-height:60px; margin:0; border-radius:12px; border:2px solid rgba(var(--xp-sand-rgb),.5); background:var(--xp-plum-2) center/cover no-repeat; box-shadow:none; overflow:hidden; }
+.xj-card .xj-photo.xj-nophoto { background:repeating-linear-gradient(135deg,var(--xp-glow) 0 10px,var(--xp-bg2) 10px 20px); }
+.xj-card .xj-edit { top:8px; left:8px; bottom:auto; }
+.xj-map { flex:none; position:relative; aspect-ratio:3 / 1; border-radius:12px; border:2px solid rgba(var(--xp-sand-rgb),.5); background:var(--xp-plum-d); overflow:hidden; display:flex; align-items:center; justify-content:center; }
+.xj-map svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.xj-map .xj-land use { fill:rgba(var(--xp-sand-rgb),.16); stroke:rgba(var(--xp-sand-rgb),.38); stroke-width:.6px; vector-effect:non-scaling-stroke; }
+.xj-map .xj-hi use { fill:var(--xp-orange); stroke:var(--xp-sand-l); stroke-width:.9px; vector-effect:non-scaling-stroke; }
+.xj-mk { fill:var(--xp-orange); stroke:var(--xp-sand-l); stroke-width:1px; vector-effect:non-scaling-stroke; }
+.xj-map-ph { color:rgba(var(--xp-sand-rgb),.3); font-size:28px; }
+.xj-rw { flex:none; display:flex; align-items:center; gap:10px; min-height:56px; }
+.xj-dots { flex:1; min-width:0; display:grid; grid-template-columns:repeat(var(--dc,5),var(--ds,30px)); gap:5px; justify-content:center; align-content:center; }
+.xj-dt { width:var(--ds,30px); height:var(--ds,30px); padding:0; border:0; border-radius:50%; cursor:pointer; background:conic-gradient(var(--xp-orange) calc(var(--p,0)*1%), rgba(var(--xp-sand-rgb),.28) 0); box-shadow:0 0 0 2px rgba(var(--xp-sand-l-rgb),.75); -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; touch-action:pan-x; }
+.xj-nodots { grid-column:1 / -1; font-size:12px; font-weight:700; opacity:.7; text-align:center; }
+.xj-pc { flex:none; min-width:66px; padding:5px 8px 4px; display:flex; flex-direction:column; align-items:center; border:2.2px solid var(--xp-orange); border-radius:12px; color:var(--xp-orange); line-height:1; }
+.xj-pc b { font-family:'Poppins',sans-serif; font-weight:800; font-size:20px; }
+.xj-pc small { margin-top:3px; font-size:7.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.xj-pc.xj-p100 { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xj-mr { flex:none; margin:0 -9px; padding:7px 10px 8px; background:var(--xp-sand-l); color:var(--xp-plum); font:700 calc((var(--xj-cw, 320px) - 20px) / 44 / .6) / 1.35 ui-monospace,Menlo,Consolas,'Courier New',monospace; letter-spacing:0; white-space:nowrap; overflow:hidden; }
+.xj-card.xj-zero .xj-photo:not(.xj-nophoto) { filter:saturate(.55) brightness(.92); }
+/* aviso con el nombre del período */
+.xj-tip { position:absolute; z-index:5; display:flex; flex-direction:column; align-items:flex-start; gap:1px; padding:7px 12px; border:0; border-radius:12px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:left; font-family:'Poppins',sans-serif; cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,.4); max-width:calc(100% - 16px); }
+.xj-tip b { font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.xj-tip span { font-size:11px; font-weight:700; color:var(--xp-orange); white-space:nowrap; }
+.xj-tip::after { content:''; position:absolute; left:50%; bottom:-5px; width:10px; height:10px; background:inherit; transform:translateX(-50%) rotate(45deg); display:none; }
+
+/* =============== v9.07 · Ficha pasaporte: foto a sangre arriba, más aire, mapa con vecinos y brújula =============== */
+.xj-card { --xj-m:clamp(16px, calc(var(--xj-cw,320px) * .06), 26px); --xj-g:clamp(10px, calc(var(--xj-h,520px) * .027), 16px); padding:0; gap:0; border-radius:22px; -webkit-user-select:none; user-select:none; -webkit-user-drag:none; }
+.xj-card.xj-add { padding:10px; gap:10px; }
+/* foto: ocupa todo el ancho arriba; el recorte redondo de la ficha le da las esquinas de arriba, las de abajo son rectas */
+.xj-card .xj-photo { flex:1 1 auto; min-height:64px; margin:0; border:0; border-radius:0; border-bottom:2px solid rgba(var(--xp-sand-rgb),.5); background:var(--xp-plum-2) center/cover no-repeat; }
+.xj-card .xj-photo.xj-nophoto { background:repeating-linear-gradient(135deg,var(--xp-glow) 0 10px,var(--xp-bg2) 10px 20px); }
+.xj-card .xj-edit { top:12px; left:12px; bottom:auto; }
+/* cuerpo: bandera+nombre · mapa · bolitas, con el patrón de seguridad detrás */
+.xj-body { position:relative; flex:none; display:flex; flex-direction:column; gap:var(--xj-g); padding:var(--xj-g) var(--xj-m); overflow:hidden; }
+.xj-body > .xj-sec { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+.xj-body > :not(.xj-sec) { position:relative; z-index:1; }
+.xj-map { aspect-ratio:auto; height:clamp(78px, calc(var(--xj-h,520px) * .2), 132px); }
+.xj-rw { min-height:0; }
+.xj-dots { justify-content:start; }
+.xj-nodots { text-align:left; }
+.xj-mr { margin:0; }
+/* mapa: retícula, vecinos, coordenadas y brújula */
+.xj-map .xj-gr { fill:none; stroke:rgba(var(--xp-sand-rgb),.14); stroke-width:.6px; vector-effect:non-scaling-stroke; }
+.xj-map .xj-nb { fill:rgba(var(--xp-sand-rgb),.8); font-family:'Inter',sans-serif; font-weight:700; letter-spacing:.08em; paint-order:stroke; stroke:var(--xp-plum-d); stroke-linejoin:round; pointer-events:none; }
+.xj-co { position:absolute; left:6px; bottom:6px; padding:3px 7px; border-radius:7px; background:rgba(var(--xp-plum-rgb),.72); color:var(--xp-sand-l); font:700 9px/1.1 ui-monospace,Menlo,Consolas,'Courier New',monospace; letter-spacing:.02em; pointer-events:none; }
+.xj-map .xj-cmp { position:absolute; inset:auto 5px 5px auto; width:34px; height:34px; pointer-events:none; overflow:visible; }
+.xj-cmp-c { fill:rgba(var(--xp-plum-rgb),.72); stroke:rgba(var(--xp-sand-rgb),.7); stroke-width:1; }
+.xj-cmp-n { fill:var(--xp-orange); } .xj-cmp-s { fill:rgba(var(--xp-sand-rgb),.85); }
+.xj-cmp-t { stroke:rgba(var(--xp-sand-rgb),.7); stroke-width:1; fill:none; }
+.xj-cmp-l { fill:var(--xp-sand-l); font:800 7px 'Poppins',sans-serif; }
+/* ratón: las bolitas no seleccionan texto ni arrastran; el aviso de pasar el ratón no intercepta el puntero (sin parpadeo) */
+.xj-dt { -webkit-user-drag:none; outline:none; transition:transform .1s; }
+@media (hover:hover) and (pointer:fine) { .xj-dt:hover { transform:scale(1.12); } }
+.xj-dt:focus-visible { box-shadow:0 0 0 2px var(--xp-sand-l), 0 0 0 4px var(--xp-orange); }
+.xj-tip-h { pointer-events:none; }
+
+.xj-sec .sg { fill:var(--xp-plum); }
+/* el aviso del período flota sobre la ficha (antes la regla de «hijos de la ficha» lo metía en el flujo y movía todo al pasar el ratón) */
+.xj-card > .xj-tip { position:absolute; z-index:5; }

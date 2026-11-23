@@ -215,6 +215,11 @@
           <div class="xe-f"><label>Períodos (nombre, orden, añadir moneda, eliminar vacío)</label>
             <div id="edit-country-periods" class="xe-plist"></div>
             <div class="xe-row" style="margin-top:6px"><button type="button" onclick="addPeriodFromCountryModal()" class="xe-btn xe-soft"><i class="fa-solid fa-plus"></i> Añadir período</button></div></div>
+          <div class="xe-f"><label>Ubicación en el mapa (opcional)</label>
+            <input type="text" id="input-edit-country-map" maxlength="120" list="map-place-list" autocomplete="off" oninput="updateMapPreview()" placeholder="Automática · ej: Sri Lanka" class="xe-in">
+            <datalist id="map-place-list"></datalist>
+            <div id="map-place-preview" style="margin-top:6px"></div>
+            <p class="xe-note" style="margin:4px 0 0">Si el mapa no reconoce el país (p. ej. «Ceilán»), escribe aquí dónde está hoy: «Sri Lanka». Vale el nombre o el código de 2 letras. Para extintos o colonias, varios separados por comas (Rusia, Ucrania, Bielorrusia…).</p></div>
           <div class="xe-f"><label>Bandera (código ISO, opcional)</label>
             <div class="xe-row">
               <input type="text" id="input-edit-country-flag" maxlength="6" placeholder="Automática · ej: es, fr, gb-sct" oninput="updateFlagPreview()" class="xe-in" style="flex:1;min-width:0">

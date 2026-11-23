@@ -122,9 +122,9 @@ function buildWorld(topo) {
     // tiny: todo el país son islas diminutas (Tonga, Fiyi, Maldivas…): se marca con un punto aunque su extensión total sea grande
     const tiny = maxRing < 7;
     // Países de islas diminutas: el punto va sobre su isla mayor (así Fiyi o Kiribati, que cruzan la línea de fecha, no caen en medio del Atlántico)
-    return { key: f.key, name: f.name, d, cx: tiny ? bigX : (bx0 + bx1) / 2, cy: tiny ? bigY : (by0 + by1) / 2, size: Math.max(bx1 - bx0, by1 - by0), tiny };
+    return { key: f.key, name: f.name, d, cx: tiny ? bigX : (bx0 + bx1) / 2, cy: tiny ? bigY : (by0 + by1) / 2, size: Math.max(bx1 - bx0, by1 - by0), tiny, bx0, bx1, by0, by1 };
   }).filter(f => isFinite(f.cx) && isFinite(f.cy));
-  return { feats: out, W, H };
+  return { feats: out, W, H, minX, minY, k };
 }
 
 function loadWorldMap() {
@@ -163,6 +163,9 @@ function mapCountsByKey(byCountry) {
   const byKey = {}, unplaced = [];
   countries.forEach(c => {
     const n = byCountry[c.id] || 0;
+    // v9.07: ubicación puesta a mano en «Editar país» (un solo país, p. ej. Ceilán → Sri Lanka)
+    const mc = String(c.mapCodes || '').split(/[\s,;]+/).filter(Boolean);
+    if (mc.length === 1 && ISO_A22NUM[mc[0].toUpperCase()]) { const e = (byKey[ISO_A22NUM[mc[0].toUpperCase()]] ||= { n: 0, ids: [] }); e.n += n; if (n) e.ids.push(c.id); return; }
     const multi = multiCountryA2(c.name);
     if (multi) {   // una entrada que equivale a varios países: todos se pintan con sus monedas
       multi.forEach(a2 => { const e = (byKey[ISO_A22NUM[a2]] ||= { n: 0, ids: [] }); e.n += n; if (n) e.ids.push(c.id); });

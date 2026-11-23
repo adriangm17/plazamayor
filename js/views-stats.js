@@ -206,12 +206,11 @@ function nvSection(sec) {
   if (!t.items) return '';
   const admin = NumistaValor.isAdmin();
   const falta = t.items - t.withValue;
-  const hint = 'Suma de la mediana de todos los precios de Numista (todos los años y estados) de cada ejemplar tuyo; si Numista tiene precios en su estado, se usa ese. Es una orientación, no una tasación.';
   const inner = t.withValue
     ? `<div class="xs-stat" style="margin-bottom:10px"><div class="xs-stat-label"><i class="fa-solid fa-chart-line"></i>Valor orientativo</div><div class="xs-stat-value">${fmtN(t.total, 0)} €</div><div class="xs-stat-sub">${t.withValue} de ${t.items} ${t.items === 1 ? 'ejemplar' : 'ejemplares'} con valor${falta ? ` · ${falta} sin valor` : ''}</div></div>`
     : `<p class="xs-hint">Todavía no hay valores calculados.</p>`;
   const btn = admin ? `<button onclick="NumistaValor.startBatch(true)" class="xs-btn2 w-full"><i class="fa-solid fa-calculator mr-1"></i>Calcular los que faltan (mis monedas)</button>` : '';
-  return sec('07', 'Valor orientativo', hint, inner + btn);
+  return sec('07', 'Valor orientativo', '', inner + btn);
 }
 
 
@@ -234,7 +233,7 @@ function recentHTML(sec, s) {
   coins.forEach(c => (Array.isArray(c.items) ? c.items : []).forEach(it => { if (it && it.at && String(it.grade || '').trim()) rows.push({ c, it }); }));
   rows.sort((a, b) => b.it.at - a.it.at);
   const top = rows.slice(0, 5);
-  if (!top.length) return sec('02', 'Últimas incorporaciones', '', '<p class="xs-hint">Aquí aparecerán tus últimas 5 monedas conseguidas. Se empieza a registrar la fecha con esta versión: marca el estado de una moneda y saldrá.</p>');
+  if (!top.length) return sec('02', 'Últimas incorporaciones', '', '<p class="xs-hint">Aún no hay incorporaciones recientes.</p>');
   const ago = t => { const d = Math.floor((Date.now() - t) / 86400000); return d <= 0 ? 'hoy' : d === 1 ? 'ayer' : d < 30 ? `hace ${d} d` : d < 365 ? `hace ${Math.floor(d / 30)} m` : `hace ${Math.floor(d / 365)} a`; };
   const html = top.map(({ c, it }, i) => {
     const co = countryById(c.countryId), p = periodById(c.periodId);
@@ -248,7 +247,7 @@ function recentHTML(sec, s) {
         <div class="xs-rec-ctx"><div class="xs-track" style="height:5px"><i style="width:${Math.max(2, pc)}%"></i></div><span>${got}/${cs.length} de ${esc(co ? prettyName(co.name) : 'su país')}</span></div>
       </div></div>`;
   }).join('');
-  return sec('02', 'Últimas incorporaciones', 'Las 5 monedas que has marcado más recientemente, con lo que llevas de su país.', `<div class="xs-recent">${html}</div>`);
+  return sec('02', 'Últimas incorporaciones', '', `<div class="xs-recent">${html}</div>`);
 }
 
 function renderEstadisticas() {
@@ -261,7 +260,6 @@ function renderEstadisticas() {
   const errSection = nErr ? `
     <section class="xs-sec">
       <div class="xp-head" style="cursor:default"><span class="xp-num">08</span><span class="xp-title" style="font-size:20px">Auditoría del catálogo</span></div>
-      <p class="xs-hint">Fichas con datos por completar: fotos, KM#, años, enlaces de Numista/Ucoin o estado TBD. Toca una categoría para ver las fichas.</p>
       <div class="xs-panel">
         <button onclick="pickStatsErrors('all')" class="xs-warn w-full flex items-center justify-between gap-2 text-left" style="margin:0 0 6px">
           <span><i class="fa-solid fa-triangle-exclamation mr-1"></i>${nErr} ${nErr === 1 ? 'ficha con algún problema' : 'fichas con algún problema'}</span>
@@ -290,7 +288,6 @@ function renderEstadisticas() {
   const sec = (num, title, hint, inner) => `
     <section class="xs-sec">
       <div class="xp-head" style="cursor:default"><span class="xp-num">${num}</span><span class="xp-title" style="font-size:20px">${title}</span></div>
-      ${hint ? `<p class="xs-hint">${hint}</p>` : ''}
       <div class="xs-panel">${inner}</div>
     </section>`;
   const rank = Object.entries(s.byCountry).map(([id, n]) => ({ c: countryById(id), n })).filter(x => x.c)
@@ -299,15 +296,14 @@ function renderEstadisticas() {
       <div class="xs-tile-n">${s.grades[g] || 0}</div>
       <div class="xs-tile-l">${g}</div>
     </button>`;
+  // v9.04: una línea por tipo: «Conmemorativas 41/111» (obtenidas/registradas); al tocarla se abre la página con todas las fichas del tipo
   const typeRows = COIN_TYPES.filter(t => t !== DEFAULT_COIN_TYPE).map(t => {
     const all = coins.filter(c => coinType(c) === t), n = all.length, have = all.filter(c => c.acquired).length;
-    return `<div class="xs-type">
+    return `<button type="button" ${n ? `onclick="pickStatsType('${jsArg(t)}', false)"` : 'disabled'} class="xs-type" aria-label="${esc(t)}: ${have} de ${n}">
       <span class="xs-typechip" style="${coinTypeChipStyle(t)}">${esc(t)}</span>
-      <div class="xs-type-btns">
-        <button ${n ? `onclick="pickStatsType('${jsArg(t)}', false)"` : 'disabled'} class="xs-count xs-reg" title="${n ? 'Ver todas las fichas registradas de este tipo' : 'Sin fichas'}" aria-label="${esc(t)}: ${n} registradas">${n}</button>
-        <button ${have ? `onclick="pickStatsType('${jsArg(t)}', true)"` : 'disabled'} class="xs-count xs-got" title="${have ? 'Ver las fichas obtenidas de este tipo' : 'Ninguna obtenida'}" aria-label="${esc(t)}: ${have} obtenidas">${have}</button>
-      </div>
-    </div>`;
+      <b class="xs-type-n">${have}/${n}</b>
+      <i class="fa-solid fa-chevron-right xs-type-go"></i>
+    </button>`;
   }).join('');
   const nyName = x => (countryById(x.c.countryId) || {}).name || '', nyOrd = x => (periodById(x.c.periodId) || {}).order ?? 0;
   const noYearRows = Object.values(s.noYearBy)
@@ -341,17 +337,16 @@ function renderEstadisticas() {
     ${s.silverNoWeight ? `<p class="xs-warn"><i class="fa-solid fa-circle-info mr-1"></i>${s.silverNoWeight} ${s.silverNoWeight === 1 ? 'moneda de plata no tiene' : 'monedas de plata no tienen'} peso indicado y no se suma${s.silverNoWeight === 1 ? '' : 'n'}.</p>` : ''}
     ${passportHTML(sec, s)}
     ${recentHTML(sec, s)}
-    ${sec('03', 'Estado de conservación', 'Toca un estado para ver todas las fichas que tienes en él.', `
+    ${sec('03', 'Estado de conservación', '', `
       <div class="grid grid-cols-3 gap-2">${['UNC', 'AU', 'XF'].map(tile).join('')}</div>
       <div class="grid grid-cols-3 gap-2 mt-2">${['VF', 'F', 'TBD'].map(tile).join('')}</div>
       ${s.noGrade ? `<p class="xs-hint" style="margin-top:10px">${s.noGrade} ${s.noGrade === 1 ? 'ejemplar sin estado indicado' : 'ejemplares sin estado indicado'}.</p>` : ''}`)}
-    ${sec('04', 'Tipo de moneda', 'Las circulantes no se cuentan. Toca <span class="xs-dotkey xs-reg"></span> las registradas o <span class="xs-dotkey xs-got"></span> las obtenidas para verlas.', `<div class="xs-types">${typeRows}</div>`)
-    }
-    ${sec('05', 'Mapa de la colección', 'Cuanto más oscuro, más monedas. Pellizca (o usa + / −) para ampliar y arrastra para moverte.', `<div id="stats-map-box">${statsMapInner()}</div>`)}
-    ${sec('06', 'Ranking de países', `${statsRankAll ? `Todos (${rank.length})` : `Top ${Math.min(10, rank.length)}`} · monedas`, `
+    ${sec('04', 'Tipo de moneda', '', `<div class="xs-types">${typeRows}</div>`)}
+    ${sec('05', 'Mapa de la colección', '', `<div id="stats-map-box">${statsMapInner()}</div>`)}
+    ${sec('06', 'Ranking de países', '', `
       <div class="space-y-3">${rankHTML}</div>
       ${rank.length > 10 ? `<button onclick="toggleStatsRank()" class="xs-btn2 w-full" style="margin-top:14px"><i class="fa-solid fa-chevron-${statsRankAll ? 'up' : 'down'} mr-1"></i>${statsRankAll ? 'Ver solo el top 10' : `Ver todos los países (${rank.length})`}</button>` : ''}`)}
-    ${sec('07', 'Monedas por año', `Arrastra sobre el gráfico para ampliar. ${statsRange ? 'Pulsa «Restablecer» (o clic derecho) para volver.' : ''}`, `
+    ${sec('07', 'Monedas por año', '', `
       ${statsRange ? `<div class="flex justify-end mb-1"><button onclick="resetStatsZoom()" class="xs-btn2"><i class="fa-solid fa-magnifying-glass-minus mr-1"></i>Restablecer</button></div>` : ''}
       ${statsChartHTML(s.byYear)}
       ${s.noYear ? `

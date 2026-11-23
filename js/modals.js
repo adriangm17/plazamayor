@@ -1,12 +1,66 @@
 /* ===== VENTANAS: país/período, ficha, crear/editar, CSV ===== */
 
 /* ----- Editar país ----- */
+
+/* v9.07: ubicación en el mapa por nombre (o código). Se guarda como códigos ISO en country.mapCodes */
+const MAP_ALIASES = { 'ceilan': 'LK', 'ceylon': 'LK', 'siam': 'TH', 'persia': 'IR', 'zaire': 'CD', 'congo belga': 'CD', 'dahomey': 'BJ', 'alto volta': 'BF', 'abisinia': 'ET',
+  'bechuanalandia': 'BW', 'tanganica': 'TZ', 'costa de oro': 'GH', 'costa del oro': 'GH', 'guinea espanola': 'GQ', 'sahara espanol': 'EH', 'rodesia': 'ZW', 'birmania': 'MM', 'myanmar': 'MM',
+  'holanda': 'NL', 'paises bajos': 'NL', 'gran bretana': 'GB', 'inglaterra': 'GB', 'escocia': 'GB', 'gales': 'GB', 'estados unidos': 'US', 'eeuu': 'US', 'usa': 'US',
+  'republica checa': 'CZ', 'chequia': 'CZ', 'costa de marfil': 'CI', 'swazilandia': 'SZ', 'esuatini': 'SZ', 'macedonia': 'MK', 'macedonia del norte': 'MK', 'turquia': 'TR',
+  'timor oriental': 'TL', 'vaticano': 'VA', 'ciudad del vaticano': 'VA', 'corea del sur': 'KR', 'corea del norte': 'KP', 'rusia': 'RU', 'nuevas hebridas': 'VU', 'formosa': 'TW',
+  'malaya': 'MY', 'cabo verde': 'CV', 'islas feroe': 'FO', 'kampuchea': 'KH', 'cote d ivoire': 'CI', 'republica del congo': 'CG', 'congo brazzaville': 'CG', 'congo kinshasa': 'CD' };
+let _mapIndex = null;
+function mapPlaceIndex() {
+  if (_mapIndex) return _mapIndex;
+  const idx = {}, list = [];
+  let dnEs = null, dnEn = null;
+  try { dnEs = new Intl.DisplayNames(['es'], { type: 'region' }); dnEn = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) {}
+  Object.keys(ISO_A22NUM).forEach(a2 => {
+    let es = ''; try { es = dnEs ? dnEs.of(a2) : ''; } catch (e) {}
+    if (!es || es === a2) return;
+    list.push({ a2, name: es });
+    let en = ''; try { en = dnEn ? dnEn.of(a2) : ''; } catch (e) {}
+    [es, en].forEach(n => { if (!n || n === a2) return; idx[flagNorm(n)] = a2; const m = n.match(/^(.*?)\s*\((.*?)\)/); if (m) { idx[flagNorm(m[1])] = a2; idx[flagNorm(m[2])] = a2; } });
+  });
+  Object.keys(MAP_ALIASES).forEach(k => { idx[flagNorm(k)] = MAP_ALIASES[k]; });
+  list.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  return (_mapIndex = { idx, list });
+}
+function resolveMapPlace(tok) {
+  const t = String(tok).trim(); if (!t) return '';
+  if (/^[a-z]{2}$/i.test(t) && ISO_A22NUM[t.toUpperCase()]) return t.toUpperCase();
+  const n = flagNorm(t), hit = mapPlaceIndex().idx[n];
+  if (hit) return hit;
+  const f = typeof flagLookup === 'function' ? flagLookup(t) : null;
+  if (f && f.code) { const a = f.code.slice(0, 2).toUpperCase(); if (ISO_A22NUM[a]) return a; }
+  return '';
+}
+function mapPlaceName(a2) { const e = mapPlaceIndex().list.find(x => x.a2 === a2); return e ? e.name : a2; }
+function parseMapPlaces(str) {
+  const v = String(str || '').trim(); if (!v) return { items: [] };
+  const toks = /[,;]/.test(v) ? v.split(/[,;]+/) : (v.split(/\s+/).every(w => /^[a-z]{2}$/i.test(w)) ? v.split(/\s+/) : [v]);
+  return { items: toks.map(t => t.trim()).filter(Boolean).map(tok => ({ tok, a2: resolveMapPlace(tok) })) };
+}
+function fillMapPlaceList() {
+  const dl = document.getElementById('map-place-list');
+  if (dl && !dl.options.length) dl.innerHTML = mapPlaceIndex().list.map(e => `<option value="${esc(e.name)}"></option>`).join('');
+}
+function updateMapPreview() {
+  const box = document.getElementById('map-place-preview'); if (!box) return;
+  const r = parseMapPlaces(document.getElementById('input-edit-country-map').value);
+  box.innerHTML = r.items.map(it => it.a2
+    ? `<span style="display:inline-block;margin:2px 4px 0 0;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(127,127,127,.2)">✓ ${esc(mapPlaceName(it.a2))}</span>`
+    : `<span style="display:inline-block;margin:2px 4px 0 0;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(229,72,77,.18);color:#e5484d">? ${esc(it.tok)}</span>`).join('');
+}
 function openEditCountryModal() {
   const country = countryById(currentCountryId);
   if (!country) return;
   document.getElementById('input-edit-country-name').value = country.name;
   fillZoneSelect(country.continent || '');
   document.getElementById('input-edit-country-flag').value = country.flag || '';
+  fillMapPlaceList();
+  document.getElementById('input-edit-country-map').value = String(country.mapCodes || '').split(',').filter(Boolean).map(a => mapPlaceName(a.toUpperCase())).join(', ');
+  updateMapPreview();
   pendingFlagImage = undefined;
   updateFlagPreview();
   pendingCardPhoto = undefined;
@@ -270,8 +324,13 @@ function saveEditedCountryName() {
 
   const flagVal = document.getElementById('input-edit-country-flag').value.trim().toLowerCase();
   if (flagVal && !FLAG_CODE_RE.test(flagVal)) { alert('Código de bandera no válido. Usa el código ISO de 2 letras (es, fr, de…) o déjalo vacío para que sea automática.'); return; }
+  const mp = parseMapPlaces(document.getElementById('input-edit-country-map').value);
+  const badPl = mp.items.filter(it => !it.a2);
+  if (badPl.length) { alert('Ubicación en el mapa: no reconozco «' + badPl.map(it => it.tok).join('», «') + '». Prueba con el nombre actual del país (p. ej. Sri Lanka) o con su código de 2 letras; o déjalo vacío para que sea automática.'); return; }
+  const mapVal = [...new Set(mp.items.map(it => it.a2.toLowerCase()))];
   if (!applyPendingPeriodNames()) return;   // v7.08: nombres de período editados en esta ventana
   if (flagVal) country.flag = flagVal; else delete country.flag;
+  if (mapVal.length) country.mapCodes = mapVal.join(','); else delete country.mapCodes;
   if (pendingFlagImage !== undefined) {
     if (pendingFlagImage) country.flagImage = pendingFlagImage; else delete country.flagImage;
     pendingFlagImage = undefined;
