@@ -615,14 +615,19 @@ function jukeFillMaps(cards, best) {
 }
 
 // --- Bolitas: tamaño y filas según cuántos períodos haya ---
+// v9.18: medidas de la ficha nueva (mismas fórmulas que el CSS: --L, --P, --Hp…). Columna izquierda = bandera + bolitas; derecha = pasaporte (proporción 0,705).
+function jukeMetrics() {
+  const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460), Wi = cw - 12;
+  const L = (Wi - 13.67) / 1.6849, P = Wi - 10 - L, Hp = P / 0.705, D = Hp - L / 1.75 - 10;
+  return { L, P, Hp, D };
+}
 function jukeDotsLayout(n) {
-  const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460);
-  const mg = Math.max(12, Math.min(18, cw * .045)), W = cw - 2 * mg, H = 66, g = 9;
+  const m = jukeMetrics(), W = m.L, H = m.D, g = 8;
   let best = null;
   for (let rows = 1; rows <= 3; rows++) {
     const cols = Math.ceil(n / rows), s = Math.floor(Math.min(40, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
     if (!best || s > best.s + 3) best = { s, cols, rows };   // se prefiere menos filas salvo que las bolitas ganen bastante
-    if (s >= 20) { best = { s, cols, rows }; break; }   // v9.08: se llena toda la fila hasta el margen izquierdo antes de pasar a dos filas
+    if (s >= 20) { best = { s, cols, rows }; break; }   // se llena toda la fila hasta el margen izquierdo antes de pasar a dos filas
   }
   return best;
 }
@@ -630,24 +635,45 @@ function jukeDotsLayout(n) {
 function jukeCardHtml(c, zone, i) {
   const s = countryStats(c), name = prettyName(c.name), id = jsArg(c.id);
   const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
+  const pass = (typeof c.passport === 'string' && c.passport.startsWith('data:image/')) ? c.passport : '';
   const pers = periodsOfCountry(c.id), eras = pers.length;
-  const mapImg = (typeof c.mapImage === 'string' && c.mapImage.startsWith('data:image/')) ? c.mapImage : '';
   const lay = jukeDotsLayout(Math.max(1, Math.min(eras, 24)));
   const dots = pers.slice(0, 24).map(p => { const pc = periodPctOf(p); return `<button type="button" class="xj-dt" data-pid="${esc(p.id)}" style="--p:${pc}" aria-label="${esc(periodDisplayName(p))}: ${pc}%"></button>`; }).join('');
-  const nCoins = coinsOfCountry(c.id).length, z = zone === UNCLASSIFIED ? 'SIN_CLASIFICAR' : mrzTxt(zone);
-  const pad = t => (t + '<'.repeat(44)).slice(0, 44), n3 = n => String(Math.min(999, n)).padStart(3, '0');
-  const l1 = pad(`P<${jukeCodes()[c.id] || 'XXX'}<${z}`), l2 = pad(`${n3(eras)}<PER${'<'.repeat(6)}${n3(nCoins)}<MON`);
   const nl = name.length;
   return `<div class="xj-card${s.a === 0 ? ' xj-zero' : ''}" data-cid="${esc(c.id)}" data-i="${i}" data-zone="${esc(zone)}" onclick="jukeOpen('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${s.t ? s.pct + '% completado' : 'sin monedas'}">
     <div class="xj-photo ${photo ? '' : 'xj-nophoto'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
     <div class="xj-body">
-      <div class="xj-top"><span class="xj-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><div class="xj-nm ${nl > 22 ? 'xj-n4' : nl > 16 ? 'xj-n3' : nl > 11 ? 'xj-n2' : ''}"><span>${esc(name)}</span></div></div>
-      <div class="xj-rw">
-        <div class="xj-dots" style="--ds:${lay.s}px;--dc:${lay.cols};--dg:9px">${dots || '<span class="xj-nodots">Sin períodos</span>'}</div>
+      <div class="xj-pill ${nl > 22 ? 'xj-n4' : nl > 16 ? 'xj-n3' : nl > 11 ? 'xj-n2' : ''}"><span>${esc(name)}</span></div>
+      <div class="xj-grid">
+        <div class="xj-lc">
+          <div class="xj-flag2" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></div>
+          <div class="xj-dots" style="--ds:${lay.s}px;--dc:${lay.cols};--dg:8px">${dots || '<span class="xj-nodots">Sin períodos</span>'}</div>
+        </div>
+        <div class="xj-pass${pass ? '' : ' xj-pass-0'}" onclick="event.stopPropagation();jukeFlip(this)" ${pass ? `style="background-image:url('${esc(pass)}')"` : ''}>${pass ? '' : '<i class="fa-solid fa-passport"></i><span>Pasaporte</span>'}</div>
       </div>
     </div>
-    <div class="xj-mr" aria-hidden="true">${esc(l1)}<br>${esc(l2)}</div>
+    ${jukeBackHtml(c, name, pers)}
   </div>`;
+}
+// v9.18: reverso de la ficha, «hoja de pasaporte»: cabecera con bandera y nombre + todas las épocas con sus años y su línea de progreso
+function jukeBackHtml(c, name, pers) {
+  const rows = pers.map(p => {
+    const t = periodTitleParts(p), pc = periodPctOf(p);
+    return `<div class="xj-pr" onclick="event.stopPropagation();jumpToPeriod('${jsArg(p.id)}')" role="button" tabindex="0"><div class="xj-pr-t"><b>${esc(t.name)}</b><span>${esc(t.date || '—')}</span><em>${pc}%</em></div><div class="xj-pr-bar"><i style="width:${pc}%"></i></div></div>`;
+  }).join('');
+  return `<div class="xj-rev" onclick="event.stopPropagation();jukeFlip(this)" aria-hidden="true">
+    <div class="xj-bk-h"><span class="xj-bk-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><b>${esc(name)}</b></div>
+    <div class="xj-bk-l">${rows || '<p class="xj-bk-0">Sin períodos</p>'}</div>
+    <div class="xj-bk-f">Toca fuera de una época para volver</div>
+  </div>`;
+}
+let _jukeFlipping = false;
+function jukeFlip(el) {
+  const card = el.closest('.xj-card'); if (!card || _jukeFlipping) return;
+  _jukeFlipping = true; card.classList.add('xj-fl-a');
+  setTimeout(() => { card.classList.toggle('xj-flipped'); const b = card.querySelector(".xj-rev"); if (b) b.setAttribute('aria-hidden', card.classList.contains('xj-flipped') ? 'false' : 'true'); card.classList.remove('xj-fl-a'); card.classList.add('xj-fl-b'); }, 170);
+  setTimeout(() => { card.classList.remove('xj-fl-b'); _jukeFlipping = false; }, 340);
+  if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {}
 }
 
 // --- Aviso con el nombre del período (ratón: al pasar por encima · móvil: al mantener pulsado); al tocarlo se va a ese período ---
@@ -690,16 +716,32 @@ function jukeBindTips(track) {
   document.addEventListener('pointerdown', e => { if (_jukeTip && !e.target.closest('.xj-tip, .xj-dt')) jukeTipHide(); });
 }
 
+// v9.17: el jukebox solo muestra las fichas de UNA zona de UN continente; se cambia con las dos barras de debajo.
+function jukeNav() {
+  const groups = {}; sortedCountries().forEach(c => { (groups[continentOf(c)] ||= []).push(c); });
+  const zonesAll = applyZoneOrder([...allZones(), UNCLASSIFIED]).filter(k => (groups[k] || []).length);
+  const conts = [], zmap = {};
+  zonesAll.forEach(z => { const ct = railContOf(z); if (!zmap[ct]) { zmap[ct] = []; conts.push(ct); } zmap[ct].push(z); });
+  return { groups, conts, zmap };
+}
+function jukeResolveSel(nav) {
+  const { conts, zmap } = nav;
+  const c = exploreJukeId && countryById(exploreJukeId);
+  if (c) {   // el país que se está mirando manda (entrada desde el Álbum, «atrás», país recién creado…)
+    const z = continentOf(c), ct = railContOf(z);
+    if (zmap[ct] && zmap[ct].includes(z)) { exploreContinent = ct; exploreZone = z; }
+  }
+  if (!zmap[exploreContinent]) { exploreContinent = conts[0] || ''; exploreZone = ''; }
+  if (!zmap[exploreContinent] || !zmap[exploreContinent].includes(exploreZone)) exploreZone = (zmap[exploreContinent] || [])[0] || '';
+}
 function renderJukebox() {
   _jukeCodes = null;
-  const { items, chipZones, groups } = jukeData();
-  const total = chipZones.reduce((m, z) => m + (groups[z] || []).length, 0);
+  const nav = jukeNav();
   const admin = typeof catalogEditAllowed === 'function' && catalogEditAllowed();
-  if (!items.length) {
-    const q = String(exploreSearch || '').trim();
-    return `<div class="xp-empty-msg">${q ? `Nada coincide con «${esc(q)}».` : exploreContinent ? `Aún no hay países de ${esc(exploreContinent)}.` : 'Aún no hay países.'}</div>`;
-  }
-  const rail = jukeRailHtml(items);
+  if (!nav.conts.length) return `<div class="xp-empty-msg">Aún no hay países.</div>`;
+  jukeResolveSel(nav);
+  const items = (nav.groups[exploreZone] || []).map(c => ({ c, zone: exploreZone }));
+  const rail = jukeBarsHtml(nav);
   const cards = items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')
     + (admin ? `<button type="button" class="xj-card xj-add" onclick="toggleAddCountryRow()"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir país</button>` : '');
   return `<div class="xj-stage"><button type="button" class="xj-arrow xj-prev" onclick="jukeStep(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="xj-arrow xj-next" onclick="jukeStep(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><div class="xj-track" id="xj-track">${cards}</div></div>${rail}`;
@@ -707,50 +749,43 @@ function renderJukebox() {
 /* ===== v9.10 · barra de zonas: una sola línea gruesa que se desliza por continentes y zonas; cambia de color según el continente ===== */
 const RAIL_COLORS = { 'Europa': '#2f5fa7', 'América': '#2f7d4f', 'Asia': '#b3453d', 'África': '#c47a1c', 'Oceanía': '#1e8a98', 'Extintos': '#6d4c93', [UNCLASSIFIED]: '#5d5766' };
 function railContOf(z) { return z === UNCLASSIFIED ? UNCLASSIFIED : zoneContinent(z); }
-function jukeRailHtml(items) {
-  // v9.15: un segmento por zona, todos del mismo tamaño; solo se salta entre zonas (color según el continente)
-  const zones = []; items.forEach(x => { if (!zones.includes(x.zone)) zones.push(x.zone); });
-  const segs = zones.map((z, k) => { const ct = railContOf(z), prev = k ? railContOf(zones[k - 1]) : ct; return `<div class="xj-seg${k && prev !== ct ? ' xj-seg-c' : ''}" style="background:${RAIL_COLORS[ct] || '#5d5766'}" data-z="${esc(z)}" data-c="${esc(ct)}"></div>`; }).join('');
-  return `<div class="xj-rail" id="xj-rail"><div class="xj-bub" id="xj-bub"><b id="xj-rz"></b><small id="xj-rc"></small></div><div class="xj-segs">${segs}</div><div class="xj-thumb" id="xj-thumb"></div></div>`;
+// Dos «burbujas» bajo la ficha, una encima de otra: continente y zonas de ese continente. Se deslizan de lado a lado (como la barra de letras del índice).
+function jukeBarsHtml(nav) {
+  const mk = (kind, list, cur, label, count, color) => `<div class="xj-sw xj-sw-${kind}" data-kind="${kind}">${list.map((v, i) => `<div class="xj-si" data-v="${esc(v)}" style="background:${color(v)}">${i > 0 ? '<i class="xj-sh xj-sh-l">‹</i>' : ''}<b>${esc(label(v))}</b><small>${count(v)}</small>${i < list.length - 1 ? '<i class="xj-sh xj-sh-r">›</i>' : ''}</div>`).join('')}</div>`;
+  const n = z => (nav.groups[z] || []).length, nTxt = k => k + (k === 1 ? ' país' : ' países');
+  const contCount = ct => nTxt(nav.zmap[ct].reduce((t, z) => t + n(z), 0));
+  const zs = nav.zmap[exploreContinent] || [];
+  return `<div class="xj-bars" id="xj-bars">`
+    + mk('c', nav.conts, exploreContinent, v => v, contCount, v => RAIL_COLORS[v] || '#5d5766')
+    + mk('z', zs, exploreZone, v => v === exploreContinent ? 'General' : v, v => nTxt(n(v)), () => RAIL_COLORS[exploreContinent] || '#5d5766')
+    + `</div>`;
 }
-// v9.13: se arrastra el dedo por la barra (como las letras del índice) y la ficha salta al instante; el globo muestra zona y continente
+function jukeSetContinent(ct) { if (ct === exploreContinent) return; exploreContinent = ct; exploreZone = ''; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {} renderExplorar(); }
+function jukeSetZone(z) { if (z === exploreZone) return; exploreZone = z; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} renderExplorar(); }
 function jukeRailInit(track, cards, getBest) {
-  const rail = document.getElementById('xj-rail'); if (!rail) return null;
-  const real = cards.filter(c => !c.classList.contains('xj-add')); if (!real.length) return null;
-  const bub = document.getElementById('xj-bub'), thumb = document.getElementById('xj-thumb');
-  const nameEl = document.getElementById('xj-rz'), subEl = document.getElementById('xj-rc');
-  // zonas en orden y la primera ficha de cada una
-  const zones = [], firstOf = [], zoneIdx = real.map(c => { const z = c.dataset.zone; let k = zones.indexOf(z); if (k < 0) { k = zones.length; zones.push(z); firstOf.push(real.indexOf(c)); } return k; });
-  const Z = zones.length, contOf = zones.map(railContOf);
-  let curZ = -1, scrubbing = false, endT = 0;
-  const paint = (k, x) => {
-    const z = zones[k], ct = contOf[k];
-    thumb.style.left = ((k + .5) / Z * 100) + '%';
-    if (k !== curZ) { curZ = k; nameEl.textContent = z; subEl.textContent = z === ct ? '' : ct; bub.style.background = RAIL_COLORS[ct] || '#5d5766'; }
-    const r = rail.getBoundingClientRect(), bw = bub.offsetWidth || 120, cx = x == null ? r.left + (k + .5) / Z * r.width : x;
-    bub.style.left = Math.max(bw / 2, Math.min(r.width - bw / 2, cx - r.left)) + 'px';
-  };
-  const zoneAt = x => { const r = rail.getBoundingClientRect(); return Math.max(0, Math.min(Z - 1, Math.floor((x - r.left) / r.width * Z))); };
-  const clack = () => {   // «tope» al entrar en un continente nuevo: vibración corta + el globo da un golpecito
-    if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {}
-    bub.classList.remove('xj-pop'); void bub.offsetWidth; bub.classList.add('xj-pop');
-  };
-  const goTo = (k, x) => {
-    const prev = curZ;
-    if (prev >= 0 && k !== prev && contOf[k] !== contOf[prev]) clack();
-    paint(k, x);
-    const t = real[firstOf[k]];
-    if (zoneIdx[getBest()] === k) return;   // ya estás en esa zona: no se mueve
-    track.scrollTo({ left: t.offsetLeft - (track.clientWidth - t.offsetWidth) / 2, behavior: 'instant' });
-  };
-  rail.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button !== 0) return; scrubbing = true; clearTimeout(endT); try { rail.setPointerCapture(e.pointerId); } catch (er) {} rail.classList.add('xj-rail-on'); goTo(zoneAt(e.clientX), e.clientX); e.preventDefault(); });
-  rail.addEventListener('pointermove', e => { if (scrubbing) goTo(zoneAt(e.clientX), e.clientX); });
-  const end = () => { rail.classList.remove('xj-rail-on'); clearTimeout(endT); endT = setTimeout(() => { scrubbing = false; }, 300); };
-  rail.addEventListener('pointerup', end); rail.addEventListener('pointercancel', end);
-  const sync = cid => { if (scrubbing) return; const i = real.findIndex(c => c.dataset.cid === cid); if (i >= 0) paint(zoneIdx[i], null); };
-  const sc = real.findIndex(c => c.dataset.cid === exploreJukeId);
-  paint(zoneIdx[sc >= 0 ? sc : 0], null);
-  return sync;
+  document.querySelectorAll('#xj-bars .xj-sw').forEach(sw => {
+    const items = [...sw.querySelectorAll('.xj-si')]; if (!items.length) return;
+    const cur = sw.dataset.kind === 'c' ? exploreContinent : exploreZone;
+    const idx = Math.max(0, items.findIndex(x => x.dataset.v === cur));
+    sw.style.scrollBehavior = 'auto'; sw.scrollLeft = idx * sw.clientWidth;
+    let t = 0, drag = null;
+    const settle = () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (drag) return;
+        const k = Math.max(0, Math.min(items.length - 1, Math.round(sw.scrollLeft / (sw.clientWidth || 1))));
+        const v = items[k].dataset.v, now = sw.dataset.kind === 'c' ? exploreContinent : exploreZone;
+        if (v !== now) (sw.dataset.kind === 'c' ? jukeSetContinent : jukeSetZone)(v);
+      }, 140);
+    };
+    sw.addEventListener('scroll', settle, { passive: true });
+    sw.addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); sw.scrollBy({ left: Math.sign(e.deltaY) * sw.clientWidth, behavior: 'smooth' }); } }, { passive: false });
+    // ratón: arrastrar
+    sw.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0) return; drag = { x: e.clientX, s: sw.scrollLeft, m: false }; sw.style.scrollSnapType = 'none'; });
+    window.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x; if (Math.abs(dx) > 4) drag.m = true; if (drag.m) sw.scrollLeft = drag.s - dx; });
+    window.addEventListener('pointerup', () => { if (!drag) return; const d = drag; drag = null; sw.style.scrollSnapType = ''; if (d.m) { sw.style.scrollBehavior = 'smooth'; sw.scrollTo({ left: Math.round(sw.scrollLeft / sw.clientWidth) * sw.clientWidth }); settle(); } });
+  });
+  return null;
 }
 let _jukeEditHold = false;
 let exploreZonesOpen = false;   // v9.05: subtipos en una sola línea; el botón los despliega todos
@@ -782,7 +817,7 @@ function jukeInit(box) {
     const W = track.clientWidth; if (!W) return;
     const cw = Math.min(Math.round(W * 0.9), 460);
     const top = track.getBoundingClientRect().top, nav = (document.querySelector('.xn-bar') || { offsetHeight: 72 }).offsetHeight || 72;
-    const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 70));
+    const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 114));
     track.style.setProperty('--xj-cw', cw + 'px'); track.style.setProperty('--xj-h', h + 'px');
     track.style.paddingLeft = track.style.paddingRight = Math.max(0, Math.round((W - cw) / 2)) + 'px';
   };

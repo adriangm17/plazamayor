@@ -209,3 +209,9 @@ v9.14: Explorar: tope («clack» con vibración) al entrar en un continente nuev
 v9.15: Explorar: la barra inferior tiene un segmento por zona geográfica, todos del mismo tamaño, y al arrastrar solo salta entre zonas (a la primera ficha de la zona; «tope» al cambiar de continente). El patrón de fondo de las fichas ocupa toda la ficha (también alrededor de la foto), no solo la parte bajo ella. Cache sw: plaza-mayor-v161.
 
 v9.16: Explorar: fuera el mapa de las fichas (la foto ocupa el espacio libre, pendiente de decidir qué más poner); fondo de la ficha plano (sin patrones de pasaporte); bolitas de período algo más grandes (hasta 40 px) y más separadas (9 px). Cache sw: plaza-mayor-v162.
+
+v9.17: Explorar: bajo la ficha hay dos burbujas, una encima de otra: continente (arriba) y zonas del continente elegido (abajo); se deslizan de lado a lado y cada continente tiene su color; las fichas son solo las de la zona y continente elegidos; al entrar desde el Álbum se muestra su país con su continente y zona. Cache sw: plaza-mayor-v163.
+
+v9.18: Explorar: ficha rediseñada: foto (esquinas redondeadas arriba, rectas abajo), nombre en píldora, bandera grande con las bolitas debajo y, a la derecha, una imagen de pasaporte (proporción vertical) que se sube en Editar país con encuadre sin márgenes. Se quitan los códigos MRZ de abajo. Cache sw: plaza-mayor-v164.
+
+v9.19: Explorar: al tocar el pasaporte la ficha gira y muestra el reverso tipo hoja de pasaporte (bandera y nombre arriba, todas las épocas con sus años y una línea de progreso; tocar una época lleva a ella, tocar fuera vuelve a girar). Cache sw: plaza-mayor-v165.

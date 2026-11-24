@@ -64,7 +64,7 @@ function openEditCountryModal() {
   pendingFlagImage = undefined;
   updateFlagPreview();
   pendingCardPhoto = undefined;
-  pendingMapImage = undefined; updateMapImagePreview(country.mapImage || '');
+  pendingPassport = undefined; loadPassEditor(country.passport || '');
   loadCardPhotoEditor(country.photo || '');
   updateCardPhotoPreview();
   updateCountryMoveUI();
@@ -182,18 +182,66 @@ function applyPendingPeriodNames() {
 }
 
 /* ----- Tarjeta del país en Explorar: foto ----- */
-let pendingMapImage;                       // v9.08: imagen del mapa de la ficha (undefined = sin cambios, '' = quitar)
-function updateMapImagePreview(src) {
-  const b = document.getElementById('map-image-preview'); if (!b) return;
-  b.style.backgroundImage = src ? `url('${src}')` : '';
-  b.classList.toggle('xp-nophoto', !src);
-  const e = document.getElementById('map-image-empty'); if (e) e.style.display = src ? 'none' : '';
+let pendingPassport;                       // v9.18: imagen del pasaporte (undefined = sin cambios, '' = quitar, 'data:…' = nueva)
+// Editor del pasaporte: recuadro vertical con proporción de pasaporte (0,705); se arrastra y se hace zoom, se recorta lo que se ve (sin márgenes)
+const PASS_W = 705, PASS_H = 1000;
+let passEdit = { img: null, zoom: 1, ox: .5, oy: .5, dirty: false }, passDragBound = false;
+function passEditDraw(ctx, W, H) {
+  const e = passEdit, img = e.img, iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const sc = Math.max(W / iw, H / ih) * e.zoom, dw = iw * sc, dh = ih * sc;
+  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(img, (W - dw) * e.ox, (H - dh) * e.oy, dw, dh);
 }
-function onMapImageSelected(input) {
+function updatePassEditor() {
+  const box = document.getElementById('pass-image-preview'), cv = document.getElementById('pass-image-canvas'); if (!box || !cv) return;
+  const has = !!passEdit.img;
+  box.classList.toggle('xp-nophoto', !has);
+  const em = document.getElementById('pass-image-empty'); if (em) em.style.display = has ? 'none' : '';
+  const zr = document.getElementById('pass-image-zoomrow'); if (zr) zr.style.display = has ? '' : 'none';
+  if (has) passEditDraw(cv.getContext('2d'), cv.width, cv.height);
+  bindPassDrag();
+}
+function loadPassEditor(src) {
+  passEdit = { img: null, zoom: 1, ox: .5, oy: .5, dirty: false };
+  const z = document.getElementById('pass-image-zoom'); if (z) z.value = 1;
+  updatePassEditor();
+  if (!src) return;
+  const img = new Image();
+  img.onload = () => { if (passEdit.dirty || passEdit.img) return; passEdit.img = img; updatePassEditor(); };
+  img.src = src;
+}
+function onPassImageSelected(input) {
   const file = input.files[0]; input.value = '';
-  readImageAsDataURL(file, 1200, 0.85, url => { pendingMapImage = url; updateMapImagePreview(url); });
+  readImageAsDataURL(file, 1600, 0.9, url => {
+    const img = new Image();
+    img.onload = () => { passEdit = { img, zoom: 1, ox: .5, oy: .5, dirty: true }; const z = document.getElementById('pass-image-zoom'); if (z) z.value = 1; updatePassEditor(); };
+    img.src = url;
+  });
 }
-function clearMapImage() { pendingMapImage = ''; updateMapImagePreview(''); }
+function onPassImageZoom(v) { if (!passEdit.img) return; passEdit.zoom = Math.max(1, parseFloat(v) || 1); passEdit.dirty = true; updatePassEditor(); }
+function clearPassImage() { passEdit = { img: null, zoom: 1, ox: .5, oy: .5, dirty: false }; pendingPassport = ''; const z = document.getElementById('pass-image-zoom'); if (z) z.value = 1; updatePassEditor(); }
+function finalizePassport() {
+  const e = passEdit; if (!e.img || !e.dirty) return;
+  const cv = document.createElement('canvas'); cv.width = PASS_W; cv.height = PASS_H;
+  passEditDraw(cv.getContext('2d'), PASS_W, PASS_H);
+  let url = cv.toDataURL('image/webp', 0.85); if (!url.startsWith('data:image/webp')) url = cv.toDataURL('image/jpeg', 0.85);
+  pendingPassport = url; e.dirty = false;
+}
+function bindPassDrag() {
+  const box = document.getElementById('pass-image-preview'); if (!box || passDragBound) return; passDragBound = true;
+  let last = null;
+  box.addEventListener('pointerdown', ev => { if (!passEdit.img) return; last = { x: ev.clientX, y: ev.clientY }; box.setPointerCapture(ev.pointerId); box.style.cursor = 'grabbing'; });
+  box.addEventListener('pointermove', ev => {
+    if (!last || !passEdit.img) return;
+    const r = box.getBoundingClientRect(), e = passEdit, img = e.img, iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const sc = Math.max(r.width / iw, r.height / ih) * e.zoom, ovx = iw * sc - r.width, ovy = ih * sc - r.height;
+    if (ovx > .5) e.ox = Math.min(1, Math.max(0, e.ox - (ev.clientX - last.x) / ovx));
+    if (ovy > .5) e.oy = Math.min(1, Math.max(0, e.oy - (ev.clientY - last.y) / ovy));
+    last = { x: ev.clientX, y: ev.clientY }; e.dirty = true; updatePassEditor();
+  });
+  const end = () => { last = null; box.style.cursor = ''; };
+  box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+}
 let pendingCardPhoto;                       // undefined = sin cambios, '' = quitar, 'data:…' = nueva
 
 // Lee una imagen, la reduce y la devuelve como data URL (WebP conserva la transparencia de las monedas recortadas)
@@ -349,7 +397,8 @@ function saveEditedCountryName() {
     pendingFlagImage = undefined;
   }
 
-  if (pendingMapImage !== undefined) { if (pendingMapImage) country.mapImage = pendingMapImage; else delete country.mapImage; pendingMapImage = undefined; }
+  finalizePassport();
+  if (pendingPassport !== undefined) { if (pendingPassport) country.passport = pendingPassport; else delete country.passport; pendingPassport = undefined; }
   finalizeCardPhoto();
   if (pendingCardPhoto !== undefined) {
     if (pendingCardPhoto) country.photo = pendingCardPhoto; else delete country.photo;

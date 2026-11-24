@@ -1703,3 +1703,54 @@ body.xj-mode #view-explorar .xp-top, body.xj-mode #xp-sorthint { display:none !i
 /* =============== v9.16 · sin mapa ni patrón; fondo plano; bolas más grandes y separadas =============== */
 .xj-card { background:var(--xp-plum); }
 .xj-dots { gap:var(--dg,9px); }
+
+/* =============== v9.17 · dos burbujas bajo la ficha: continente y zonas =============== */
+.xj-bars { display:flex; flex-direction:column; gap:6px; margin:8px 4px 8px; }
+.xj-sw { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; border-radius:16px; height:34px; cursor:grab; touch-action:pan-x; box-shadow:0 2px 0 rgba(0,0,0,.18); -webkit-overflow-scrolling:touch; }
+.xj-sw::-webkit-scrollbar { display:none; }
+.xj-si { flex:0 0 100%; scroll-snap-align:start; scroll-snap-stop:always; position:relative; display:flex; align-items:center; justify-content:center; gap:8px; color:#fff; user-select:none; -webkit-user-select:none; padding:0 30px; }
+.xj-sw-z .xj-si { filter:brightness(.9); }
+.xj-si b { font:800 15px/1 'Poppins',sans-serif; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.xj-sw-z .xj-si b { font-size:13.5px; }
+.xj-si small { font:700 10px/1 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; opacity:.85; white-space:nowrap; }
+.xj-sh { position:absolute; top:50%; transform:translateY(-50%); font:700 24px/1 'Poppins',sans-serif; font-style:normal; opacity:.7; pointer-events:none; }
+.xj-sh-l { left:12px; } .xj-sh-r { right:12px; }
+
+/* =============== v9.18 · ficha nueva: foto · nombre · bandera + bolitas | pasaporte =============== */
+.xj-card { padding:6px; gap:0; border-radius:22px; background:var(--xp-plum); color:var(--xp-sand-l); border:0; overflow:hidden; }
+.xj-card.xj-add { padding:10px; gap:10px; }
+.xj-card .xj-photo { margin:0; border:0; box-shadow:none; border-radius:16px 16px 0 0; flex:1 1 auto; min-height:80px; background-color:var(--xp-plum-2); background-size:cover; background-position:center; }
+.xj-card .xj-photo.xj-nophoto { background:repeating-linear-gradient(135deg,var(--xp-glow) 0 10px,var(--xp-bg2) 10px 20px); }
+.xj-card .xj-body { flex:none; display:flex; flex-direction:column; gap:10px; padding:10px 0 0; background:transparent; overflow:visible; --Wi:calc(var(--xj-cw,340px) - 12px); --L:calc((var(--Wi) - 13.67px) / 1.6849); --P:calc(var(--Wi) - 10px - var(--L)); --Hp:calc(var(--P) / .705); --fh:calc(var(--L) / 1.75); --D:calc(var(--Hp) - var(--fh) - 10px); }
+.xj-pill { flex:none; height:46px; display:flex; align-items:center; justify-content:center; padding:0 14px; border-radius:16px; background:var(--xp-sand-l); color:var(--xp-plum); text-align:center; box-shadow:0 2px 0 rgba(0,0,0,.18); }
+.xj-pill span { display:block; max-width:100%; font-family:'Poppins',sans-serif; font-style:italic; font-weight:800; font-size:23px; line-height:1.05; letter-spacing:.01em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.xj-pill.xj-n2 span { font-size:19px; } .xj-pill.xj-n3 span { font-size:15.5px; } .xj-pill.xj-n4 span { font-size:12.5px; white-space:normal; }
+.xj-grid { flex:none; display:grid; grid-template-columns:var(--L) var(--P); gap:10px; height:var(--Hp); }
+.xj-lc { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.xj-flag2 { flex:none; height:var(--fh); border-radius:14px; background-size:cover; background-position:center; box-shadow:0 0 0 1px rgba(0,0,0,.25); }
+.xj-lc .xj-dots { flex:none; height:var(--D); width:100%; display:grid; grid-template-columns:repeat(var(--dc,5),var(--ds,30px)); gap:8px; justify-content:start; align-content:start; }
+.xj-pass { border-radius:14px; background:#7b2350 center/cover no-repeat; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:rgba(244,228,196,.85); font:700 11px 'Poppins',sans-serif; letter-spacing:.12em; text-transform:uppercase; }
+.xj-pass-0 { background:linear-gradient(160deg,#6b2150,#4a1a45); border:2px dashed rgba(var(--xp-sand-rgb),.35); box-sizing:border-box; }
+.xj-pass-0 i { font-size:30px; opacity:.8; }
+
+/* v9.18 · giro de la ficha y reverso tipo hoja de pasaporte */
+.xj-pass { cursor:pointer; }
+.xj-card.xj-fl-a { transform:perspective(900px) rotateY(90deg); transition:transform .17s ease-in; }
+.xj-card.xj-fl-b { animation:xjFlipIn .17s ease-out; }
+@keyframes xjFlipIn { from { transform:perspective(900px) rotateY(-90deg); } to { transform:perspective(900px) rotateY(0); } }
+.xj-rev { display:none; }
+.xj-card.xj-flipped > .xj-photo, .xj-card.xj-flipped > .xj-body { display:none; }
+.xj-card.xj-flipped > .xj-rev { display:flex; flex:1 1 auto; min-height:0; flex-direction:column; gap:10px; padding:4px; background:var(--xp-sand-l); color:var(--xp-plum); border-radius:16px; }
+.xj-bk-h { flex:none; display:flex; align-items:center; gap:12px; padding:6px 8px 10px; border-bottom:2px solid var(--xp-plum); }
+.xj-bk-fl { flex:none; width:64px; height:37px; border-radius:7px; background-size:cover; background-position:center; box-shadow:0 0 0 1px rgba(0,0,0,.3); }
+.xj-bk-h b { min-width:0; flex:1; font:italic 800 22px/1.05 'Poppins',sans-serif; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-bk-l { flex:1 1 auto; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:4px 8px; }
+.xj-pr { flex:none; cursor:pointer; }
+.xj-pr-t { display:flex; align-items:baseline; gap:8px; }
+.xj-pr-t b { flex:1; min-width:0; font:700 13px 'Poppins',sans-serif; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-pr-t span { flex:none; font:600 11px ui-monospace,monospace; opacity:.75; }
+.xj-pr-t em { flex:none; width:38px; text-align:right; font:800 12px 'Poppins',sans-serif; font-style:normal; }
+.xj-pr-bar { height:6px; margin-top:4px; border-radius:3px; background:rgba(60,26,69,.18); overflow:hidden; }
+.xj-pr-bar i { display:block; height:100%; background:var(--xp-orange,#e8712f); border-radius:3px; }
+.xj-bk-0 { text-align:center; opacity:.6; margin-top:20px; }
+.xj-bk-f { flex:none; text-align:center; font:600 10px 'Poppins',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.5; padding:2px 0 4px; }
