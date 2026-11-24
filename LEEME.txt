@@ -195,3 +195,13 @@ v9.07: ficha pasaporte: foto arriba a sangre (esquinas superiores redondeadas co
 v9.08: Explorar: fuera el % de completado y las bolitas ocupan toda la fila antes de pasar a dos; marco ancho alrededor de la foto; el mapa de la ficha ahora es una imagen que se sube en Editar país (sin cálculo, sin lag); fuera el botón de editar: el admin mantiene pulsada la ficha (menos las bolitas); al entrar en Explorar sale el país del Álbum (o uno al azar), siempre en Jukebox.
 
 v9.09: Explorar: ficha con más protagonismo (márgenes de la foto reducidos) y sin flechas; sin la barra «Plaza Mayor» en Explorar (Jukebox) ni en Estadísticas; el admin alterna Jukebox ↔ MODO EDICIÓN pulsando el botón «Explorar» estando en Explorar; el modo edición es ahora una lista simple (bandera + nombre) para ordenar países y zonas, cambiar la zona de cada país y editar.
+
+v9.10: Explorar (Jukebox): sin buscador, sin botón de vista, sin barra inferior de recuento ni botones de continentes; una única barra gruesa que se desliza por continentes y zonas (muestra la zona actual y cambia de color según el continente) y mueve el carrusel; ficha más alta; márgenes de la foto alineados con el resto; un país nuevo entra en «Sin clasificar».
+
+v9.11: Explorar: la barra de zonas se arrastra como la de letras del índice (recorre continentes y zonas al instante, con marcas por zona); nuevo fondo de la ficha pasaporte: cintas de líneas finas y curvas de nivel crema y naranja sobre ciruela.
+
+v9.12: Modo edición de Explorar: agrupado por continentes (se ordenan como bloques), zonas dentro de cada continente (se ordenan dentro de él) y países; «Sin clasificar» arriba para clasificar los nuevos; continentes plegables.
+
+v9.13: Explorar: la barra de continentes pasa debajo de la ficha: línea fina con un segmento por continente (ancho proporcional a sus países); se arrastra el dedo y la ficha salta al instante, con un globo que muestra zona, continente y país.
+
+v9.14: Explorar: tope («clack» con vibración) al entrar en un continente nuevo en la barra; el mapa de la ficha vuelve a generarse solo: simple, coordenadas en una esquina, nombres pequeños de países vecinos y el país en otro color; países pequeños con círculo de zoom; se pinta solo la ficha visible (sin lag). La imagen manual sigue sirviendo si la subes.

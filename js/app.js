@@ -49,6 +49,7 @@ function updateHeaderMode() {
   document.body.classList.toggle('xh-off', off);
   const ed = currentTab === 'explorar' && exploreView === 'zonas';
   document.body.classList.toggle('xe-mode', ed);
+  document.body.classList.toggle('xj-mode', currentTab === 'explorar' && exploreView === 'jukebox');
   const set = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !on); };
   set('xh-newzone', ed); set('xh-newcountry', ed);
 }

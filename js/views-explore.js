@@ -116,11 +116,12 @@ function continentOptionsHtml(selected) {
 
 function allZones() {
   const z = [...BUILTIN_ZONES, ...customZones.filter(n => !BUILTIN_ZONES.includes(n))];
-  countries.forEach(c => { if (c.continent && !z.includes(c.continent)) z.push(c.continent); });
+  countries.forEach(c => { if (c.continent && c.continent !== UNCLASSIFIED && !z.includes(c.continent)) z.push(c.continent); });
   return z;
 }
 
 function continentOf(country) {
+  if (country.continent === UNCLASSIFIED) return UNCLASSIFIED;
   return (country.continent && allZones().includes(country.continent)) ? country.continent : autoContinent(country.name);
 }
 
@@ -219,7 +220,7 @@ function setCountryContinent(countryId, value) {
 // Rellena el desplegable de zona de la ventana "Editar país"
 function fillZoneSelect(selected) {
   const sel = document.getElementById('input-edit-country-continent');
-  sel.innerHTML = '<option value="">Automático</option>' + allZones().map(z => `<option value="${esc(z)}">${esc(z)}</option>`).join('');
+  sel.innerHTML = '<option value="">Automático</option>' + [...allZones(), UNCLASSIFIED].map(z => `<option value="${esc(z)}">${esc(z)}</option>`).join('');
   sel.value = selected || '';
 }
 
@@ -289,7 +290,7 @@ function toggleAddCountryRow() {
   if (btn) btn.classList.toggle('xp-on', open);
   if (open) {
     const sel = document.getElementById('new-country-zone');
-    if (sel) sel.innerHTML = '<option value="">Zona automática</option>' + allZones().map(z => `<option value="${esc(z)}">${esc(z)}</option>`).join('');
+    if (sel) sel.innerHTML = '<option value="">Sin clasificar</option>' + allZones().map(z => `<option value="${esc(z)}">${esc(z)}</option>`).join('');
     const i = document.getElementById('new-country-name'); if (i) i.focus();
   }
 }
@@ -299,6 +300,7 @@ function addEmptyCountry() {
   if (!name) return;
   if (findCountryByName(name)) { alert('Ya existe un país con ese nombre.'); return; }
   const c = getOrCreateCountry(name);
+  exploreJukeId = c.id;
   c.keep = true;   // sin monedas ni períodos: se conserva
   const zone = (document.getElementById('new-country-zone') || {}).value || '';
   if (zone) c.continent = zone;
@@ -440,9 +442,40 @@ const JUKE_PATTERNS = [
   // 17 olas concéntricas (seigaiha)
   r => { let o = ''; const R = 34 + r() * 12 | 0, ox = r() * R * 2 | 0, st = R * .55; for (let row = 0; row < 640 / st + 2; row++) for (let col = -1; col < 400 / (R * 2) + 2; col++) { const cx = (col * R * 2 + (row % 2 ? R : 0) - ox) | 0, cy = row * st | 0; for (let q = 3; q >= 1; q--) o += `<circle class="sg" cx="${cx}" cy="${cy}" r="${R * q / 3 | 0}"/>`; } return o; }
 ];
+// v9.11 · fondo de la ficha: cintas de líneas finas entrelazadas y curvas de nivel (crema y naranja) sobre ciruela. Se generan 6 variantes una sola vez.
+let _jukePv = null;
+function jukePatternVariant(seed) {
+  const r = jukeRng(seed * 7919 + 13), R = (a, b) => a + (b - a) * r();
+  const f = v => v.toFixed(1);
+  let out = '';
+  const ribbon = (col, op, n) => {
+    const P = [[R(-40, 120), R(0, 150)], [R(150, 420), R(60, 260)], [R(-20, 250), R(260, 420)], [R(180, 440), R(380, 600)]];
+    const sx = R(-3.2, 3.2), sy = R(1.2, 3.4), tw = R(-2.2, 2.2);
+    let d = '';
+    for (let k = 0; k < 26; k++) {
+      const q = P.map((p, i) => [p[0] + (i === 1 || i === 2 ? k * sx : k * tw * .4), p[1] + (i === 1 || i === 2 ? k * sy : -k * tw * .5)]);
+      d += `M${f(q[0][0])} ${f(q[0][1])}C${f(q[1][0])} ${f(q[1][1])} ${f(q[2][0])} ${f(q[2][1])} ${f(q[3][0])} ${f(q[3][1])}`;
+    }
+    out += `<path d="${d}" stroke="${col}" stroke-opacity="${op}" stroke-width=".8"/>`;
+  };
+  const rings = (cx, cy, col, op) => {
+    const ph = R(0, 6), ph2 = R(0, 6); let d = '';
+    for (let k = 1; k <= 16; k++) {
+      const base = k * R(5, 7.5); let pts = '';
+      for (let a = 0; a <= 48; a++) { const t = a / 48 * Math.PI * 2, rad = base * (1 + .14 * Math.sin(3 * t + ph + k * .12) + .08 * Math.sin(5 * t + ph2)); pts += (a ? 'L' : 'M') + f(cx + rad * Math.cos(t) * 1.15) + ' ' + f(cy + rad * Math.sin(t)); }
+      d += pts + 'Z';
+    }
+    out += `<path d="${d}" stroke="${col}" stroke-opacity="${op}" stroke-width=".7"/>`;
+  };
+  rings(R(-20, 60), R(20, 120), '#EBD8B6', .4);
+  rings(R(300, 430), R(380, 520), '#EBD8B6', .32);
+  ribbon('#EBD8B6', .45, 1); ribbon('#EBD8B6', .35, 1); ribbon('#E8743B', .6, 1);
+  if (r() > .4) rings(R(280, 420), R(60, 200), '#E8743B', .45);
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 560" preserveAspectRatio="xMidYMid slice" fill="none">${out}</svg>`);
+}
 function jukePatternSvg(id) {
-  const h = jukeHash(id), r = jukeRng(h ^ 0x9e3779b9);
-  return `<svg class="xj-sec" viewBox="0 86 400 467" preserveAspectRatio="xMidYMid slice" aria-hidden="true" fill="none" stroke="currentColor" stroke-width=".7">${JUKE_PATTERNS[h % JUKE_PATTERNS.length](r)}</svg>`;
+  if (!_jukePv) _jukePv = [0, 1, 2, 3, 4, 5].map(jukePatternVariant);
+  return `<div class="xj-sec xj-pv" style="background-image:url('${_jukePv[jukeHash(id) % 6]}')"></div>`;
 }
 
 // --- Código de tres letras asignado automáticamente (único entre países) ---
@@ -506,71 +539,86 @@ function neInvert(px, py) {
   return [px / (0.8707 - 0.131979 * f2 + f4 * (-0.013791 + f4 * (0.003971 * f2 - 0.001529 * f4))) * 180 / Math.PI, f * 180 / Math.PI];
 }
 const jukeToProj = (m, x, y) => [x / m.k + m.minX, y / m.k + m.minY];
-// Retícula de meridianos y paralelos de la zona visible
-function jukeGrat(x, y, w, h) {
-  const m = worldMap; if (!m || !m.k) return '';
-  const P = (lon, lat) => { const q = neProject(lon, lat); return [(q[0] - m.minX) * m.k, (q[1] - m.minY) * m.k]; };
-  const c = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].map(p => neInvert(...jukeToProj(m, p[0], p[1])));
-  const lo0 = Math.min(...c.map(a => a[0])), lo1 = Math.max(...c.map(a => a[0])), la0 = Math.max(-85, Math.min(...c.map(a => a[1])) - 2), la1 = Math.min(85, Math.max(...c.map(a => a[1])) + 2);
-  const step = [1, 2, 5, 10, 15, 20, 30, 45].find(t => (lo1 - lo0) / t <= 6) || 45;
-  let d = '';
-  for (let L = Math.ceil((lo0 - 1) / step) * step; L <= lo1 + 1; L += step) { const a = []; for (let la = la0; la <= la1; la += 2) a.push(P(L, la)); if (a.length > 1) d += jP(a); }
-  for (let B = Math.ceil(la0 / step) * step; B <= la1; B += step) { const a = []; for (let lo = lo0 - 2; lo <= lo1 + 2; lo += 2) a.push(P(lo, B)); if (a.length > 1) d += jP(a); }
-  return `<path class="xj-gr" d="${d}"/>`;
-}
-const JUKE_COMPASS = `<svg class="xj-cmp" viewBox="-20 -22 40 40" aria-hidden="true"><circle r="14" class="xj-cmp-c"/><path d="M0-12L3.6 0L-3.6 0Z" class="xj-cmp-n"/><path d="M0 12L3.6 0L-3.6 0Z" class="xj-cmp-s"/><path d="M-14 0H-10M10 0H14" class="xj-cmp-t"/><text x="0" y="-15.6" text-anchor="middle" class="xj-cmp-l">N</text></svg>`;
+let _jukeClip = 0;
+// v9.14 · mapa generado: simple, con coordenadas en una esquina, nombres pequeños de los países vecinos y el país en otro color.
+// Países pequeños: mapa de la región con una marca + círculo de zoom (como en un mapa de localización).
 function jukeMapSvg(keys, AR) {
-  AR = AR > 0.8 && AR < 8 ? AR : JUKE_MAP_AR;   // proporción real del recuadro del mapa (así el encuadre no se recorta por los lados)
+  AR = AR > 0.8 && AR < 8 ? AR : JUKE_MAP_AR;
   if (!worldMap) return '';
   jukeEnsureDefs();
   const W = worldMap.W, H = worldMap.H, F = worldMap.feats, set = new Set(keys);
   const hi = F.map((f, i) => ({ f, i })).filter(x => set.has(x.f.key));
-  let x, y, w, ccx = W / 2, ccy = H / 2;
-  if (!hi.length) { w = W; x = 0; y = 0; }
-  else {
-    const x0 = Math.min(...hi.map(a => a.f.bx0)), x1 = Math.max(...hi.map(a => a.f.bx1)), y0 = Math.min(...hi.map(a => a.f.by0)), y1 = Math.max(...hi.map(a => a.f.by1));
-    w = Math.min(W, Math.max((x1 - x0) * 1.45, (y1 - y0) * 1.45 * AR, 90));
-    x = (x0 + x1) / 2 - w / 2; y = (y0 + y1) / 2 - w / AR / 2;
-    ccx = (x0 + x1) / 2; ccy = (y0 + y1) / 2;
-  }
-  const h = w / AR;
-  x = Math.max(0, Math.min(W - w, x)); y = Math.max(0, Math.min(H - h, y));
-  const inView = a => a.f.bx1 >= x && a.f.bx0 <= x + w && a.f.by1 >= y && a.f.by0 <= y + h;
-  const land = F.map((f, i) => ({ f, i })).filter(a => !set.has(a.f.key) && inView(a)).map(a => `<use href="#wm${a.i}"/>`).join('');
-  const high = hi.map(a => `<use href="#wm${a.i}"/>`).join('');
-  const dots = hi.filter(a => a.f.tiny || a.f.size < w * .035).map(a => `<circle cx="${a.f.cx.toFixed(1)}" cy="${a.f.cy.toFixed(1)}" r="${(w * .014).toFixed(2)}" class="xj-mk"/>`).join('');
-  // v9.07: nombres de los países vecinos (los más grandes de la zona, sin solaparse)
-  let labels = '';
-  if (hi.length) {
-    const fs = w * .03, placed = [];
-    F.map((f, i) => ({ f, i })).filter(a => !set.has(a.f.key) && inView(a) && a.f.size >= w * .085 && a.f.cx > x + fs && a.f.cx < x + w - fs && a.f.cy > y + fs && a.f.cy < y + h - fs)
-      .sort((a, b) => b.f.size - a.f.size).slice(0, 14).forEach(a => {
-        if (placed.length >= 6) return;
-        const nm = jukeRegion(a.f.key).toUpperCase(); if (!nm) return;
-        const tw = nm.length * fs * .7, th = fs * 1.15, r = [a.f.cx - tw / 2, a.f.cy - th / 2, a.f.cx + tw / 2, a.f.cy + th / 2];
+  const use = arr => arr.map(a => `<use href="#wm${a.i}"/>`).join('');
+  const labelsFor = (x, y, w, h, fs, minSize, maxN, avoid) => {
+    let out = ''; const placed = [];
+    F.map((f, i) => ({ f, i })).filter(a => !set.has(a.f.key) && a.f.bx1 >= x && a.f.bx0 <= x + w && a.f.by1 >= y && a.f.by0 <= y + h && a.f.size >= minSize && a.f.bigX != null && a.f.big >= minSize * .6)
+      .sort((p, q) => q.f.big - p.f.big).forEach(a => {
+        if (placed.length >= maxN) return;
+        const nm = jukeRegion(a.f.key); if (!nm) return;
+        a = { f: Object.assign({}, a.f, { cx: a.f.bigX, cy: a.f.bigY }), i: a.i };
+        if (a.f.cx < x + fs || a.f.cx > x + w - fs || a.f.cy < y + fs || a.f.cy > y + h - fs) return;
+        const tw = nm.length * fs * .62, th = fs * 1.15, r = [a.f.cx - tw / 2, a.f.cy - th / 2, a.f.cx + tw / 2, a.f.cy + th / 2];
         if (r[0] < x + 2 || r[2] > x + w - 2) return;
+        if (avoid && avoid(r)) return;
         if (placed.some(p => r[0] < p[2] && r[2] > p[0] && r[1] < p[3] && r[3] > p[1])) return;
         placed.push(r);
-        labels += `<text x="${a.f.cx.toFixed(1)}" y="${(a.f.cy + fs * .35).toFixed(1)}" text-anchor="middle" class="xj-nb" font-size="${fs.toFixed(2)}" stroke-width="${(fs * .24).toFixed(2)}">${esc(nm)}</text>`;
+        out += `<text x="${a.f.cx.toFixed(1)}" y="${(a.f.cy + fs * .35).toFixed(1)}" text-anchor="middle" class="xj-nb" font-size="${fs.toFixed(2)}" stroke-width="${(fs * .22).toFixed(2)}">${esc(nm)}</text>`;
       });
+    return out;
+  };
+  let x, y, w, h, ccx = W / 2, ccy = H / 2, inner = '', extra = '';
+  if (!hi.length) { w = W; h = w / AR; x = 0; y = Math.max(0, (H - h) / 2); inner = `<g class="xj-land">${use(F.map((f, i) => ({ f, i })))}</g>`; }
+  else {
+    const x0 = Math.min(...hi.map(a => a.f.bx0)), x1 = Math.max(...hi.map(a => a.f.bx1)), y0 = Math.min(...hi.map(a => a.f.by0)), y1 = Math.max(...hi.map(a => a.f.by1));
+    let ext = Math.max(x1 - x0, y1 - y0); ccx = (x0 + x1) / 2; ccy = (y0 + y1) / 2;
+    if (hi.length === 1 && hi[0].f.bigX != null) { const f = hi[0].f; ext = Math.max(f.big, 1); ccx = f.bigX; ccy = f.bigY; }   // un país con islas lejanas (Portugal, EE. UU.) se encuadra por su parte principal
+    const small = ext < 24;
+    if (!small) {
+      w = Math.min(W, Math.max((x1 - x0) * 1.5, (y1 - y0) * 1.5 * AR, 90)); h = w / AR;
+      x = Math.max(0, Math.min(W - w, ccx - w / 2)); y = Math.max(0, Math.min(H - h, ccy - h / 2));
+      const inV = a => a.f.bx1 >= x && a.f.bx0 <= x + w && a.f.by1 >= y && a.f.by0 <= y + h;
+      const land = F.map((f, i) => ({ f, i })).filter(a => !set.has(a.f.key) && inV(a));
+      inner = `<g class="xj-land" stroke-width="${(w * .003).toFixed(2)}">${use(land)}</g><g class="xj-hi" stroke-width="${(w * .004).toFixed(2)}">${use(hi)}</g>${labelsFor(x, y, w, h, w * .028, w * .09, 6)}`;
+    } else {
+      w = 150; h = w / AR;
+      x = Math.max(0, Math.min(W - w, ccx - w * .3)); y = Math.max(0, Math.min(H - h, ccy - h / 2));
+      const inV = (a, X, Y, Wd, Hd) => a.f.bx1 >= X && a.f.bx0 <= X + Wd && a.f.by1 >= Y && a.f.by0 <= Y + Hd;
+      const land = F.map((f, i) => ({ f, i })).filter(a => !set.has(a.f.key) && inV(a, x, y, w, h));
+      const ri = h * .47, icx = x + w - ri - h * .04, icy = y + h / 2, rm = Math.max(ext * .9, h * .08);
+      const dx = icx - ccx, dy = icy - ccy, dl = Math.hypot(dx, dy) || 1, ux = dx / dl, uy = dy / dl, nx = -uy, ny = ux;
+      const id = 'xjc' + (++_jukeClip), zs = Math.max(ext * 3, 8), zx = ccx - zs / 2, zy = ccy - zs / 2;
+      const zland = F.map((f, i) => ({ f, i })).filter(a => !set.has(a.f.key) && inV(a, zx, zy, zs, zs));
+      const sw = w * .003;
+      inner = `<g class="xj-land" stroke-width="${sw.toFixed(2)}">${use(land)}</g><g class="xj-hi" stroke-width="${(sw * 1.3).toFixed(2)}">${use(hi)}</g>`
+        + labelsFor(x, y, w, h, w * .03, w * .06, 5, r => r[2] > icx - ri - 2 && r[0] < icx + ri)
+        + `<circle cx="${ccx.toFixed(1)}" cy="${ccy.toFixed(1)}" r="${rm.toFixed(2)}" class="xj-ring" stroke-width="${(w * .004).toFixed(2)}"/>`
+        + `<path class="xj-ring" stroke-width="${(w * .003).toFixed(2)}" d="M${(ccx + nx * rm).toFixed(1)} ${(ccy + ny * rm).toFixed(1)}L${(icx + nx * ri).toFixed(1)} ${(icy + ny * ri).toFixed(1)}M${(ccx - nx * rm).toFixed(1)} ${(ccy - ny * rm).toFixed(1)}L${(icx - nx * ri).toFixed(1)} ${(icy - ny * ri).toFixed(1)}"/>`
+        + `<clipPath id="${id}"><circle cx="${icx.toFixed(1)}" cy="${icy.toFixed(1)}" r="${ri.toFixed(2)}"/></clipPath>`
+        + `<circle cx="${icx.toFixed(1)}" cy="${icy.toFixed(1)}" r="${ri.toFixed(2)}" class="xj-inset"/>`
+        + `<g clip-path="url(#${id})"><svg x="${(icx - ri).toFixed(1)}" y="${(icy - ri).toFixed(1)}" width="${(2 * ri).toFixed(1)}" height="${(2 * ri).toFixed(1)}" viewBox="${zx.toFixed(1)} ${zy.toFixed(1)} ${zs.toFixed(1)} ${zs.toFixed(1)}"><g class="xj-land" stroke-width="${(zs * .008).toFixed(2)}">${use(zland)}</g><g class="xj-hi" stroke-width="${(zs * .01).toFixed(2)}">${use(hi)}</g>${labelsFor(zx, zy, zs, zs, zs * .075, zs * .2, 3)}</svg></g>`
+        + `<circle cx="${icx.toFixed(1)}" cy="${icy.toFixed(1)}" r="${ri.toFixed(2)}" class="xj-ring" stroke-width="${(w * .004).toFixed(2)}"/>`;
+    }
   }
-  // v9.07: brújula y coordenadas del centro de la zona
   const ll = neInvert(...jukeToProj(worldMap, ccx, ccy)), lat = ll[1], lon = ll[0];
   const coord = `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lon).toFixed(1)}°${lon >= 0 ? 'E' : 'O'}`;
-  return `<svg viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g>${jukeGrat(x, y, w, h)}</g><g class="xj-land">${land}</g><g class="xj-hi">${high}</g>${dots}${labels}</svg><div class="xj-co">${coord}</div>${JUKE_COMPASS}`;
+  return `<svg viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${inner}</svg><div class="xj-co">${coord}</div>`;
 }
+// Se pinta solo la ficha que se mira (y las vecinas, en reposo): así no hay lag al deslizar
+let _jukeMapT = 0;
 function jukeFillMaps(cards, best) {
-  for (let i = Math.max(0, best - 2); i <= Math.min(cards.length - 1, best + 2); i++) {
-    const el = cards[i], box = el.querySelector('.xj-map'); if (!box || box.dataset.ok) continue;
-    if (!worldMap) { if (!box.dataset.ld) box.innerHTML = '<i class="fa-solid fa-earth-europe xj-map-ph"></i>'; continue; }
+  const fill = i => {
+    const el = cards[i], box = el && el.querySelector('.xj-map'); if (!box || box.dataset.ok || box.dataset.img) return;
+    if (!worldMap) return;
     box.innerHTML = jukeMapSvg((box.dataset.mk || '').split(',').filter(Boolean), box.clientWidth / (box.clientHeight || 1)); box.dataset.ok = '1';
-  }
+  };
+  clearTimeout(_jukeMapT);
+  _jukeMapT = setTimeout(() => { fill(best); _jukeMapT = setTimeout(() => { fill(best + 1); fill(best - 1); }, 350); }, 120);
 }
 
 // --- Bolitas: tamaño y filas según cuántos períodos haya ---
 function jukeDotsLayout(n) {
   const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460);
-  const mg = Math.max(16, Math.min(26, cw * .06)), W = cw - 2 * mg, H = 54, g = 5;
+  const mg = Math.max(12, Math.min(18, cw * .045)), W = cw - 2 * mg, H = 54, g = 5;
   let best = null;
   for (let rows = 1; rows <= 3; rows++) {
     const cols = Math.ceil(n / rows), s = Math.floor(Math.min(34, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
@@ -596,7 +644,7 @@ function jukeCardHtml(c, zone, i) {
     <div class="xj-body">
       ${jukePatternSvg(c.id)}
       <div class="xj-top"><span class="xj-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><div class="xj-nm ${nl > 22 ? 'xj-n4' : nl > 16 ? 'xj-n3' : nl > 11 ? 'xj-n2' : ''}"><span>${esc(name)}</span></div></div>
-      <div class="xj-map${mapImg ? '' : ' xj-map-empty'}" ${mapImg ? `style="background-image:url('${esc(mapImg)}')"` : ''}>${mapImg ? '' : '<i class="fa-solid fa-earth-europe xj-map-ph"></i>'}</div>
+      <div class="xj-map${mapImg ? '' : ' xj-map-empty'}" data-mk="${jukeMapKeys(c).join(',')}" ${mapImg ? `data-img="1" style="background-image:url('${esc(mapImg)}')"` : ''}>${mapImg ? '' : '<i class="fa-solid fa-earth-europe xj-map-ph"></i>'}</div>
       <div class="xj-rw">
         <div class="xj-dots" style="--ds:${lay.s}px;--dc:${lay.cols}">${dots || '<span class="xj-nodots">Sin períodos</span>'}</div>
       </div>
@@ -654,20 +702,62 @@ function renderJukebox() {
     const q = String(exploreSearch || '').trim();
     return `<div class="xp-empty-msg">${q ? `Nada coincide con «${esc(q)}».` : exploreContinent ? `Aún no hay países de ${esc(exploreContinent)}.` : 'Aún no hay países.'}</div>`;
   }
-  // v9.04: con un continente elegido, «atrás» + todos sus subtipos ocupan el sitio de la barra de continentes (el tamaño se ajusta al número de subtipos)
-  const nCh = chipZones.length + 1, sz = nCh <= 6 ? '' : nCh <= 12 ? ' xj-cs-m' : nCh <= 20 ? ' xj-cs-s' : ' xj-cs-xs';
-  const chips = exploreContinent ? `<div class="xj-subbar">
-      <button type="button" class="xj-back" onclick="setExploreContinent('${jsArg(exploreContinent)}')" aria-label="Volver a los continentes" title="Atrás"><i class="fa-solid fa-arrow-left"></i></button>
-      <div class="xj-chips${sz}${exploreZonesOpen ? ' xj-open' : ''}" id="xj-chips">
-        <button type="button" class="xj-chip${!exploreZone ? ' xj-sel' : ''}" data-z="" onclick="jukeZone('')">Todas <small>${total}</small></button>
-        ${chipZones.map(z => `<button type="button" class="xj-chip${exploreZone === z ? ' xj-sel' : ''}" data-z="${esc(z)}" onclick="jukeZone('${jsArg(z)}')">${esc(z)} <small>${(groups[z] || []).length}</small></button>`).join('')}
-      </div>
-      ${chipZones.length > 3 ? `<button type="button" class="xj-more" onclick="jukeZonesToggle()" aria-label="${exploreZonesOpen ? 'Contraer' : 'Ver todos los subtipos'}"><i class="fa-solid fa-chevron-${exploreZonesOpen ? 'up' : 'down'}"></i></button>` : ''}
-    </div>` : '';
+  const rail = jukeRailHtml(chipZones, groups);
   const cards = items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')
     + (admin ? `<button type="button" class="xj-card xj-add" onclick="toggleAddCountryRow()"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir país</button>` : '');
-  return `${chips}<div class="xj-stage"><button type="button" class="xj-arrow xj-prev" onclick="jukeStep(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="xj-arrow xj-next" onclick="jukeStep(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><div class="xj-track" id="xj-track">${cards}</div></div>
-    <div class="xj-pos"><span id="xj-count">1 / ${items.length}</span><div class="xj-posbar"><i id="xj-posfill" style="width:${(100 / items.length).toFixed(1)}%"></i></div></div>`;
+  return `<div class="xj-stage"><button type="button" class="xj-arrow xj-prev" onclick="jukeStep(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="xj-arrow xj-next" onclick="jukeStep(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><div class="xj-track" id="xj-track">${cards}</div></div>${rail}`;
+}
+/* ===== v9.10 · barra de zonas: una sola línea gruesa que se desliza por continentes y zonas; cambia de color según el continente ===== */
+const RAIL_COLORS = { 'Europa': '#2f5fa7', 'América': '#2f7d4f', 'Asia': '#b3453d', 'África': '#c47a1c', 'Oceanía': '#1e8a98', 'Extintos': '#6d4c93', [UNCLASSIFIED]: '#5d5766' };
+function railContOf(z) { return z === UNCLASSIFIED ? UNCLASSIFIED : zoneContinent(z); }
+function jukeRailHtml(zones, groups) {
+  // v9.13: barra fina bajo la ficha: un segmento por continente (ancho ∝ nº de países) con divisiones por zona
+  const runs = [];
+  zones.forEach(z => { const ct = railContOf(z), n = (groups[z] || []).length; if (!n) return; let r = runs[runs.length - 1]; if (!r || r.c !== ct) runs.push(r = { c: ct, z: [] }); r.z.push([z, n]); });
+  const segs = runs.map(r => `<div class="xj-seg" style="flex:${r.z.reduce((t, x) => t + x[1], 0)};background:${RAIL_COLORS[r.c] || '#5d5766'}" data-c="${esc(r.c)}">${r.z.map(x => `<i style="flex:${x[1]}"></i>`).join('')}</div>`).join('');
+  return `<div class="xj-rail" id="xj-rail"><div class="xj-bub" id="xj-bub"><b id="xj-rz"></b><small id="xj-rc"></small></div><div class="xj-segs">${segs}</div><div class="xj-thumb" id="xj-thumb"></div></div>`;
+}
+// v9.13: se arrastra el dedo por la barra (como las letras del índice) y la ficha salta al instante; el globo muestra zona y continente
+function jukeRailInit(track, cards, getBest) {
+  const rail = document.getElementById('xj-rail'); if (!rail) return null;
+  const real = cards.filter(c => !c.classList.contains('xj-add')), N = real.length; if (!N) return null;
+  const bub = document.getElementById('xj-bub'), thumb = document.getElementById('xj-thumb');
+  const nameEl = document.getElementById('xj-rz'), subEl = document.getElementById('xj-rc');
+  const contOf = real.map(c => railContOf(c.dataset.zone));
+  const first = {}, last = {}; contOf.forEach((ct, i) => { if (first[ct] === undefined) first[ct] = i; last[ct] = i; });
+  let cur = -1, scrubbing = false, endT = 0, lock = null;
+  const paint = (i, x) => {
+    const c = real[i], z = c.dataset.zone, ct = contOf[i];
+    thumb.style.left = ((i + .5) / N * 100) + '%';
+    if (i !== cur) { cur = i; nameEl.textContent = z; subEl.textContent = (z === ct ? '' : ct + ' · ') + prettyName((countryById(c.dataset.cid) || {}).name || ''); bub.style.background = RAIL_COLORS[ct] || '#5d5766'; }
+    const r = rail.getBoundingClientRect(), bw = bub.offsetWidth || 120, cx = x == null ? r.left + (i + .5) / N * r.width : x;
+    bub.style.left = Math.max(bw / 2, Math.min(r.width - bw / 2, cx - r.left)) + 'px';
+  };
+  const idxAt = x => { const r = rail.getBoundingClientRect(); return Math.max(0, Math.min(N - 1, Math.floor((x - r.left) / r.width * N))); };
+  const clack = () => {   // v9.14: «tope» al entrar en un continente nuevo: vibración corta + el globo da un golpecito
+    if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {}
+    bub.classList.remove('xj-pop'); void bub.offsetWidth; bub.classList.add('xj-pop');
+  };
+  const goTo = (i0, x, fromDown) => {
+    let i = i0;
+    if (lock) { if (Math.abs(x - lock.x) < 16) i = lock.i; else lock = null; }
+    if (!lock && cur >= 0 && contOf[i] !== contOf[cur]) {
+      i = i > cur ? first[contOf[i]] : last[contOf[i]];
+      lock = { x, i }; clack();
+    }
+    paint(i, x);
+    const now = cards[getBest()], t = real[i];
+    if (now === t) return;
+    track.scrollTo({ left: t.offsetLeft - (track.clientWidth - t.offsetWidth) / 2, behavior: 'instant' });
+  };
+  rail.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button !== 0) return; scrubbing = true; lock = null; clearTimeout(endT); try { rail.setPointerCapture(e.pointerId); } catch (er) {} rail.classList.add('xj-rail-on'); goTo(idxAt(e.clientX), e.clientX); e.preventDefault(); });
+  rail.addEventListener('pointermove', e => { if (scrubbing) goTo(idxAt(e.clientX), e.clientX); });
+  const end = () => { rail.classList.remove('xj-rail-on'); lock = null; clearTimeout(endT); endT = setTimeout(() => { scrubbing = false; }, 300); };
+  rail.addEventListener('pointerup', end); rail.addEventListener('pointercancel', end);
+  const sync = cid => { if (scrubbing) return; const i = real.findIndex(c => c.dataset.cid === cid); if (i >= 0) paint(i, null); };
+  const sc = real.findIndex(c => c.dataset.cid === exploreJukeId);
+  paint(sc >= 0 ? sc : 0, null);
+  return sync;
 }
 let _jukeEditHold = false;
 let exploreZonesOpen = false;   // v9.05: subtipos en una sola línea; el botón los despliega todos
@@ -699,7 +789,7 @@ function jukeInit(box) {
     const W = track.clientWidth; if (!W) return;
     const cw = Math.min(Math.round(W * 0.9), 460);
     const top = track.getBoundingClientRect().top, nav = (document.querySelector('.xn-bar') || { offsetHeight: 72 }).offsetHeight || 72;
-    const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 62));
+    const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 70));
     track.style.setProperty('--xj-cw', cw + 'px'); track.style.setProperty('--xj-h', h + 'px');
     track.style.paddingLeft = track.style.paddingRight = Math.max(0, Math.round((W - cw) / 2)) + 'px';
     // v9.07: el patrón de seguridad se encuadra justo en la parte visible de la ficha (el cuerpo bajo la foto)
@@ -707,6 +797,7 @@ function jukeInit(box) {
     cards.forEach((el, i) => { const sv = el.querySelector('.xj-sec'), z = sz[i]; if (!sv || !z || !z[0]) return; const hv = Math.max(300, Math.min(640, 400 * z[1] / z[0])); sv.setAttribute('viewBox', `0 ${Math.round((640 - hv) / 2)} 400 ${Math.round(hv)}`); });
   };
   fit();
+  let railSync = null, lastBest = 0;
   const update = () => {
     _jukeRaf = 0;
     const mid = track.scrollLeft + track.clientWidth / 2;
@@ -716,8 +807,11 @@ function jukeInit(box) {
       el.style.transform = `scale(${(1 - d * 0.1).toFixed(3)})`; el.style.opacity = (1 - d * 0.5).toFixed(2);
       if (Math.abs(c - mid) < bd) { bd = Math.abs(c - mid); best = i; }
     });
+    lastBest = best;
     const cur = cards[best]; if (!cur || cur.classList.contains('xj-add')) return;
     exploreJukeId = cur.dataset.cid;
+    if (railSync) railSync(cur.dataset.cid);
+    jukeFillMaps(cards, best);
     const n = cards.filter(x => !x.classList.contains('xj-add')).length;
     const cnt = document.getElementById('xj-count'); if (cnt) cnt.textContent = `${best + 1} / ${n}`;
     const pf = document.getElementById('xj-posfill'); if (pf) pf.style.width = ((best + 1) / n * 100).toFixed(1) + '%';
@@ -779,6 +873,8 @@ function jukeInit(box) {
       if (e.key === 'ArrowRight') { jukeStep(1); e.preventDefault(); } else if (e.key === 'ArrowLeft') { jukeStep(-1); e.preventDefault(); }
     });
   }
+  railSync = jukeRailInit(track, cards, () => lastBest);
+  if (!worldMap && typeof loadWorldMap === 'function') loadWorldMap().then(() => { if (document.getElementById('xj-track') === track) jukeFillMaps(cards, lastBest); }).catch(() => {});
   const target = cards.find(c => c.dataset.cid === exploreJukeId) || cards[0];
   track.style.scrollBehavior = 'auto';
   track.scrollLeft = target.offsetLeft - (track.clientWidth - target.offsetWidth) / 2;
@@ -820,40 +916,65 @@ document.addEventListener('scroll', e => {
 }, true);
 
 /* ===== v9.09 · MODO EDICIÓN de Explorar: lista simple (bandera + nombre) para ordenar países y zonas ===== */
-function moveZoneBy(name, dir) {
-  const order = applyZoneOrder([...allZones(), UNCLASSIFIED]);
-  const i = order.indexOf(name), t = i + dir;
-  if (i < 0 || t < 0 || t >= order.length) return;
-  [order[i], order[t]] = [order[t], order[i]];
-  zoneOrder = order; saveZoneOrder(); renderExplorar();
+// v9.12 · modo edición: continente → zonas → países. Los continentes se ordenan como bloques y las zonas dentro de cada continente.
+const exploreEditClosed = {};
+function editBlocks() {
+  const present = [...allZones(), ...BUILTIN_ZONES.filter(z => !allZones().includes(z))];
+  const flat = applyZoneOrder([...new Set(present)]);
+  const blocks = [];
+  flat.forEach(z => { const ct = railContOf(z); let b = blocks.find(x => x.c === ct); if (!b) blocks.push(b = { c: ct, zones: [] }); b.zones.push(z); });
+  return blocks;
 }
+function saveEditBlocks(blocks) {
+  zoneOrder = blocks.flatMap(b => b.zones).concat([UNCLASSIFIED]); saveZoneOrder(); renderExplorar();
+}
+function moveContinentBy(ct, dir) {
+  const bl = editBlocks(), i = bl.findIndex(b => b.c === ct), t = i + dir;
+  if (i < 0 || t < 0 || t >= bl.length) return;
+  [bl[i], bl[t]] = [bl[t], bl[i]]; saveEditBlocks(bl);
+}
+function moveZoneBy(name, dir) {
+  const bl = editBlocks(), b = bl.find(x => x.zones.includes(name)); if (!b) return;
+  const i = b.zones.indexOf(name), t = i + dir;
+  if (t < 0 || t >= b.zones.length) return;
+  [b.zones[i], b.zones[t]] = [b.zones[t], b.zones[i]]; saveEditBlocks(bl);
+}
+function toggleEditContinent(ct) { exploreEditClosed[ct] = !exploreEditClosed[ct]; renderExplorar(); }
 function renderExploreEdit() {
   const groups = {};
   sortedCountries().forEach(c => { (groups[continentOf(c)] ||= []).push(c); });
-  const order = applyZoneOrder([...allZones(), UNCLASSIFIED].filter(k => groups[k] || (!BUILTIN_ZONES.includes(k) && k !== UNCLASSIFIED)));
+  const blocks = editBlocks();
   const q = normKey(String(exploreSearch || '').trim());
-  const zopts = ['<option value="">Automática</option>'].concat(allZones().map(z => `<option value="${esc(z)}">${esc(z)}</option>`)).join('');
-  let shown = 0;
-  const html = order.map(zone => {
-    const all = groups[zone] || [];
-    const list = q ? all.filter(c => normKey(prettyName(c.name)).includes(q) || normKey(zone).includes(q)) : all;
-    if (q && !list.length) return '';
-    shown++;
-    const zi = order.indexOf(zone), isU = zone === UNCLASSIFIED;
-    const head = `<div class="xe2-zh"><span class="xe2-zn">${esc(zone)}</span><small>${all.length}</small>
-      ${isU ? '' : `<button type="button" class="xe2-b" onclick="openEditZoneModal('${jsArg(zone)}')" aria-label="Editar zona" title="Editar zona"><i class="fa-solid fa-pen"></i></button>`}
-      <button type="button" class="xe2-b" onclick="moveZoneBy('${jsArg(zone)}',-1)" ${zi <= 0 ? 'disabled' : ''} aria-label="Subir zona" title="Subir zona"><i class="fa-solid fa-arrow-up"></i></button>
-      <button type="button" class="xe2-b" onclick="moveZoneBy('${jsArg(zone)}',1)" ${zi >= order.length - 1 ? 'disabled' : ''} aria-label="Bajar zona" title="Bajar zona"><i class="fa-solid fa-arrow-down"></i></button></div>`;
-    const rows = list.map((c, i) => {
-      const id = jsArg(c.id), cur = c.continent || '';
-      return `<div class="xe2-r" data-ecid="${esc(c.id)}"><span class="xe2-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><span class="xe2-n">${esc(prettyName(c.name))}</span>
-        <select class="xe2-sel" onchange="setCountryContinent('${id}', this.value)" aria-label="Zona de ${esc(prettyName(c.name))}">${zopts.replace(`value="${esc(cur)}"`, `value="${esc(cur)}" selected`)}</select>
-        <button type="button" class="xe2-b" onclick="moveCountryInZone(-1,'${id}')" ${q || i === 0 ? 'disabled' : ''} aria-label="Subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
-        <button type="button" class="xe2-b" onclick="moveCountryInZone(1,'${id}')" ${q || i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
-        <button type="button" class="xe2-b" onclick="editCountryCard('${id}')" aria-label="Editar país" title="Editar país"><i class="fa-solid fa-pen"></i></button></div>`;
-    }).join('');
-    return `<section class="xe2-z">${head}${rows || '<div class="xe2-empty">Sin países</div>'}</section>`;
+  const zopts = '<option value="">Automática</option>' + blocks.map(b => `<optgroup label="${esc(b.c)}">${b.zones.map(z => `<option value="${esc(z)}">${esc(z === b.c ? b.c + ' (general)' : z)}</option>`).join('')}</optgroup>`).join('') + `<option value="${esc(UNCLASSIFIED)}">${esc(UNCLASSIFIED)}</option>`;
+  const rowsOf = (list, zone) => list.map((c, i) => {
+    const id = jsArg(c.id), cur = c.continent || '';
+    return `<div class="xe2-r" data-ecid="${esc(c.id)}"><span class="xe2-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><span class="xe2-n">${esc(prettyName(c.name))}</span>
+      <select class="xe2-sel" onchange="setCountryContinent('${id}', this.value)" aria-label="Zona de ${esc(prettyName(c.name))}">${zopts.replace(`value="${esc(cur)}"`, `value="${esc(cur)}" selected`)}</select>
+      <button type="button" class="xe2-b" onclick="moveCountryInZone(-1,'${id}')" ${q || i === 0 ? 'disabled' : ''} aria-label="Subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
+      <button type="button" class="xe2-b" onclick="moveCountryInZone(1,'${id}')" ${q || i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+      <button type="button" class="xe2-b" onclick="editCountryCard('${id}')" aria-label="Editar país" title="Editar país"><i class="fa-solid fa-pen"></i></button></div>`;
   }).join('');
+  const filt = (list, zone) => q ? list.filter(c => normKey(prettyName(c.name)).includes(q) || normKey(zone).includes(q)) : list;
+  const zoneHtml = (z, ct, b) => {
+    const all = groups[z] || [], list = filt(all, z);
+    if (q && !list.length) return '';
+    const zi = b ? b.zones.indexOf(z) : 0, isBase = z === ct;
+    const arrows = b ? `<button type="button" class="xe2-b" onclick="moveZoneBy('${jsArg(z)}',-1)" ${zi <= 0 ? 'disabled' : ''} aria-label="Subir zona"><i class="fa-solid fa-arrow-up"></i></button>
+      <button type="button" class="xe2-b" onclick="moveZoneBy('${jsArg(z)}',1)" ${zi >= b.zones.length - 1 ? 'disabled' : ''} aria-label="Bajar zona"><i class="fa-solid fa-arrow-down"></i></button>` : '';
+    const pen = z === UNCLASSIFIED ? '' : `<button type="button" class="xe2-b" onclick="openEditZoneModal('${jsArg(z)}')" aria-label="Editar zona"><i class="fa-solid fa-pen"></i></button>`;
+    return `<div class="xe2-sz"><div class="xe2-zh"><span class="xe2-zn">${esc(isBase ? 'General' : z)}</span><small>${all.length}</small>${pen}${arrows}</div>${rowsOf(list, z) || '<div class="xe2-empty">Sin países</div>'}</div>`;
+  };
+  let html = '';
+  const un = groups[UNCLASSIFIED] || [];
+  if (un.length) html += `<section class="xe2-c xe2-un" style="--xc:${RAIL_COLORS[UNCLASSIFIED]}"><div class="xe2-ch"><span class="xe2-cn">${esc(UNCLASSIFIED)} · por clasificar</span><small>${un.length}</small></div>${zoneHtml(UNCLASSIFIED, UNCLASSIFIED, null)}</section>`;
+  blocks.forEach((b, bi) => {
+    const body = b.zones.map(z => zoneHtml(z, b.c, b)).join('');
+    if (q && !body) return;
+    const n = b.zones.reduce((t, z) => t + (groups[z] || []).length, 0), closed = !q && exploreEditClosed[b.c];
+    html += `<section class="xe2-c" style="--xc:${RAIL_COLORS[b.c] || '#5d5766'}"><div class="xe2-ch"><button type="button" class="xe2-cn" onclick="toggleEditContinent('${jsArg(b.c)}')"><i class="fa-solid ${closed ? 'fa-chevron-right' : 'fa-chevron-down'}"></i> ${esc(b.c)}</button><small>${n}</small>
+      <button type="button" class="xe2-b" onclick="moveContinentBy('${jsArg(b.c)}',-1)" ${bi === 0 ? 'disabled' : ''} aria-label="Subir continente"><i class="fa-solid fa-arrow-up"></i></button>
+      <button type="button" class="xe2-b" onclick="moveContinentBy('${jsArg(b.c)}',1)" ${bi === blocks.length - 1 ? 'disabled' : ''} aria-label="Bajar continente"><i class="fa-solid fa-arrow-down"></i></button></div>${closed ? '' : body}</section>`;
+  });
   return `<div class="xe2">${html || '<div class="xp-empty-msg">Nada coincide.</div>'}</div>`;
 }
 

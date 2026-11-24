@@ -1549,8 +1549,8 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xj-card .xj-edit { top:8px; left:8px; bottom:auto; }
 .xj-map { flex:none; position:relative; aspect-ratio:3 / 1; border-radius:12px; border:2px solid rgba(var(--xp-sand-rgb),.5); background:var(--xp-plum-d); overflow:hidden; display:flex; align-items:center; justify-content:center; }
 .xj-map svg { position:absolute; inset:0; width:100%; height:100%; display:block; }
-.xj-map .xj-land use { fill:rgba(var(--xp-sand-rgb),.16); stroke:rgba(var(--xp-sand-rgb),.38); stroke-width:.6px; vector-effect:non-scaling-stroke; }
-.xj-map .xj-hi use { fill:var(--xp-orange); stroke:var(--xp-sand-l); stroke-width:.9px; vector-effect:non-scaling-stroke; }
+.xj-map .xj-land use { fill:rgba(var(--xp-sand-rgb),.16); stroke:rgba(var(--xp-sand-rgb),.4); }
+.xj-map .xj-hi use { fill:var(--xp-orange); stroke:var(--xp-sand-l); }
 .xj-mk { fill:var(--xp-orange); stroke:var(--xp-sand-l); stroke-width:1px; vector-effect:non-scaling-stroke; }
 .xj-map-ph { color:rgba(var(--xp-sand-rgb),.3); font-size:28px; }
 .xj-rw { flex:none; display:flex; align-items:center; gap:10px; min-height:56px; }
@@ -1632,3 +1632,63 @@ body.xe-mode #xp-conts { display:none !important; }
 .xj-dots { width:100%; }
 /* v9.09: márgenes de la foto reducidos (van al final para ganar a la regla de v9.08) */
 .xj-card .xj-photo { margin:8px 8px 0; border-width:3px; border-radius:16px; }
+
+/* =============== v9.10 =============== */
+body.xj-mode #view-explorar .xp-top, body.xj-mode #xp-sorthint { display:none !important; }
+#xp-conts { display:none !important; }
+.xj-card { --xj-m:clamp(12px, calc(var(--xj-cw,320px) * .045), 18px); }
+.xj-card .xj-photo { margin:var(--xj-m) var(--xj-m) 0; }
+.xj-rail { margin:8px 0 6px; border-radius:18px; height:58px; overflow:hidden; position:relative; transition:background-color .25s; box-shadow:0 3px 0 rgba(0,0,0,.18), inset 0 0 0 2px rgba(255,255,255,.22); color:#fff; }
+.xj-rt { display:flex; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; cursor:grab; touch-action:pan-x; }
+.xj-rt::-webkit-scrollbar { display:none; }
+.xj-rs { flex:none; width:62%; scroll-snap-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; opacity:.45; transform:scale(.88); transition:opacity .2s, transform .2s; user-select:none; -webkit-user-select:none; }
+.xj-rs b { font:800 17px/1.1 'Poppins',sans-serif; letter-spacing:.02em; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-rs small { font:700 10.5px/1.2 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; opacity:.85; margin-top:2px; }
+.xj-rs.xj-rs-on { opacity:1; transform:none; }
+.xj-rs:first-child { margin-left:19%; } .xj-rs:last-child { margin-right:19%; }
+
+/* =============== v9.11 =============== */
+.xj-pv { background-size:cover; background-position:center; background-repeat:no-repeat; opacity:1; }
+.xj-rail { touch-action:none; cursor:ew-resize; user-select:none; -webkit-user-select:none; }
+.xj-rail .xj-rt { display:none; }
+.xj-rname { position:absolute; inset:0 0 14px 0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; pointer-events:none; padding:0 10px; }
+.xj-rname b { font:800 18px/1.1 'Poppins',sans-serif; letter-spacing:.02em; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xj-rname small { font:700 10.5px/1.2 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase; opacity:.85; margin-top:2px; }
+.xj-ticks { position:absolute; left:10px; right:10px; bottom:7px; height:5px; display:flex; gap:2px; pointer-events:none; }
+.xj-tk { flex:1; background:rgba(255,255,255,.28); border-radius:3px; }
+.xj-tk.xj-tk-c { margin-left:5px; }
+.xj-tk.xj-tk-on { background:#fff; }
+.xj-rail.xj-rail-on { box-shadow:0 3px 0 rgba(0,0,0,.18), inset 0 0 0 2px rgba(255,255,255,.55); }
+
+/* =============== v9.12 · modo edición por continentes =============== */
+.xe2-c { border-radius:16px; overflow:hidden; border:2px solid var(--xc); background:var(--xp-plum); }
+.xe2-ch { display:flex; align-items:center; gap:6px; padding:8px 8px 8px 12px; background:var(--xc); color:#fff; }
+.xe2-ch small { font-weight:700; opacity:.85; margin-right:4px; }
+.xe2-cn { flex:1; min-width:0; text-align:left; background:none; border:0; color:#fff; font:800 16px 'Poppins',sans-serif; letter-spacing:.03em; padding:4px 0; }
+.xe2-ch .xe2-b { background:rgba(255,255,255,.22); color:#fff; }
+.xe2-sz { padding:6px 8px 8px; }
+.xe2-sz + .xe2-sz { border-top:2px solid rgba(var(--xp-sand-rgb),.18); }
+.xe2-sz .xe2-zh { padding:2px 0 6px; }
+.xe2-sz .xe2-zn { font-size:13px; letter-spacing:.06em; text-transform:uppercase; opacity:.9; }
+.xe2-c .xe2-z { border:0; }
+.xe2 { gap:12px; }
+
+/* =============== v9.13 · barra de continentes bajo la ficha =============== */
+.xj-rail { position:relative; height:28px; margin:12px 4px 10px; border-radius:14px; overflow:visible; background:transparent; box-shadow:none; color:#fff; touch-action:none; cursor:ew-resize; user-select:none; -webkit-user-select:none; }
+.xj-segs { display:flex; gap:3px; height:100%; border-radius:14px; overflow:hidden; }
+.xj-seg { display:flex; min-width:14px; opacity:.88; }
+.xj-seg i { display:block; height:100%; border-left:1px solid rgba(255,255,255,.35); }
+.xj-seg i:first-child { border-left:0; }
+.xj-thumb { position:absolute; top:-3px; bottom:-3px; width:6px; margin-left:-3px; border-radius:4px; background:#fff; box-shadow:0 0 0 2px rgba(0,0,0,.35); pointer-events:none; }
+.xj-bub { position:absolute; bottom:40px; transform:translateX(-50%); padding:6px 12px; border-radius:12px; color:#fff; text-align:center; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .12s; box-shadow:0 4px 14px rgba(0,0,0,.35); z-index:5; }
+.xj-bub b { display:block; font:800 14px/1.15 'Poppins',sans-serif; }
+.xj-bub small { display:block; font:700 10.5px/1.2 'Inter',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.9; }
+.xj-rail.xj-rail-on .xj-bub { opacity:1; }
+.xj-rail.xj-rail-on .xj-seg { opacity:1; }
+
+/* =============== v9.14 =============== */
+.xj-map .xj-ring { fill:none; stroke:var(--xp-orange); }
+.xj-map .xj-inset { fill:var(--xp-plum-d); }
+.xj-map svg { shape-rendering:geometricPrecision; }
+.xj-bub.xj-pop { animation:xjpop .22s ease-out; }
+@keyframes xjpop { 0% { transform:translateX(-50%) scale(1.22); } 100% { transform:translateX(-50%) scale(1); } }

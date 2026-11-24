@@ -33,7 +33,7 @@ function getOrCreateCountry(name) {
   name = String(name ?? '').trim() || 'Sin país';
   let c = findCountryByName(name);
   if (!c) {
-    c = { id: newId(), name, order: countries.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1 };
+    c = { id: newId(), name, continent: 'Sin clasificar', order: countries.reduce((m, x) => Math.max(m, x.order ?? 0), -1) + 1 };   // v9.10: un país nuevo entra en «Sin clasificar»
     countries.push(c);
   }
   return c;
