@@ -751,7 +751,7 @@ const RAIL_COLORS = { 'Europa': '#2f5fa7', 'América': '#2f7d4f', 'Asia': '#b345
 function railContOf(z) { return z === UNCLASSIFIED ? UNCLASSIFIED : zoneContinent(z); }
 // Dos «burbujas» bajo la ficha, una encima de otra: continente y zonas de ese continente. Se deslizan de lado a lado (como la barra de letras del índice).
 function jukeBarsHtml(nav) {
-  const mk = (kind, list, cur, label, count, color) => `<div class="xj-sw xj-sw-${kind}" data-kind="${kind}">${list.map((v, i) => `<div class="xj-si" data-v="${esc(v)}" style="background:${color(v)}">${i > 0 ? '<i class="xj-sh xj-sh-l">‹</i>' : ''}<b>${esc(label(v))}</b><small>${count(v)}</small>${i < list.length - 1 ? '<i class="xj-sh xj-sh-r">›</i>' : ''}</div>`).join('')}</div>`;
+  const mk = (kind, list, cur, label, count, color) => `<div class="xj-sw xj-sw-${kind}" data-kind="${kind}">${list.map((v, i) => `<div class="xj-si" data-v="${esc(v)}" style="background:${color(v)}">${i > 0 ? '<i class="xj-sh xj-sh-l">‹</i>' : ''}<b>${esc(label(v))}</b>${i < list.length - 1 ? '<i class="xj-sh xj-sh-r">›</i>' : ''}</div>`).join('')}</div>`;
   const n = z => (nav.groups[z] || []).length, nTxt = k => k + (k === 1 ? ' país' : ' países');
   const contCount = ct => nTxt(nav.zmap[ct].reduce((t, z) => t + n(z), 0));
   const zs = nav.zmap[exploreContinent] || [];
@@ -817,7 +817,7 @@ function jukeInit(box) {
     const W = track.clientWidth; if (!W) return;
     const cw = Math.min(Math.round(W * 0.9), 460);
     const top = track.getBoundingClientRect().top, nav = (document.querySelector('.xn-bar') || { offsetHeight: 72 }).offsetHeight || 72;
-    const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 114));
+    const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 146));
     track.style.setProperty('--xj-cw', cw + 'px'); track.style.setProperty('--xj-h', h + 'px');
     track.style.paddingLeft = track.style.paddingRight = Math.max(0, Math.round((W - cw) / 2)) + 'px';
   };

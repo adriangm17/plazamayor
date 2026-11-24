@@ -1754,3 +1754,13 @@ body.xj-mode #view-explorar .xp-top, body.xj-mode #xp-sorthint { display:none !i
 .xj-pr-bar i { display:block; height:100%; background:var(--xp-orange,#e8712f); border-radius:3px; }
 .xj-bk-0 { text-align:center; opacity:.6; margin-top:20px; }
 .xj-bk-f { flex:none; text-align:center; font:600 10px 'Poppins',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.5; padding:2px 0 4px; }
+
+/* v9.20 · Explorar (jukebox): sin scroll vertical; barras de continente/zona más grandes y sin contador */
+html:has(body.xj-mode), body.xj-mode { overflow:hidden !important; overscroll-behavior:none; height:100%; }
+body.xj-mode #view-explorar { touch-action:pan-x; overscroll-behavior:none; }
+.xj-bars { gap:8px; margin:8px 4px 10px; }
+.xj-sw { height:50px; border-radius:25px; }
+.xj-si b { font-size:18px; }
+.xj-sw-z .xj-si b { font-size:16px; }
+.xj-sh { font-size:30px; }
+.xj-sh-l { left:16px; } .xj-sh-r { right:16px; }
