@@ -221,3 +221,5 @@ v9.20: Explorar: se bloquea el scroll vertical de la pestaña; las burbujas de c
 v9.21: Explorar: fichas con algo más de margen lateral; el deslizamiento de fichas abarca todo el continente seleccionado (cambia la zona de la barra al pasar de una zona a otra, nunca salta a otro continente); tocar una zona en su barra salta a su primer país. Cache sw: plaza-mayor-v167.
 
 v9.22: Explorar: se vuelve al margen lateral de la ficha de antes (90 %) y se aumenta el espacio interior entre foto, nombre, bandera, bolitas y pasaporte. Cache sw: plaza-mayor-v168.
+
+v9.23: Explorar: en el reverso de la ficha los nombres largos de país ocupan dos líneas en vez de cortarse. Cache sw: plaza-mayor-v169.

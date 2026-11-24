@@ -1772,3 +1772,5 @@ body.xj-mode #view-explorar { touch-action:pan-x; overscroll-behavior:none; }
 .xj-lc { gap:14px; }
 .xj-card.xj-add { padding:10px; }
 .xj-lc .xj-dt { box-sizing:border-box; }
+/* v9.23 · reverso: nombres largos en dos líneas en vez de cortarse */
+.xj-bk-h b { white-space:normal; font-size:19px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
