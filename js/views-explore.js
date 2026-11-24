@@ -87,7 +87,13 @@ let exploreJukeId = '';      // país que está a la vista en el jukebox (para v
 function toggleExploreView() {
   exploreView = exploreView === 'jukebox' ? 'zonas' : 'jukebox';
   try { localStorage.setItem('numis_explore_view', exploreView); } catch (e) {}
+  window.scrollTo(0, 0);
   renderExplorar();
+}
+// v9.09: pulsar «Explorar» estando en Explorar (solo admin) alterna Jukebox ↔ modo edición
+function onNavExplorar() {
+  if (currentTab === 'explorar' && typeof catalogEditAllowed === 'function' && catalogEditAllowed()) toggleExploreView();
+  else switchTab('explorar');
 }
 function setExploreContinent(c) {
   exploreContinent = (exploreContinent === c) ? '' : c;
@@ -227,9 +233,10 @@ function toggleAllZones() {
 }
 function updateExploreToggle() {
   const vb = document.getElementById('explorar-view');
-  if (vb) { const j = exploreView === 'jukebox'; vb.innerHTML = `<i class="fa-solid fa-${j ? 'table-list' : 'clone'}"></i>`; vb.title = vb.ariaLabel = j ? 'Ver por zonas (lista)' : 'Ver como pasaporte (una ficha por país)'; }
+  if (vb) vb.style.display = 'none';
+  if (false) { const j = exploreView === 'jukebox'; vb.innerHTML = `<i class="fa-solid fa-${j ? 'table-list' : 'clone'}"></i>`; vb.title = vb.ariaLabel = j ? 'Ver por zonas (lista)' : 'Ver como pasaporte (una ficha por país)'; }
   const btn = document.getElementById('explorar-toggle'); if (!btn) return;
-  btn.style.display = exploreView === 'jukebox' ? 'none' : '';
+  btn.style.display = 'none';   // v9.09: el modo edición ya no tiene zonas plegables
   const anyOpen = [...allZones(), UNCLASSIFIED].some(k => !exploreClosed[k]);
   const t = anyOpen ? 'Contraer todo' : 'Desplegar todo';
   btn.title = t; btn.setAttribute('aria-label', t);
@@ -343,6 +350,7 @@ function periodPctOf(p) {
 
 function countryCardHtml(c) {
   const s = countryStats(c);
+  const mapImg = (typeof c.mapImage === 'string' && c.mapImage.startsWith('data:image/')) ? c.mapImage : '';
   const pers = periodsOfCountry(c.id), eras = pers.length;
   const lay = dotsLayout(eras);
   const dots = pers.slice(0, lay.shown).map(p => { const pc = periodPctOf(p); return `<i style="--p:${pc}" title="${esc(periodDisplayName(p))}: ${pc}%"></i>`; }).join('');
@@ -561,13 +569,13 @@ function jukeFillMaps(cards, best) {
 
 // --- Bolitas: tamaño y filas según cuántos períodos haya ---
 function jukeDotsLayout(n) {
-  const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.84), 460);
-  const mg = Math.max(16, Math.min(26, cw * .06)), W = cw - 2 * mg - 78, H = 54, g = 5;
+  const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460);
+  const mg = Math.max(16, Math.min(26, cw * .06)), W = cw - 2 * mg, H = 54, g = 5;
   let best = null;
   for (let rows = 1; rows <= 3; rows++) {
     const cols = Math.ceil(n / rows), s = Math.floor(Math.min(34, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
     if (!best || s > best.s + 3) best = { s, cols, rows };   // se prefiere menos filas salvo que las bolitas ganen bastante
-    if (s >= 24) { best = { s, cols, rows }; break; }
+    if (s >= 17) { best = { s, cols, rows }; break; }   // v9.08: se llena toda la fila hasta el margen izquierdo antes de pasar a dos filas
   }
   return best;
 }
@@ -576,22 +584,21 @@ function jukeCardHtml(c, zone, i) {
   const s = countryStats(c), name = prettyName(c.name), id = jsArg(c.id);
   const photo = (typeof c.photo === 'string' && c.photo.startsWith('data:image/')) ? c.photo : '';
   const pers = periodsOfCountry(c.id), eras = pers.length;
+  const mapImg = (typeof c.mapImage === 'string' && c.mapImage.startsWith('data:image/')) ? c.mapImage : '';
   const lay = jukeDotsLayout(Math.max(1, Math.min(eras, 24)));
   const dots = pers.slice(0, 24).map(p => { const pc = periodPctOf(p); return `<button type="button" class="xj-dt" data-pid="${esc(p.id)}" style="--p:${pc}" aria-label="${esc(periodDisplayName(p))}: ${pc}%"></button>`; }).join('');
-  const edit = (typeof catalogEditAllowed === 'function' && catalogEditAllowed()) ? `<button type="button" class="xj-edit" onclick="event.stopPropagation(); editCountryCard('${id}')" aria-label="Editar ${esc(name)}" title="Editar"><i class="fa-solid fa-pen"></i></button>` : '';
   const nCoins = coinsOfCountry(c.id).length, z = zone === UNCLASSIFIED ? 'SIN_CLASIFICAR' : mrzTxt(zone);
   const pad = t => (t + '<'.repeat(44)).slice(0, 44), n3 = n => String(Math.min(999, n)).padStart(3, '0');
   const l1 = pad(`P<${jukeCodes()[c.id] || 'XXX'}<${z}`), l2 = pad(`${n3(eras)}<PER${'<'.repeat(6)}${n3(nCoins)}<MON`);
   const nl = name.length;
   return `<div class="xj-card${s.a === 0 ? ' xj-zero' : ''}" data-cid="${esc(c.id)}" data-i="${i}" data-zone="${esc(zone)}" onclick="jukeOpen('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${s.t ? s.pct + '% completado' : 'sin monedas'}">
-    <div class="xj-photo ${photo ? '' : 'xj-nophoto'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}>${edit}</div>
+    <div class="xj-photo ${photo ? '' : 'xj-nophoto'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
     <div class="xj-body">
       ${jukePatternSvg(c.id)}
       <div class="xj-top"><span class="xj-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><div class="xj-nm ${nl > 22 ? 'xj-n4' : nl > 16 ? 'xj-n3' : nl > 11 ? 'xj-n2' : ''}"><span>${esc(name)}</span></div></div>
-      <div class="xj-map" data-mk="${jukeMapKeys(c).join(',')}"></div>
+      <div class="xj-map${mapImg ? '' : ' xj-map-empty'}" ${mapImg ? `style="background-image:url('${esc(mapImg)}')"` : ''}>${mapImg ? '' : '<i class="fa-solid fa-earth-europe xj-map-ph"></i>'}</div>
       <div class="xj-rw">
         <div class="xj-dots" style="--ds:${lay.s}px;--dc:${lay.cols}">${dots || '<span class="xj-nodots">Sin períodos</span>'}</div>
-        <div class="xj-pc ${s.pct >= 100 ? 'xj-p100' : ''}" title="${s.a} de ${s.t} monedas"><b>${eras === 0 && s.t === 0 ? '-' : s.pct + '%'}</b><small>completado</small></div>
       </div>
     </div>
     <div class="xj-mr" aria-hidden="true">${esc(l1)}<br>${esc(l2)}</div>
@@ -662,6 +669,7 @@ function renderJukebox() {
   return `${chips}<div class="xj-stage"><button type="button" class="xj-arrow xj-prev" onclick="jukeStep(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="xj-arrow xj-next" onclick="jukeStep(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><div class="xj-track" id="xj-track">${cards}</div></div>
     <div class="xj-pos"><span id="xj-count">1 / ${items.length}</span><div class="xj-posbar"><i id="xj-posfill" style="width:${(100 / items.length).toFixed(1)}%"></i></div></div>`;
 }
+let _jukeEditHold = false;
 let exploreZonesOpen = false;   // v9.05: subtipos en una sola línea; el botón los despliega todos
 function jukeZonesToggle() { exploreZonesOpen = !exploreZonesOpen; const c = document.getElementById('xj-chips'); if (c) c.classList.toggle('xj-open', exploreZonesOpen); const b = document.querySelector('.xj-more i'); if (b) b.className = 'fa-solid fa-chevron-' + (exploreZonesOpen ? 'up' : 'down'); }
 function jukeZone(z) {
@@ -689,7 +697,7 @@ function jukeInit(box) {
     const pr = stage.parentElement.getBoundingClientRect();
     stage.style.marginLeft = (-pr.left) + 'px'; stage.style.width = document.documentElement.clientWidth + 'px';
     const W = track.clientWidth; if (!W) return;
-    const cw = Math.min(Math.round(W * 0.84), 460);
+    const cw = Math.min(Math.round(W * 0.9), 460);
     const top = track.getBoundingClientRect().top, nav = (document.querySelector('.xn-bar') || { offsetHeight: 72 }).offsetHeight || 72;
     const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 62));
     track.style.setProperty('--xj-cw', cw + 'px'); track.style.setProperty('--xj-h', h + 'px');
@@ -708,7 +716,6 @@ function jukeInit(box) {
       el.style.transform = `scale(${(1 - d * 0.1).toFixed(3)})`; el.style.opacity = (1 - d * 0.5).toFixed(2);
       if (Math.abs(c - mid) < bd) { bd = Math.abs(c - mid); best = i; }
     });
-    jukeFillMaps(cards, best);
     const cur = cards[best]; if (!cur || cur.classList.contains('xj-add')) return;
     exploreJukeId = cur.dataset.cid;
     const n = cards.filter(x => !x.classList.contains('xj-add')).length;
@@ -721,7 +728,20 @@ function jukeInit(box) {
   };
   track.addEventListener('scroll', () => { if (!_jukeRaf) _jukeRaf = requestAnimationFrame(update); }, { passive: true });
   jukeBindTips(track);
-  if (!worldMap && typeof loadWorldMap === 'function') loadWorldMap().then(() => { if (document.body.contains(track)) update(); }).catch(() => {});
+
+  // v9.08 · solo admin: mantener pulsado en la foto o en cualquier zona de la ficha (menos las bolitas) abre «Editar país»
+  if (typeof catalogEditAllowed === 'function' && catalogEditAllowed()) {
+    let lt = 0, lx = 0, ly = 0;
+    const lcancel = ev => { if (ev && ev.type === 'pointermove' && Math.hypot(ev.clientX - lx, ev.clientY - ly) < 8) return; clearTimeout(lt); };
+    track.addEventListener('pointerdown', e => {
+      const card = e.target.closest('.xj-card'); if (!card || card.classList.contains('xj-add') || e.target.closest('.xj-dt, .xj-tip') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      lx = e.clientX; ly = e.clientY; clearTimeout(lt);
+      lt = setTimeout(() => { _jukeEditHold = true; if (navigator.vibrate) try { navigator.vibrate(15); } catch (er) {} editCountryCard(card.dataset.cid); }, 600);
+    });
+    window.addEventListener('pointermove', lcancel); window.addEventListener('pointerup', lcancel); window.addEventListener('pointercancel', lcancel);
+    track.addEventListener('contextmenu', e => { if (e.target.closest('.xj-card')) e.preventDefault(); });
+  }
+  track.addEventListener('click', e => { if (_jukeEditHold) { _jukeEditHold = false; e.stopPropagation(); e.preventDefault(); } }, true);   // soltar tras la pulsación larga no abre el álbum
 
   // v9.04 · ordenador: rueda del ratón (una ficha por golpe), arrastrar con el ratón y flechas del teclado
   let wheelLock = 0;
@@ -733,7 +753,7 @@ function jukeInit(box) {
   }, { passive: false });
   let drag = null, moved = false;
   track.addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.xj-edit, .xj-dt, .xj-tip')) return;
+    if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('.xj-dt, .xj-tip')) return;
     drag = { x: e.clientX, sl: track.scrollLeft }; moved = false;
   });
   window.addEventListener('pointermove', e => {
@@ -769,14 +789,16 @@ function jukeInit(box) {
 function renderExplorar() {
   const box = document.getElementById('explorar-content');
   if (!box) return;
+  if (!(typeof catalogEditAllowed === 'function' && catalogEditAllowed())) exploreView = 'jukebox';   // v9.09: el modo edición es solo del admin
+  if (typeof updateHeaderMode === 'function') updateHeaderMode();
   if (countries.length === 0) { box.innerHTML = `<div class="xp-empty-msg">Aún no hay países en la colección.</div>`; updateExploreToggle(); return; }
   syncContinentButtons();
   const nc = document.getElementById('new-zone-continent');
   if (nc && !nc.options.length) nc.innerHTML = continentOptionsHtml('');
   if (exploreView === 'jukebox') { box.innerHTML = renderJukebox(); jukeInit(box); updateExploreToggle(); return; }
-  box.innerHTML = renderContinents();
-  restoreRowScroll(box);
-  hydrateImages(box);
+  const sy = window.scrollY;
+  box.innerHTML = renderExploreEdit();
+  window.scrollTo(0, sy);
   updateExploreToggle();
 }
 
@@ -796,6 +818,44 @@ document.addEventListener('scroll', e => {
   const sec = t.closest('section[data-zone]');
   if (sec && t.offsetParent !== null) exploreRowScroll[sec.dataset.zone] = t.scrollLeft;
 }, true);
+
+/* ===== v9.09 · MODO EDICIÓN de Explorar: lista simple (bandera + nombre) para ordenar países y zonas ===== */
+function moveZoneBy(name, dir) {
+  const order = applyZoneOrder([...allZones(), UNCLASSIFIED]);
+  const i = order.indexOf(name), t = i + dir;
+  if (i < 0 || t < 0 || t >= order.length) return;
+  [order[i], order[t]] = [order[t], order[i]];
+  zoneOrder = order; saveZoneOrder(); renderExplorar();
+}
+function renderExploreEdit() {
+  const groups = {};
+  sortedCountries().forEach(c => { (groups[continentOf(c)] ||= []).push(c); });
+  const order = applyZoneOrder([...allZones(), UNCLASSIFIED].filter(k => groups[k] || (!BUILTIN_ZONES.includes(k) && k !== UNCLASSIFIED)));
+  const q = normKey(String(exploreSearch || '').trim());
+  const zopts = ['<option value="">Automática</option>'].concat(allZones().map(z => `<option value="${esc(z)}">${esc(z)}</option>`)).join('');
+  let shown = 0;
+  const html = order.map(zone => {
+    const all = groups[zone] || [];
+    const list = q ? all.filter(c => normKey(prettyName(c.name)).includes(q) || normKey(zone).includes(q)) : all;
+    if (q && !list.length) return '';
+    shown++;
+    const zi = order.indexOf(zone), isU = zone === UNCLASSIFIED;
+    const head = `<div class="xe2-zh"><span class="xe2-zn">${esc(zone)}</span><small>${all.length}</small>
+      ${isU ? '' : `<button type="button" class="xe2-b" onclick="openEditZoneModal('${jsArg(zone)}')" aria-label="Editar zona" title="Editar zona"><i class="fa-solid fa-pen"></i></button>`}
+      <button type="button" class="xe2-b" onclick="moveZoneBy('${jsArg(zone)}',-1)" ${zi <= 0 ? 'disabled' : ''} aria-label="Subir zona" title="Subir zona"><i class="fa-solid fa-arrow-up"></i></button>
+      <button type="button" class="xe2-b" onclick="moveZoneBy('${jsArg(zone)}',1)" ${zi >= order.length - 1 ? 'disabled' : ''} aria-label="Bajar zona" title="Bajar zona"><i class="fa-solid fa-arrow-down"></i></button></div>`;
+    const rows = list.map((c, i) => {
+      const id = jsArg(c.id), cur = c.continent || '';
+      return `<div class="xe2-r" data-ecid="${esc(c.id)}"><span class="xe2-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><span class="xe2-n">${esc(prettyName(c.name))}</span>
+        <select class="xe2-sel" onchange="setCountryContinent('${id}', this.value)" aria-label="Zona de ${esc(prettyName(c.name))}">${zopts.replace(`value="${esc(cur)}"`, `value="${esc(cur)}" selected`)}</select>
+        <button type="button" class="xe2-b" onclick="moveCountryInZone(-1,'${id}')" ${q || i === 0 ? 'disabled' : ''} aria-label="Subir" title="Subir"><i class="fa-solid fa-arrow-up"></i></button>
+        <button type="button" class="xe2-b" onclick="moveCountryInZone(1,'${id}')" ${q || i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar" title="Bajar"><i class="fa-solid fa-arrow-down"></i></button>
+        <button type="button" class="xe2-b" onclick="editCountryCard('${id}')" aria-label="Editar país" title="Editar país"><i class="fa-solid fa-pen"></i></button></div>`;
+    }).join('');
+    return `<section class="xe2-z">${head}${rows || '<div class="xe2-empty">Sin países</div>'}</section>`;
+  }).join('');
+  return `<div class="xe2">${html || '<div class="xp-empty-msg">Nada coincide.</div>'}</div>`;
+}
 
 function renderContinents() {
   const zones = allZones();
@@ -1076,12 +1136,13 @@ function updateCountryMoveUI() {
   const t = document.getElementById('edit-country-pos');
   if (t) t.textContent = i >= 0 ? `Posición ${i + 1} de ${list.length} en ${list.length ? continentOf(list[i]) : ''}` : '';
 }
-function moveCountryInZone(direction) {
-  const zone = countriesInZoneOf(currentCountryId);
-  const i = zone.findIndex(x => x.id === currentCountryId), t = i + direction;
+function moveCountryInZone(direction, cid) {
+  cid = cid || currentCountryId;
+  const zone = countriesInZoneOf(cid);
+  const i = zone.findIndex(x => x.id === cid), t = i + direction;
   if (i < 0 || t < 0 || t >= zone.length) return;
   const all = sortedCountries();
-  const ia = all.findIndex(x => x.id === currentCountryId), ib = all.findIndex(x => x.id === zone[t].id);
+  const ia = all.findIndex(x => x.id === cid), ib = all.findIndex(x => x.id === zone[t].id);
   [all[ia], all[ib]] = [all[ib], all[ia]];
   all.forEach((c, n) => { c.order = n; });
   persistMeta();

@@ -64,6 +64,7 @@ function openEditCountryModal() {
   pendingFlagImage = undefined;
   updateFlagPreview();
   pendingCardPhoto = undefined;
+  pendingMapImage = undefined; updateMapImagePreview(country.mapImage || '');
   loadCardPhotoEditor(country.photo || '');
   updateCardPhotoPreview();
   updateCountryMoveUI();
@@ -181,6 +182,18 @@ function applyPendingPeriodNames() {
 }
 
 /* ----- Tarjeta del país en Explorar: foto ----- */
+let pendingMapImage;                       // v9.08: imagen del mapa de la ficha (undefined = sin cambios, '' = quitar)
+function updateMapImagePreview(src) {
+  const b = document.getElementById('map-image-preview'); if (!b) return;
+  b.style.backgroundImage = src ? `url('${src}')` : '';
+  b.classList.toggle('xp-nophoto', !src);
+  const e = document.getElementById('map-image-empty'); if (e) e.style.display = src ? 'none' : '';
+}
+function onMapImageSelected(input) {
+  const file = input.files[0]; input.value = '';
+  readImageAsDataURL(file, 1200, 0.85, url => { pendingMapImage = url; updateMapImagePreview(url); });
+}
+function clearMapImage() { pendingMapImage = ''; updateMapImagePreview(''); }
 let pendingCardPhoto;                       // undefined = sin cambios, '' = quitar, 'data:…' = nueva
 
 // Lee una imagen, la reduce y la devuelve como data URL (WebP conserva la transparencia de las monedas recortadas)
@@ -336,6 +349,7 @@ function saveEditedCountryName() {
     pendingFlagImage = undefined;
   }
 
+  if (pendingMapImage !== undefined) { if (pendingMapImage) country.mapImage = pendingMapImage; else delete country.mapImage; pendingMapImage = undefined; }
   finalizeCardPhoto();
   if (pendingCardPhoto !== undefined) {
     if (pendingCardPhoto) country.photo = pendingCardPhoto; else delete country.photo;

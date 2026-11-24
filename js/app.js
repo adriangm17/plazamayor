@@ -35,13 +35,23 @@ function updateHeaderTools() {
   const set = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !on); };
   set('xh-addp', inAlbum);
   set('xh-editc', inAlbum);
-  set('xh-newzone', currentTab === 'explorar');
-  set('xh-newcountry', currentTab === 'explorar');
-  set('xh-sortzone', currentTab === 'explorar');
+  const ed = currentTab === 'explorar' && typeof exploreView !== 'undefined' && exploreView === 'zonas';
+  set('xh-newzone', ed);
+  set('xh-newcountry', ed);
+  set('xh-sortzone', false);
   set('xh-add', currentTab === 'album');
   closeHeaderPop();
 }
 
+// v9.09: sin la barra «Plaza Mayor» en Estadísticas ni en el Jukebox de Explorar (con el modo edición sí sale)
+function updateHeaderMode() {
+  const off = currentTab === 'estadisticas' || (currentTab === 'explorar' && exploreView === 'jukebox');
+  document.body.classList.toggle('xh-off', off);
+  const ed = currentTab === 'explorar' && exploreView === 'zonas';
+  document.body.classList.toggle('xe-mode', ed);
+  const set = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !on); };
+  set('xh-newzone', ed); set('xh-newcountry', ed);
+}
 function closeHeaderPop() {
   const pop = document.getElementById('xh-pop');
   if (pop) { pop.classList.add('hidden'); pop.innerHTML = ''; pop.dataset.kind = ''; }
@@ -142,6 +152,12 @@ function switchTab(tabName) {
   if (tabName === 'estadisticas' && currentTab === 'estadisticas' && typeof statsGrade !== 'undefined') { statsGrade = ''; statsType = ''; statsTypeHave = false; statsErrors = ''; }   // tocar de nuevo la pestaña vuelve al resumen
   if (tabName !== currentTab) resetAllFilters();   // al cambiar de pestaña no se mantiene ningún filtro
   const changed = tabName !== currentTab;
+  if (changed && tabName === 'explorar') {   // v9.08: al entrar en Explorar: siempre jukebox, con el país del Álbum (o uno al azar)
+    exploreView = 'jukebox'; try { localStorage.setItem('numis_explore_view', 'jukebox'); } catch (e) {}
+    exploreZone = ''; exploreContinent = ''; exploreZonesOpen = false;
+    if (countryById(currentCountryId)) exploreJukeId = currentCountryId;
+    else if (countries.length) exploreJukeId = countries[Math.floor(Math.random() * countries.length)].id;
+  }
   if (changed) { window.scrollTo(0, 0); resetBarScroll(); resetViewFolds(tabName); }    // v8.04: al cambiar de pestaña la cabecera vuelve a verse
   showTab(tabName);
   render();
@@ -151,6 +167,7 @@ function switchTab(tabName) {
 function showTab(tabName) {
   if (currentTab === 'identificar' && tabName !== 'identificar' && typeof identReset === 'function') identReset();   // las fotos de Identificación no se conservan al cambiar de pestaña
   currentTab = tabName;
+  if (typeof updateHeaderMode === 'function') updateHeaderMode();
   document.body.classList.toggle('theme-explorar', tabName === 'explorar' || tabName === 'estadisticas' || tabName === 'indice' || tabName === 'album' || tabName === 'identificar');
   ['album', 'indice', 'explorar', 'estadisticas', 'identificar'].forEach(t => {
     const view = document.getElementById(`view-${t}`);

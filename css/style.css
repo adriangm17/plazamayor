@@ -1603,3 +1603,32 @@ body.xp-scrolled #view-indice .xp-tools { visibility:visible; opacity:1; pointer
 .xj-sec .sg { fill:var(--xp-plum); }
 /* el aviso del período flota sobre la ficha (antes la regla de «hijos de la ficha» lo metía en el flujo y movía todo al pasar el ratón) */
 .xj-card > .xj-tip { position:absolute; z-index:5; }
+
+/* =============== v9.09 =============== */
+body.xh-off .xh-bar { display:none !important; }
+.xj-arrow { display:none !important; }
+.xj-card { --xj-m:clamp(8px, calc(var(--xj-cw,320px) * .035), 14px); }
+.xj-card .xj-photo { margin:8px 8px 0; border-width:3px; border-radius:16px; }
+body.xe-mode #xp-conts { display:none !important; }
+.xe2 { display:flex; flex-direction:column; gap:14px; margin-top:12px; }
+.xe2-z { background:var(--xp-plum); border-radius:16px; padding:8px; border:2px solid rgba(var(--xp-orange-rgb),.4); }
+.xe2-zh { display:flex; align-items:center; gap:6px; padding:4px 4px 8px; color:var(--xp-sand-l); }
+.xe2-zn { flex:1; min-width:0; font:800 15px 'Poppins',sans-serif; letter-spacing:.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xe2-zh small { opacity:.7; font-weight:700; margin-right:4px; }
+.xe2-r { display:flex; align-items:center; gap:6px; padding:5px 4px; border-top:1px solid rgba(var(--xp-sand-rgb),.15); color:var(--xp-sand-l); }
+.xe2-fl { flex:none; width:30px; height:21px; border-radius:4px; background-size:cover; background-position:center; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+.xe2-n { flex:1; min-width:0; font-weight:700; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xe2-sel { flex:none; max-width:112px; height:32px; border-radius:9px; border:1px solid rgba(var(--xp-sand-rgb),.35); background:var(--xp-plum-d); color:var(--xp-sand-l); font-size:12px; padding:0 4px; }
+.xe2-b { flex:none; width:32px; height:32px; border-radius:9px; border:0; background:rgba(var(--xp-sand-rgb),.14); color:var(--xp-sand-l); display:flex; align-items:center; justify-content:center; font-size:12px; }
+.xe2-b:disabled { opacity:.3; }
+.xe2-empty { padding:8px; opacity:.6; color:var(--xp-sand-l); font-size:13px; }
+@media (max-width:420px) { .xe2-sel { max-width:84px; } .xe2-b { width:29px; } }
+
+/* =============== v9.08 · foto con marco, mapa = imagen manual, sin % ni botón de editar =============== */
+.xj-card .xj-photo { margin:var(--xj-m,16px) var(--xj-m,16px) 0; border:4px solid var(--xp-plum-d,#3a1c35); border-radius:18px; box-shadow:0 0 0 2px rgba(var(--xp-sand-rgb),.55); min-height:64px; }
+.xj-card .xj-map { background:var(--xp-plum-d) center/contain no-repeat; }
+.xj-card .xj-map.xj-map-empty { background-image:none; }
+.xj-rw { display:block; }
+.xj-dots { width:100%; }
+/* v9.09: márgenes de la foto reducidos (van al final para ganar a la regla de v9.08) */
+.xj-card .xj-photo { margin:8px 8px 0; border-width:3px; border-radius:16px; }

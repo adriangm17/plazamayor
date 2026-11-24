@@ -191,7 +191,7 @@
       <button onclick="switchTab('indice')" id="nav-btn-indice" class="xn-btn xn-on"><i class="fa-solid fa-list-ul"></i><span>Índice</span></button>
       <button onclick="switchTab('album')" id="nav-btn-album" class="xn-btn"><i class="fa-solid fa-border-all"></i><span>Álbum</span></button>
       <button onclick="switchTab('identificar')" id="nav-btn-identificar" class="xn-btn" aria-label="Identificación" title="Identificación"><i class="fa-solid fa-camera"></i><span>Identificación</span></button>
-      <button onclick="switchTab('explorar')" id="nav-btn-explorar" class="xn-btn"><i class="fa-solid fa-compass"></i><span>Explorar</span></button>
+      <button onclick="onNavExplorar()" id="nav-btn-explorar" class="xn-btn"><i class="fa-solid fa-compass"></i><span>Explorar</span></button>
       <button onclick="switchTab('estadisticas')" id="nav-btn-estadisticas" class="xn-btn"><i class="fa-solid fa-chart-column"></i><span>Estadísticas</span></button>
     </div>
   </nav>
@@ -233,6 +233,14 @@
             </div></div>
         </div>
         <div class="xe-col">
+          <div class="xe-f"><label>Mapa de la tarjeta (Explorar)</label>
+            <div id="map-image-preview" class="xp-modal-photo xp-nophoto" style="aspect-ratio:3/1;background-size:contain;background-position:center;background-repeat:no-repeat"><span id="map-image-empty">Sin mapa</span></div>
+            <div class="xe-row" style="margin-top:6px;justify-content:center">
+              <label class="xe-btn xe-soft" style="cursor:pointer"><i class="fa-solid fa-map"></i> Subir mapa
+                <input type="file" accept="image/*" class="hidden" onchange="onMapImageSelected(this)"></label>
+              <button type="button" onclick="clearMapImage()" class="xe-btn xe-soft">Quitar</button>
+            </div>
+            <p class="xe-note" style="text-align:center;margin:4px 0 0">Mejor apaisado (3:1) y con fondo transparente o oscuro.</p></div>
           <div class="xe-f"><label>Foto de la tarjeta (Explorar)</label>
             <div id="card-photo-preview" class="xp-modal-photo xp-nophoto"><canvas id="card-photo-canvas" width="636" height="492"></canvas><span id="card-photo-empty">Sin foto</span></div>
             <div class="xp-zoom" id="card-photo-zoomrow"><i class="fa-solid fa-magnifying-glass-minus"></i><input type="range" id="card-photo-zoom" min="1" max="3" step="0.01" value="1" oninput="onCardPhotoZoom(this.value)" aria-label="Zoom de la foto"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
