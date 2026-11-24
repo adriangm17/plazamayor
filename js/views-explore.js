@@ -352,7 +352,6 @@ function periodPctOf(p) {
 
 function countryCardHtml(c) {
   const s = countryStats(c);
-  const mapImg = (typeof c.mapImage === 'string' && c.mapImage.startsWith('data:image/')) ? c.mapImage : '';
   const pers = periodsOfCountry(c.id), eras = pers.length;
   const lay = dotsLayout(eras);
   const dots = pers.slice(0, lay.shown).map(p => { const pc = periodPctOf(p); return `<i style="--p:${pc}" title="${esc(periodDisplayName(p))}: ${pc}%"></i>`; }).join('');
@@ -618,12 +617,12 @@ function jukeFillMaps(cards, best) {
 // --- Bolitas: tamaño y filas según cuántos períodos haya ---
 function jukeDotsLayout(n) {
   const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460);
-  const mg = Math.max(12, Math.min(18, cw * .045)), W = cw - 2 * mg, H = 54, g = 5;
+  const mg = Math.max(12, Math.min(18, cw * .045)), W = cw - 2 * mg, H = 66, g = 9;
   let best = null;
   for (let rows = 1; rows <= 3; rows++) {
-    const cols = Math.ceil(n / rows), s = Math.floor(Math.min(34, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
+    const cols = Math.ceil(n / rows), s = Math.floor(Math.min(40, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
     if (!best || s > best.s + 3) best = { s, cols, rows };   // se prefiere menos filas salvo que las bolitas ganen bastante
-    if (s >= 17) { best = { s, cols, rows }; break; }   // v9.08: se llena toda la fila hasta el margen izquierdo antes de pasar a dos filas
+    if (s >= 20) { best = { s, cols, rows }; break; }   // v9.08: se llena toda la fila hasta el margen izquierdo antes de pasar a dos filas
   }
   return best;
 }
@@ -642,11 +641,9 @@ function jukeCardHtml(c, zone, i) {
   return `<div class="xj-card${s.a === 0 ? ' xj-zero' : ''}" data-cid="${esc(c.id)}" data-i="${i}" data-zone="${esc(zone)}" onclick="jukeOpen('${id}')" role="button" tabindex="0" aria-label="${esc(name)}: ${s.t ? s.pct + '% completado' : 'sin monedas'}">
     <div class="xj-photo ${photo ? '' : 'xj-nophoto'}" ${photo ? `style="background-image:url('${esc(photo)}')"` : ''}></div>
     <div class="xj-body">
-      ${jukePatternSvg(c.id)}
       <div class="xj-top"><span class="xj-fl" style="background:${flagLayers(c).replace(/"/g, '&quot;')}"></span><div class="xj-nm ${nl > 22 ? 'xj-n4' : nl > 16 ? 'xj-n3' : nl > 11 ? 'xj-n2' : ''}"><span>${esc(name)}</span></div></div>
-      <div class="xj-map${mapImg ? '' : ' xj-map-empty'}" data-mk="${jukeMapKeys(c).join(',')}" ${mapImg ? `data-img="1" style="background-image:url('${esc(mapImg)}')"` : ''}>${mapImg ? '' : '<i class="fa-solid fa-earth-europe xj-map-ph"></i>'}</div>
       <div class="xj-rw">
-        <div class="xj-dots" style="--ds:${lay.s}px;--dc:${lay.cols}">${dots || '<span class="xj-nodots">Sin períodos</span>'}</div>
+        <div class="xj-dots" style="--ds:${lay.s}px;--dc:${lay.cols};--dg:9px">${dots || '<span class="xj-nodots">Sin períodos</span>'}</div>
       </div>
     </div>
     <div class="xj-mr" aria-hidden="true">${esc(l1)}<br>${esc(l2)}</div>
@@ -702,7 +699,7 @@ function renderJukebox() {
     const q = String(exploreSearch || '').trim();
     return `<div class="xp-empty-msg">${q ? `Nada coincide con «${esc(q)}».` : exploreContinent ? `Aún no hay países de ${esc(exploreContinent)}.` : 'Aún no hay países.'}</div>`;
   }
-  const rail = jukeRailHtml(chipZones, groups);
+  const rail = jukeRailHtml(items);
   const cards = items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')
     + (admin ? `<button type="button" class="xj-card xj-add" onclick="toggleAddCountryRow()"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir país</button>` : '');
   return `<div class="xj-stage"><button type="button" class="xj-arrow xj-prev" onclick="jukeStep(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="xj-arrow xj-next" onclick="jukeStep(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><div class="xj-track" id="xj-track">${cards}</div></div>${rail}`;
@@ -710,53 +707,49 @@ function renderJukebox() {
 /* ===== v9.10 · barra de zonas: una sola línea gruesa que se desliza por continentes y zonas; cambia de color según el continente ===== */
 const RAIL_COLORS = { 'Europa': '#2f5fa7', 'América': '#2f7d4f', 'Asia': '#b3453d', 'África': '#c47a1c', 'Oceanía': '#1e8a98', 'Extintos': '#6d4c93', [UNCLASSIFIED]: '#5d5766' };
 function railContOf(z) { return z === UNCLASSIFIED ? UNCLASSIFIED : zoneContinent(z); }
-function jukeRailHtml(zones, groups) {
-  // v9.13: barra fina bajo la ficha: un segmento por continente (ancho ∝ nº de países) con divisiones por zona
-  const runs = [];
-  zones.forEach(z => { const ct = railContOf(z), n = (groups[z] || []).length; if (!n) return; let r = runs[runs.length - 1]; if (!r || r.c !== ct) runs.push(r = { c: ct, z: [] }); r.z.push([z, n]); });
-  const segs = runs.map(r => `<div class="xj-seg" style="flex:${r.z.reduce((t, x) => t + x[1], 0)};background:${RAIL_COLORS[r.c] || '#5d5766'}" data-c="${esc(r.c)}">${r.z.map(x => `<i style="flex:${x[1]}"></i>`).join('')}</div>`).join('');
+function jukeRailHtml(items) {
+  // v9.15: un segmento por zona, todos del mismo tamaño; solo se salta entre zonas (color según el continente)
+  const zones = []; items.forEach(x => { if (!zones.includes(x.zone)) zones.push(x.zone); });
+  const segs = zones.map((z, k) => { const ct = railContOf(z), prev = k ? railContOf(zones[k - 1]) : ct; return `<div class="xj-seg${k && prev !== ct ? ' xj-seg-c' : ''}" style="background:${RAIL_COLORS[ct] || '#5d5766'}" data-z="${esc(z)}" data-c="${esc(ct)}"></div>`; }).join('');
   return `<div class="xj-rail" id="xj-rail"><div class="xj-bub" id="xj-bub"><b id="xj-rz"></b><small id="xj-rc"></small></div><div class="xj-segs">${segs}</div><div class="xj-thumb" id="xj-thumb"></div></div>`;
 }
 // v9.13: se arrastra el dedo por la barra (como las letras del índice) y la ficha salta al instante; el globo muestra zona y continente
 function jukeRailInit(track, cards, getBest) {
   const rail = document.getElementById('xj-rail'); if (!rail) return null;
-  const real = cards.filter(c => !c.classList.contains('xj-add')), N = real.length; if (!N) return null;
+  const real = cards.filter(c => !c.classList.contains('xj-add')); if (!real.length) return null;
   const bub = document.getElementById('xj-bub'), thumb = document.getElementById('xj-thumb');
   const nameEl = document.getElementById('xj-rz'), subEl = document.getElementById('xj-rc');
-  const contOf = real.map(c => railContOf(c.dataset.zone));
-  const first = {}, last = {}; contOf.forEach((ct, i) => { if (first[ct] === undefined) first[ct] = i; last[ct] = i; });
-  let cur = -1, scrubbing = false, endT = 0, lock = null;
-  const paint = (i, x) => {
-    const c = real[i], z = c.dataset.zone, ct = contOf[i];
-    thumb.style.left = ((i + .5) / N * 100) + '%';
-    if (i !== cur) { cur = i; nameEl.textContent = z; subEl.textContent = (z === ct ? '' : ct + ' · ') + prettyName((countryById(c.dataset.cid) || {}).name || ''); bub.style.background = RAIL_COLORS[ct] || '#5d5766'; }
-    const r = rail.getBoundingClientRect(), bw = bub.offsetWidth || 120, cx = x == null ? r.left + (i + .5) / N * r.width : x;
+  // zonas en orden y la primera ficha de cada una
+  const zones = [], firstOf = [], zoneIdx = real.map(c => { const z = c.dataset.zone; let k = zones.indexOf(z); if (k < 0) { k = zones.length; zones.push(z); firstOf.push(real.indexOf(c)); } return k; });
+  const Z = zones.length, contOf = zones.map(railContOf);
+  let curZ = -1, scrubbing = false, endT = 0;
+  const paint = (k, x) => {
+    const z = zones[k], ct = contOf[k];
+    thumb.style.left = ((k + .5) / Z * 100) + '%';
+    if (k !== curZ) { curZ = k; nameEl.textContent = z; subEl.textContent = z === ct ? '' : ct; bub.style.background = RAIL_COLORS[ct] || '#5d5766'; }
+    const r = rail.getBoundingClientRect(), bw = bub.offsetWidth || 120, cx = x == null ? r.left + (k + .5) / Z * r.width : x;
     bub.style.left = Math.max(bw / 2, Math.min(r.width - bw / 2, cx - r.left)) + 'px';
   };
-  const idxAt = x => { const r = rail.getBoundingClientRect(); return Math.max(0, Math.min(N - 1, Math.floor((x - r.left) / r.width * N))); };
-  const clack = () => {   // v9.14: «tope» al entrar en un continente nuevo: vibración corta + el globo da un golpecito
+  const zoneAt = x => { const r = rail.getBoundingClientRect(); return Math.max(0, Math.min(Z - 1, Math.floor((x - r.left) / r.width * Z))); };
+  const clack = () => {   // «tope» al entrar en un continente nuevo: vibración corta + el globo da un golpecito
     if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {}
     bub.classList.remove('xj-pop'); void bub.offsetWidth; bub.classList.add('xj-pop');
   };
-  const goTo = (i0, x, fromDown) => {
-    let i = i0;
-    if (lock) { if (Math.abs(x - lock.x) < 16) i = lock.i; else lock = null; }
-    if (!lock && cur >= 0 && contOf[i] !== contOf[cur]) {
-      i = i > cur ? first[contOf[i]] : last[contOf[i]];
-      lock = { x, i }; clack();
-    }
-    paint(i, x);
-    const now = cards[getBest()], t = real[i];
-    if (now === t) return;
+  const goTo = (k, x) => {
+    const prev = curZ;
+    if (prev >= 0 && k !== prev && contOf[k] !== contOf[prev]) clack();
+    paint(k, x);
+    const t = real[firstOf[k]];
+    if (zoneIdx[getBest()] === k) return;   // ya estás en esa zona: no se mueve
     track.scrollTo({ left: t.offsetLeft - (track.clientWidth - t.offsetWidth) / 2, behavior: 'instant' });
   };
-  rail.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button !== 0) return; scrubbing = true; lock = null; clearTimeout(endT); try { rail.setPointerCapture(e.pointerId); } catch (er) {} rail.classList.add('xj-rail-on'); goTo(idxAt(e.clientX), e.clientX); e.preventDefault(); });
-  rail.addEventListener('pointermove', e => { if (scrubbing) goTo(idxAt(e.clientX), e.clientX); });
-  const end = () => { rail.classList.remove('xj-rail-on'); lock = null; clearTimeout(endT); endT = setTimeout(() => { scrubbing = false; }, 300); };
+  rail.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button !== 0) return; scrubbing = true; clearTimeout(endT); try { rail.setPointerCapture(e.pointerId); } catch (er) {} rail.classList.add('xj-rail-on'); goTo(zoneAt(e.clientX), e.clientX); e.preventDefault(); });
+  rail.addEventListener('pointermove', e => { if (scrubbing) goTo(zoneAt(e.clientX), e.clientX); });
+  const end = () => { rail.classList.remove('xj-rail-on'); clearTimeout(endT); endT = setTimeout(() => { scrubbing = false; }, 300); };
   rail.addEventListener('pointerup', end); rail.addEventListener('pointercancel', end);
-  const sync = cid => { if (scrubbing) return; const i = real.findIndex(c => c.dataset.cid === cid); if (i >= 0) paint(i, null); };
+  const sync = cid => { if (scrubbing) return; const i = real.findIndex(c => c.dataset.cid === cid); if (i >= 0) paint(zoneIdx[i], null); };
   const sc = real.findIndex(c => c.dataset.cid === exploreJukeId);
-  paint(sc >= 0 ? sc : 0, null);
+  paint(zoneIdx[sc >= 0 ? sc : 0], null);
   return sync;
 }
 let _jukeEditHold = false;
@@ -792,9 +785,6 @@ function jukeInit(box) {
     const h = Math.max(380, Math.min(700, window.innerHeight - top - nav - 70));
     track.style.setProperty('--xj-cw', cw + 'px'); track.style.setProperty('--xj-h', h + 'px');
     track.style.paddingLeft = track.style.paddingRight = Math.max(0, Math.round((W - cw) / 2)) + 'px';
-    // v9.07: el patrón de seguridad se encuadra justo en la parte visible de la ficha (el cuerpo bajo la foto)
-    const sz = cards.map(el => { const b = el.querySelector('.xj-body'); return b ? [b.offsetWidth, b.offsetHeight] : null; });
-    cards.forEach((el, i) => { const sv = el.querySelector('.xj-sec'), z = sz[i]; if (!sv || !z || !z[0]) return; const hv = Math.max(300, Math.min(640, 400 * z[1] / z[0])); sv.setAttribute('viewBox', `0 ${Math.round((640 - hv) / 2)} 400 ${Math.round(hv)}`); });
   };
   fit();
   let railSync = null, lastBest = 0;
@@ -811,7 +801,6 @@ function jukeInit(box) {
     const cur = cards[best]; if (!cur || cur.classList.contains('xj-add')) return;
     exploreJukeId = cur.dataset.cid;
     if (railSync) railSync(cur.dataset.cid);
-    jukeFillMaps(cards, best);
     const n = cards.filter(x => !x.classList.contains('xj-add')).length;
     const cnt = document.getElementById('xj-count'); if (cnt) cnt.textContent = `${best + 1} / ${n}`;
     const pf = document.getElementById('xj-posfill'); if (pf) pf.style.width = ((best + 1) / n * 100).toFixed(1) + '%';
@@ -874,7 +863,6 @@ function jukeInit(box) {
     });
   }
   railSync = jukeRailInit(track, cards, () => lastBest);
-  if (!worldMap && typeof loadWorldMap === 'function') loadWorldMap().then(() => { if (document.getElementById('xj-track') === track) jukeFillMaps(cards, lastBest); }).catch(() => {});
   const target = cards.find(c => c.dataset.cid === exploreJukeId) || cards[0];
   track.style.scrollBehavior = 'auto';
   track.scrollLeft = target.offsetLeft - (track.clientWidth - target.offsetWidth) / 2;

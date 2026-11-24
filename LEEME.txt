@@ -205,3 +205,7 @@ v9.12: Modo edición de Explorar: agrupado por continentes (se ordenan como bloq
 v9.13: Explorar: la barra de continentes pasa debajo de la ficha: línea fina con un segmento por continente (ancho proporcional a sus países); se arrastra el dedo y la ficha salta al instante, con un globo que muestra zona, continente y país.
 
 v9.14: Explorar: tope («clack» con vibración) al entrar en un continente nuevo en la barra; el mapa de la ficha vuelve a generarse solo: simple, coordenadas en una esquina, nombres pequeños de países vecinos y el país en otro color; países pequeños con círculo de zoom; se pinta solo la ficha visible (sin lag). La imagen manual sigue sirviendo si la subes.
+
+v9.15: Explorar: la barra inferior tiene un segmento por zona geográfica, todos del mismo tamaño, y al arrastrar solo salta entre zonas (a la primera ficha de la zona; «tope» al cambiar de continente). El patrón de fondo de las fichas ocupa toda la ficha (también alrededor de la foto), no solo la parte bajo ella. Cache sw: plaza-mayor-v161.
+
+v9.16: Explorar: fuera el mapa de las fichas (la foto ocupa el espacio libre, pendiente de decidir qué más poner); fondo de la ficha plano (sin patrones de pasaporte); bolitas de período algo más grandes (hasta 40 px) y más separadas (9 px). Cache sw: plaza-mayor-v162.

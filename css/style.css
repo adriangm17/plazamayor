@@ -1692,3 +1692,14 @@ body.xj-mode #view-explorar .xp-top, body.xj-mode #xp-sorthint { display:none !i
 .xj-map svg { shape-rendering:geometricPrecision; }
 .xj-bub.xj-pop { animation:xjpop .22s ease-out; }
 @keyframes xjpop { 0% { transform:translateX(-50%) scale(1.22); } 100% { transform:translateX(-50%) scale(1); } }
+
+/* =============== v9.15 · barra por zonas (mismo tamaño) y patrón a toda la ficha =============== */
+.xj-segs { gap:2px; }
+.xj-seg { flex:1 1 0; min-width:0; }
+.xj-seg.xj-seg-c { margin-left:4px; }
+.xj-card > .xj-sec.xj-pv { position:absolute; inset:0; width:100%; height:100%; z-index:0; }
+.xj-body { background:transparent; }
+
+/* =============== v9.16 · sin mapa ni patrón; fondo plano; bolas más grandes y separadas =============== */
+.xj-card { background:var(--xp-plum); }
+.xj-dots { gap:var(--dg,9px); }
