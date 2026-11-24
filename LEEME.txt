@@ -217,3 +217,7 @@ v9.18: Explorar: ficha rediseñada: foto (esquinas redondeadas arriba, rectas ab
 v9.19: Explorar: al tocar el pasaporte la ficha gira y muestra el reverso tipo hoja de pasaporte (bandera y nombre arriba, todas las épocas con sus años y una línea de progreso; tocar una época lleva a ella, tocar fuera vuelve a girar). Cache sw: plaza-mayor-v165.
 
 v9.20: Explorar: se bloquea el scroll vertical de la pestaña; las burbujas de continente/zona son más grandes (50 px) y sin el número de países. Cache sw: plaza-mayor-v166.
+
+v9.21: Explorar: fichas con algo más de margen lateral; el deslizamiento de fichas abarca todo el continente seleccionado (cambia la zona de la barra al pasar de una zona a otra, nunca salta a otro continente); tocar una zona en su barra salta a su primer país. Cache sw: plaza-mayor-v167.
+
+v9.22: Explorar: se vuelve al margen lateral de la ficha de antes (90 %) y se aumenta el espacio interior entre foto, nombre, bandera, bolitas y pasaporte. Cache sw: plaza-mayor-v168.

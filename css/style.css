@@ -1764,3 +1764,11 @@ body.xj-mode #view-explorar { touch-action:pan-x; overscroll-behavior:none; }
 .xj-sw-z .xj-si b { font-size:16px; }
 .xj-sh { font-size:30px; }
 .xj-sh-l { left:16px; } .xj-sh-r { right:16px; }
+
+/* v9.22 · más aire entre los elementos de dentro de la ficha (borde 10 px, separación 14 px) */
+.xj-card { padding:10px; }
+.xj-card .xj-body { gap:14px; padding:14px 0 0; --Wi:calc(var(--xj-cw,340px) - 20px); --L:calc((var(--Wi) - 17.67px) * .5935); --P:calc(var(--Wi) - 14px - var(--L)); --Hp:calc(var(--P) / .705); --fh:calc(var(--L) / 1.75); --D:calc(var(--Hp) - var(--fh) - 14px); }
+.xj-grid { gap:14px; }
+.xj-lc { gap:14px; }
+.xj-card.xj-add { padding:10px; }
+.xj-lc .xj-dt { box-sizing:border-box; }

@@ -617,8 +617,8 @@ function jukeFillMaps(cards, best) {
 // --- Bolitas: tamaño y filas según cuántos períodos haya ---
 // v9.18: medidas de la ficha nueva (mismas fórmulas que el CSS: --L, --P, --Hp…). Columna izquierda = bandera + bolitas; derecha = pasaporte (proporción 0,705).
 function jukeMetrics() {
-  const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460), Wi = cw - 12;
-  const L = (Wi - 13.67) / 1.6849, P = Wi - 10 - L, Hp = P / 0.705, D = Hp - L / 1.75 - 10;
+  const cw = Math.min(Math.round(Math.max(320, document.documentElement.clientWidth) * 0.9), 460), Wi = cw - 20, g = 14;
+  const L = (Wi - g - 3.67) * 0.5935, P = Wi - g - L, Hp = P / 0.705, D = Hp - L / 1.75 - g;
   return { L, P, Hp, D };
 }
 function jukeDotsLayout(n) {
@@ -740,7 +740,7 @@ function renderJukebox() {
   const admin = typeof catalogEditAllowed === 'function' && catalogEditAllowed();
   if (!nav.conts.length) return `<div class="xp-empty-msg">Aún no hay países.</div>`;
   jukeResolveSel(nav);
-  const items = (nav.groups[exploreZone] || []).map(c => ({ c, zone: exploreZone }));
+  const items = []; (nav.zmap[exploreContinent] || []).forEach(z => (nav.groups[z] || []).forEach(c => items.push({ c, zone: z })));   // v9.21: todas las zonas del continente en una sola tira
   const rail = jukeBarsHtml(nav);
   const cards = items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')
     + (admin ? `<button type="button" class="xj-card xj-add" onclick="toggleAddCountryRow()"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir país</button>` : '');
@@ -761,7 +761,7 @@ function jukeBarsHtml(nav) {
     + `</div>`;
 }
 function jukeSetContinent(ct) { if (ct === exploreContinent) return; exploreContinent = ct; exploreZone = ''; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {} renderExplorar(); }
-function jukeSetZone(z) { if (z === exploreZone) return; exploreZone = z; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} renderExplorar(); }
+function jukeSetZone(z) { if (z === exploreZone) return; exploreZone = z; const f = (jukeNav().groups[z] || [])[0]; exploreJukeId = f ? f.id : ''; if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} renderExplorar(); }
 function jukeRailInit(track, cards, getBest) {
   document.querySelectorAll('#xj-bars .xj-sw').forEach(sw => {
     const items = [...sw.querySelectorAll('.xj-si')]; if (!items.length) return;
@@ -835,6 +835,12 @@ function jukeInit(box) {
     lastBest = best;
     const cur = cards[best]; if (!cur || cur.classList.contains('xj-add')) return;
     exploreJukeId = cur.dataset.cid;
+    if (cur.dataset.zone && cur.dataset.zone !== exploreZone) {   // v9.21: al pasar a otra zona del mismo continente, la barra de zonas se mueve sola
+      exploreZone = cur.dataset.zone;
+      const sw = document.querySelector('#xj-bars .xj-sw-z');
+      if (sw) { const k = [...sw.querySelectorAll('.xj-si')].findIndex(x => x.dataset.v === exploreZone); if (k >= 0) { sw.style.scrollBehavior = 'smooth'; sw.scrollTo({ left: k * sw.clientWidth }); } }
+      if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {}
+    }
     if (railSync) railSync(cur.dataset.cid);
     const n = cards.filter(x => !x.classList.contains('xj-add')).length;
     const cnt = document.getElementById('xj-count'); if (cnt) cnt.textContent = `${best + 1} / ${n}`;
