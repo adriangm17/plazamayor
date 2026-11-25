@@ -1774,3 +1774,51 @@ body.xj-mode #view-explorar { touch-action:pan-x; overscroll-behavior:none; }
 .xj-lc .xj-dt { box-sizing:border-box; }
 /* v9.23 · reverso: nombres largos en dos líneas en vez de cortarse */
 .xj-bk-h b { white-space:normal; font-size:19px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+
+/* =============== v9.24 · botones junto a las barras + librería de pasaportes =============== */
+.xj-barrow { display:flex; align-items:stretch; gap:8px; margin:8px 4px 10px; }
+.xj-barrow .xj-bars { flex:1 1 auto; min-width:0; margin:0; }
+.xj-side { flex:none; display:flex; flex-direction:column; gap:8px; }
+.xj-sb { width:50px; height:50px; border-radius:25px; border:0; display:flex; align-items:center; justify-content:center; font-size:19px; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.18); -webkit-tap-highlight-color:transparent; }
+.xj-sb:active { transform:scale(.94); }
+.xj-sb-edit { background:var(--xp-orange); color:var(--xp-plum-d); }
+.xj-sb-lib { background:var(--xp-plum); color:var(--xp-sand-l); }
+.xj-sb-0 { visibility:hidden; box-shadow:none; }
+body.xl-mode main { max-width:none; }
+body.xl-mode #view-explorar .xp-top, body.xl-mode #xp-conts, body.xl-mode #xp-sorthint, body.xl-mode #xp-addzone { display:none !important; }
+.xl-bar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:8px; padding:8px 0 10px; background:var(--xp-sand); }
+.xl-back { flex:none; width:46px; height:46px; border-radius:23px; border:0; background:var(--xp-orange); color:var(--xp-plum-d); font-size:17px; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.18); }
+.xl-search { flex:1 1 auto; min-width:0; height:46px; display:flex; align-items:center; gap:8px; padding:0 14px; border-radius:23px; background:var(--xp-plum); color:var(--xp-sand-l); }
+.xl-search input { flex:1; min-width:0; height:100%; border:0; outline:0; background:transparent; color:var(--xp-sand-l); font:600 15px 'Inter',sans-serif; }
+.xl-search input::placeholder { color:rgba(var(--xp-sand-l-rgb),.55); }
+.xl-sort { flex:none; position:relative; height:46px; display:flex; align-items:center; gap:6px; padding:0 8px 0 12px; border-radius:23px; background:var(--xp-sand-l); color:var(--xp-plum); border:2px solid var(--xp-plum); }
+.xl-sort select { height:100%; max-width:128px; border:0; outline:0; background:transparent; color:var(--xp-plum); font:800 13px 'Poppins',sans-serif; cursor:pointer; }
+.xl-panel { padding:12px; border-radius:20px; background:var(--xp-plum-d); min-height:200px; }
+.xl-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+@media (min-width:560px) { .xl-grid { grid-template-columns:repeat(auto-fill,minmax(128px,1fr)); gap:12px; } }
+.xl-pp { position:relative; display:block; width:100%; aspect-ratio:705/1000; padding:0; border:0; border-radius:8px; background:#3a1a45 center/cover no-repeat; cursor:pointer; filter:brightness(.8) saturate(.9); transition:transform .15s, filter .15s, box-shadow .15s; box-shadow:0 2px 6px rgba(0,0,0,.4); -webkit-tap-highlight-color:transparent; overflow:hidden; }
+.xl-pp:hover, .xl-pp.xl-on, .xl-pp:focus-visible { filter:none; transform:scale(1.06); z-index:2; box-shadow:0 0 0 2px var(--xp-orange), 0 8px 18px rgba(0,0,0,.55); outline:0; }
+.xl-ph { background:linear-gradient(160deg,#6b2150,#3d1646); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:8px; }
+.xl-ph-fl { width:56%; aspect-ratio:1.75; border-radius:4px; background-size:cover !important; background-position:center !important; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+.xl-ph b { max-width:100%; font:800 10px/1.15 'Poppins',sans-serif; letter-spacing:.06em; text-transform:uppercase; color:#e9c66b; text-align:center; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+.xl-h { grid-column:1 / -1; margin:8px 0 0; padding:6px 12px; border-radius:14px; background:var(--k); color:#fff; font:800 14px 'Poppins',sans-serif; letter-spacing:.04em; }
+.xl-h:first-child { margin-top:0; }
+.xl-empty { grid-column:1 / -1; text-align:center; color:var(--xp-sand-l); opacity:.75; padding:30px 0; }
+.xl-info { position:fixed; z-index:60; width:min(300px,calc(100vw - 16px)); max-height:min(60vh,420px); display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:18px; background:var(--xp-sand-l); color:var(--xp-plum); border:3px solid var(--xp-plum); box-shadow:0 10px 28px rgba(0,0,0,.45); pointer-events:none; }
+.xl-info[hidden] { display:none; }
+.xl-info.xl-sheet { left:50%; transform:translateX(-50%); width:min(420px,calc(100vw - 20px)); pointer-events:auto; }
+.xl-ih { flex:none; display:flex; align-items:center; gap:10px; padding-bottom:8px; border-bottom:2px solid var(--xp-plum); }
+.xl-ifl { flex:none; width:48px; height:28px; border-radius:5px; background-size:cover !important; background-position:center !important; box-shadow:0 0 0 1px rgba(0,0,0,.3); }
+.xl-ih div { flex:1; min-width:0; display:flex; flex-direction:column; }
+.xl-ih b { font:italic 800 17px/1.1 'Poppins',sans-serif; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xl-ih small { font:700 11px 'Inter',sans-serif; letter-spacing:.05em; text-transform:uppercase; opacity:.7; }
+.xl-ih strong { flex:none; font:800 20px 'Poppins',sans-serif; color:var(--xp-orange); }
+.xl-il { flex:1 1 auto; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:2px; }
+.xl-ir { display:grid; grid-template-columns:1fr auto auto; column-gap:8px; align-items:baseline; }
+.xl-ir b { font:700 12px 'Poppins',sans-serif; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xl-ir span { font:600 11px ui-monospace,monospace; opacity:.75; }
+.xl-ir em { font:800 11px 'Poppins',sans-serif; font-style:normal; min-width:34px; text-align:right; }
+.xl-ir u { grid-column:1 / -1; display:block; height:5px; margin-top:3px; border-radius:3px; background:rgba(60,26,69,.18); overflow:hidden; text-decoration:none; }
+.xl-ir u i { display:block; height:100%; background:var(--xp-orange); }
+.xl-i0 { margin:0; opacity:.6; text-align:center; }
+.xl-if { flex:none; text-align:center; font:700 10px 'Poppins',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.55; }

@@ -45,11 +45,12 @@ function updateHeaderTools() {
 
 // v9.09: sin la barra «Plaza Mayor» en Estadísticas ni en el Jukebox de Explorar (con el modo edición sí sale)
 function updateHeaderMode() {
-  const off = currentTab === 'estadisticas' || (currentTab === 'explorar' && exploreView === 'jukebox');
+  const off = currentTab === 'estadisticas' || (currentTab === 'explorar' && (exploreView === 'jukebox' || exploreView === 'pasaportes'));
   document.body.classList.toggle('xh-off', off);
   const ed = currentTab === 'explorar' && exploreView === 'zonas';
   document.body.classList.toggle('xe-mode', ed);
   document.body.classList.toggle('xj-mode', currentTab === 'explorar' && exploreView === 'jukebox');
+  document.body.classList.toggle('xl-mode', currentTab === 'explorar' && exploreView === 'pasaportes');   // v9.24: librería de pasaportes
   const set = (id, on) => { const el = document.getElementById(id); if (el) el.classList.toggle('hidden', !on); };
   set('xh-newzone', ed); set('xh-newcountry', ed);
 }

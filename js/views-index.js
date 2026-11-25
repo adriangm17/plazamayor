@@ -81,7 +81,7 @@ function indiceBars(normalPct, silverPct, hasSilver) {
 
 function renderIndiceView() {
   const container = document.getElementById('indice-countries-container');
-  const list = [...countries].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+  const list = countries.filter(c => continentOf(c) !== UNCLASSIFIED).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));   // v9.25: los países «Sin clasificar» no salen en el Índice
 
   if (list.length === 0) {
     container.innerHTML = `<div class="xp-empty-msg">No hay datos en el índice.</div>`;
