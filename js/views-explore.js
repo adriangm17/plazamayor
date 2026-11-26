@@ -791,7 +791,7 @@ function jukeBarsHtml(nav) {
   const ICONS = { 'europa': 'earth-europe', 'america': 'earth-americas', 'asia': 'earth-asia', 'africa': 'earth-africa', 'oceania': 'earth-oceania', 'extintos': 'landmark-dome' };
   const icon = v => v === '' ? 'house' : (v === UNCLASSIFIED ? 'circle-question' : (ICONS[v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()] || 'globe'));
   const contRow = true   // v9.31: los botones de continente también en móvil (solo color e icono, sin nombre); en ordenador llevan además dos letras
-    ? `<div class="xj-ct${wide ? '' : ' xj-ct-ico'}" data-kind="c">${nav.conts.map(v => `<button type="button" class="xj-cb${v === contKey ? ' xj-on' : ''}" style="--k:${colC(v)}" onclick="jukeSetContinent('${jsArg(v)}')" aria-pressed="${v === contKey}" title="${esc(v)}" aria-label="${esc(v)}"><i class="fa-solid fa-${icon(v)}" aria-hidden="true"></i><span>${esc(v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 2).toUpperCase())}</span></button>`).join('')}</div>`
+    ? `<div class="xj-ct${wide ? '' : ' xj-ct-ico'}" data-kind="c">${nav.conts.filter(v => wide || v !== UNCLASSIFIED).map(v => `<button type="button" class="xj-cb${v === contKey ? ' xj-on' : ''}" style="--k:${colC(v)}" onclick="jukeSetContinent('${jsArg(v)}')" aria-pressed="${v === contKey}" title="${esc(v)}" aria-label="${esc(v)}"><i class="fa-solid fa-${icon(v)}" aria-hidden="true"></i><span>${esc(v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 2).toUpperCase())}</span></button>`).join('')}</div>`
     : mk('c', contList, contKey, v => v === '' ? 'Inicio' : v, contCount, colC);
   return `<div class="xj-barrow"><div class="xj-bars" id="xj-bars">`
     + contRow
