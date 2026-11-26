@@ -83,6 +83,7 @@ let exploreContinent = '';   // continente filtrado ('' = todos)
 /* v9.03: Explorar tiene dos vistas: 'jukebox' (una ficha de pasaporte por país, deslizable) y 'zonas' (la cartelera de filas por zona de antes) */
 let exploreView = (() => { try { return localStorage.getItem('numis_explore_view') === 'zonas' ? 'zonas' : 'jukebox'; } catch (e) { return 'jukebox'; } })();
 let exploreZone = '';        // zona elegida en la tira de chips ('' = todas)
+let exploreHome = false;    // v9.29: pantalla de inicio de Explorar (portada tipo pasaporte) cuando no hay país elegido
 let exploreJukeId = '';      // país que está a la vista en el jukebox (para volver al mismo con «atrás»)
 function toggleExploreView() {
   exploreView = exploreView === 'jukebox' ? 'zonas' : 'jukebox';
@@ -730,6 +731,8 @@ function jukeNav() {
 function jukeResolveSel(nav) {
   const { conts, zmap } = nav;
   const c = exploreJukeId && countryById(exploreJukeId);
+  if (c) exploreHome = false;   // un país concreto manda sobre la portada
+  if (exploreHome) return;
   if (c) {   // el país que se está mirando manda (entrada desde el Álbum, «atrás», país recién creado…)
     const z = continentOf(c), ct = railContOf(z);
     if (zmap[ct] && zmap[ct].includes(z)) { const keepAll = exploreZone === '*' + ct && exploreContinent === ct; exploreContinent = ct; if (!keepAll) exploreZone = z; }   // en «Todos» se sigue en «Todos» aunque el país sea de una zona concreta
@@ -743,12 +746,27 @@ function renderJukebox() {
   const admin = typeof catalogEditAllowed === 'function' && catalogEditAllowed();
   if (!nav.conts.length) return `<div class="xp-empty-msg">Aún no hay países.</div>`;
   jukeResolveSel(nav);
-  const items = (nav.groups[exploreZone] || []).map(c => ({ c, zone: exploreZone }));   // v9.25: la tira solo tiene los países de la zona elegida (para cambiar de zona hay que usar las barras)
+  const items = exploreHome ? [] : (nav.groups[exploreZone] || []).map(c => ({ c, zone: exploreZone }));   // v9.25: la tira solo tiene los países de la zona elegida (para cambiar de zona hay que usar las barras)
   const rail = jukeBarsHtml(nav);
-  const one = items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')   // v9.28: sin la ficha «Añadir país» en el carrusel (se añade desde el modo edición)
-  const nCards = items.length, reps = nCards < 2 ? 1 : nCards >= 5 ? 3 : 5;   // v9.25b: carrusel infinito: el conjunto se repite y se salta a la copia central al parar
+  const one = exploreHome ? jukeCoverHtml() : items.map((x, i) => jukeCardHtml(x.c, x.zone, i)).join('')   // v9.28: sin la ficha «Añadir país» en el carrusel (se añade desde el modo edición)
+  const nCards = exploreHome ? 1 : items.length, reps = nCards < 2 ? 1 : nCards >= 5 ? 3 : 5;   // v9.25b: carrusel infinito: el conjunto se repite y se salta a la copia central al parar
   const cards = one.repeat(reps);
   return `<div class="xj-stage"><button type="button" class="xj-arrow xj-prev" onclick="jukeStep(-1)" aria-label="Anterior"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="xj-arrow xj-next" onclick="jukeStep(1)" aria-label="Siguiente"><i class="fa-solid fa-chevron-right"></i></button><div class="xj-track" id="xj-track" data-n="${nCards}" data-reps="${reps}">${cards}</div></div>${rail}`;
+}
+// v9.29: portada de Explorar (cuando no hay país elegido): cubierta de pasaporte genérico de Plaza Mayor con el resumen de la colección
+function jukeCoverHtml() {
+  let a = 0, t = 0; countries.forEach(c => { const st = countryStats(c); a += st.a; t += st.t; });
+  const pct = t ? Math.round(a / t * 100) : 0, n = countries.length;
+  return `<div class="xj-card xj-cover" onclick="openPassports()" role="button" tabindex="0" aria-label="Plaza Mayor. Elige un continente abajo o abre la librería de pasaportes">
+    <div class="xj-cv-in">
+      <svg class="xj-cv-em" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="60" cy="60" r="47" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 5.2"/><circle cx="60" cy="60" r="36" fill="currentColor" fill-opacity=".13" stroke="currentColor" stroke-width="2"/><text x="60" y="71" text-anchor="middle" font-family="Poppins,sans-serif" font-style="italic" font-weight="800" font-size="31" fill="currentColor">PM</text></svg>
+      <b class="xj-cv-t">PLAZA MAYOR</b>
+      <span class="xj-cv-s">Catálogo numismático</span>
+      <span class="xj-cv-ln"></span>
+      <div class="xj-cv-st"><span><strong>${n}</strong>${n === 1 ? 'país' : 'países'}</span><span><strong>${pct}%</strong>completado</span></div>
+      <p class="xj-cv-h">Elige un continente abajo<br>o toca para ver todos los pasaportes</p>
+    </div>
+  </div>`;
 }
 /* ===== v9.10 · barra de zonas: una sola línea gruesa que se desliza por continentes y zonas; cambia de color según el continente ===== */
 const RAIL_COLORS = { 'Europa': '#2f5fa7', 'América': '#2f7d4f', 'Asia': '#b3453d', 'África': '#c47a1c', 'Oceanía': '#1e8a98', 'Extintos': '#6d4c93', [UNCLASSIFIED]: '#5d5766' };
@@ -761,22 +779,31 @@ function jukeBarsHtml(nav) {
     return `<div class="xj-sw xj-sw-${kind}" data-kind="${kind}" data-loop="${list.length > 1 ? 1 : 0}">${all.join('')}</div>`;
   };
   const n = z => (nav.groups[z] || []).length, nTxt = k => k + (k === 1 ? ' país' : ' países');
-  const contCount = ct => nTxt(nav.zmap[ct].reduce((t, z) => t + n(z), 0));
-  const zs = nav.zmap[exploreContinent] || [];
+  const contCount = ct => ct === '' ? '' : nTxt((nav.zmap[ct] || []).filter(z => z.charAt(0) !== '*').reduce((t, z) => t + n(z), 0));
+  const zs = exploreHome ? [''] : (nav.zmap[exploreContinent] || []);
   const admin = typeof catalogEditAllowed === 'function' && catalogEditAllowed();
   const side = (admin ? `<button type="button" class="xj-sb xj-sb-edit" onclick="toggleExploreView()" aria-label="Modo edición" title="Modo edición"><i class="fa-solid fa-pen"></i></button>` : `<span class="xj-sb xj-sb-0" aria-hidden="true"></span>`)
     + `<button type="button" class="xj-sb xj-sb-lib" onclick="openPassports()" aria-label="Librería de pasaportes" title="Librería de pasaportes"><i class="fa-solid fa-passport"></i></button>`;
+  const HOME_COL = '#573A70', contKey = exploreHome ? '' : exploreContinent, contList = ['', ...nav.conts];
+  const colC = v => v === '' ? HOME_COL : (RAIL_COLORS[v] || '#5d5766');
+  // v9.29: en ordenador (pantalla ancha con ratón) los continentes salen todos a la vista como botones con icono en vez de la barra deslizable
+  const wide = matchMedia('(min-width:900px) and (hover:hover) and (pointer:fine)').matches;
+  const ICONS = { 'europa': 'earth-europe', 'america': 'earth-americas', 'asia': 'earth-asia', 'africa': 'earth-africa', 'oceania': 'earth-oceania', 'extintos': 'landmark-dome' };
+  const icon = v => v === '' ? 'house' : (v === UNCLASSIFIED ? 'circle-question' : (ICONS[v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()] || 'globe'));
+  const contRow = true   // v9.31: los botones de continente también en móvil (solo color e icono, sin nombre); en ordenador llevan además dos letras
+    ? `<div class="xj-ct${wide ? '' : ' xj-ct-ico'}" data-kind="c">${nav.conts.map(v => `<button type="button" class="xj-cb${v === contKey ? ' xj-on' : ''}" style="--k:${colC(v)}" onclick="jukeSetContinent('${jsArg(v)}')" aria-pressed="${v === contKey}" title="${esc(v)}" aria-label="${esc(v)}"><i class="fa-solid fa-${icon(v)}" aria-hidden="true"></i><span>${esc(v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 2).toUpperCase())}</span></button>`).join('')}</div>`
+    : mk('c', contList, contKey, v => v === '' ? 'Inicio' : v, contCount, colC);
   return `<div class="xj-barrow"><div class="xj-bars" id="xj-bars">`
-    + mk('c', nav.conts, exploreContinent, v => v, contCount, v => RAIL_COLORS[v] || '#5d5766')
-    + mk('z', zs, exploreZone, v => v.charAt(0) === '*' ? 'Todos' : v === exploreContinent ? 'General' : v, v => nTxt(n(v)), () => RAIL_COLORS[exploreContinent] || '#5d5766')
+    + contRow
+    + mk('z', zs, exploreHome ? '' : exploreZone, v => v === '' ? 'Elige un continente' : v.charAt(0) === '*' ? 'Todos' : v === exploreContinent ? 'General' : v, v => nTxt(n(v)), () => exploreHome ? HOME_COL : (RAIL_COLORS[exploreContinent] || '#5d5766'))
     + `</div><div class="xj-side">${side}</div></div>`;
 }
-function jukeSetContinent(ct) { if (ct === exploreContinent) return; exploreContinent = ct; exploreZone = ''; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {} renderExplorar(); }
-function jukeSetZone(z) { if (z === exploreZone) return; exploreZone = z; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} renderExplorar(); }
+function jukeSetContinent(ct) { if (ct === (exploreHome ? '' : exploreContinent)) return; exploreHome = ct === ''; if (ct !== '') exploreContinent = ct; exploreZone = ''; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(14); } catch (e) {} renderExplorar(); }
+function jukeSetZone(z) { if (!z || z === exploreZone) return; exploreZone = z; exploreJukeId = ''; if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {} renderExplorar(); }
 function jukeRailInit(track, cards, getBest) {
   document.querySelectorAll('#xj-bars .xj-sw').forEach(sw => {
     const items = [...sw.querySelectorAll('.xj-si')]; if (!items.length) return;
-    const cur = sw.dataset.kind === 'c' ? exploreContinent : exploreZone;
+    const cur = sw.dataset.kind === 'c' ? (exploreHome ? '' : exploreContinent) : (exploreHome ? '' : exploreZone);
     const idx = Math.max(0, items.findIndex(x => x.dataset.v === cur && !x.classList.contains('xj-cl')));
     sw.style.scrollBehavior = 'auto'; sw.scrollLeft = idx * sw.clientWidth;
     let t = 0, drag = null;
@@ -785,7 +812,7 @@ function jukeRailInit(track, cards, getBest) {
       t = setTimeout(() => {
         if (drag) return;
         const k = Math.max(0, Math.min(items.length - 1, Math.round(sw.scrollLeft / (sw.clientWidth || 1))));
-        const v = items[k].dataset.v, now = sw.dataset.kind === 'c' ? exploreContinent : exploreZone;
+        const v = items[k].dataset.v, now = sw.dataset.kind === 'c' ? (exploreHome ? '' : exploreContinent) : (exploreHome ? '' : exploreZone);
         if (v !== now) (sw.dataset.kind === 'c' ? jukeSetContinent : jukeSetZone)(v);
       }, 140);
     };
@@ -845,7 +872,7 @@ function jukeInit(box) {
     });
     lastBest = best;
     const cur = cards[best]; if (!cur || cur.classList.contains('xj-add')) return;
-    exploreJukeId = cur.dataset.cid;
+    if (cur.dataset.cid) exploreJukeId = cur.dataset.cid;
     if (railSync) railSync(cur.dataset.cid);
     const n = cards.filter(x => !x.classList.contains('xj-add')).length;
     const cnt = document.getElementById('xj-count'); if (cnt) cnt.textContent = `${best + 1} / ${n}`;
@@ -863,7 +890,7 @@ function jukeInit(box) {
     let lt = 0, lx = 0, ly = 0;
     const lcancel = ev => { if (ev && ev.type === 'pointermove' && Math.hypot(ev.clientX - lx, ev.clientY - ly) < 8) return; clearTimeout(lt); };
     track.addEventListener('pointerdown', e => {
-      const card = e.target.closest('.xj-card'); if (!card || card.classList.contains('xj-add') || e.target.closest('.xj-dt, .xj-tip') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      const card = e.target.closest('.xj-card'); if (!card || card.classList.contains('xj-add') || card.classList.contains('xj-cover') || e.target.closest('.xj-dt, .xj-tip') || (e.pointerType === 'mouse' && e.button !== 0)) return;
       lx = e.clientX; ly = e.clientY; clearTimeout(lt);
       lt = setTimeout(() => { _jukeEditHold = true; if (navigator.vibrate) try { navigator.vibrate(15); } catch (er) {} editCountryCard(card.dataset.cid); }, 600);
     });

@@ -34,7 +34,7 @@ function navSnap() {
     s.f = [albumOnlyMissing, albumOnlyOwned, albumOnlySpecial].map(Number).join('') + '|' +
       Object.keys(periodOnlyMissing).filter(k => periodOnlyMissing[k]).sort().join(',');
   } else if (currentTab === 'explorar') {
-    s.xc = (typeof exploreContinent !== 'undefined' && exploreContinent) || '';
+    s.xc = (typeof exploreHome !== 'undefined' && exploreHome) ? '' : ((typeof exploreContinent !== 'undefined' && exploreContinent) || '');   // continente vacío = portada
     s.xv = (typeof exploreView !== 'undefined' && exploreView === 'pasaportes') ? 'p' : '';   // v9.24: la librería de pasaportes es un paso del historial («atrás» vuelve a las fichas)
   } else if (currentTab === 'estadisticas') {
     s.sg = statsGrade; s.st = statsType; s.sh = statsTypeHave; s.se = statsErrors;
@@ -101,6 +101,7 @@ function navApply(S) {
     }
   } else if (S.t === 'explorar') {
     if (S.xv === 'p') exploreView = 'pasaportes'; else if (exploreView === 'pasaportes') exploreView = 'jukebox';
+    exploreHome = !S.xc && !exploreJukeId;
     exploreContinent = S.xc || '';   // v8.29: también al volver desde otra pestaña (antes solo si ya se estaba en Explorar y el continente se perdía)
   } else if (S.t === 'estadisticas' && sameTab) {
     statsGrade = S.sg || ''; statsType = S.st || ''; statsTypeHave = !!S.sh; statsErrors = S.se || ''; statsGradePage = 1;

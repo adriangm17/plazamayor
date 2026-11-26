@@ -157,8 +157,8 @@ function switchTab(tabName) {
   if (changed && tabName === 'explorar') {   // v9.08: al entrar en Explorar: siempre jukebox, con el país del Álbum (o uno al azar)
     exploreView = 'jukebox'; try { localStorage.setItem('numis_explore_view', 'jukebox'); } catch (e) {}
     exploreZone = ''; exploreContinent = ''; exploreZonesOpen = false;
-    if (countryById(currentCountryId)) exploreJukeId = currentCountryId;
-    else if (countries.length) exploreJukeId = countries[Math.floor(Math.random() * countries.length)].id;
+    if (countryById(currentCountryId)) { exploreJukeId = currentCountryId; exploreHome = false; }
+    else { exploreJukeId = ''; exploreHome = true; }   // v9.29: sin país elegido sale la portada de Explorar (antes, un país al azar)
   }
   if (changed) { window.scrollTo(0, 0); resetBarScroll(); resetViewFolds(tabName); }    // v8.04: al cambiar de pestaña la cabecera vuelve a verse
   showTab(tabName);

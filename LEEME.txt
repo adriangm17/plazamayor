@@ -233,3 +233,9 @@ v9.26: Explorar: las fichas de cada zona forman un carrusel infinito (sin primer
 v9.27: Explorar: cada continente (menos «Sin clasificar») tiene una zona «Todos» al principio de la barra de zonas; con ella el carrusel recorre todos los países del continente. Cache sw: plaza-mayor-v173.
 
 v9.28: Explorar: el carrusel ya no tiene la ficha «Añadir país» (se añade desde el modo edición). Cache sw: plaza-mayor-v174.
+
+v9.29: Explorar: cuando no hay país seleccionado sale una portada tipo pasaporte genérico de Plaza Mayor (con el número de países y el porcentaje total) en vez de un país al azar; en la barra de continentes hay una opción «Inicio» para volver a ella. En ordenador (pantalla ancha con ratón) los continentes salen todos a la vista como botones con icono en lugar de la barra deslizable. Cache sw: plaza-mayor-v175.
+
+v9.30: Explorar (ordenador): los botones de continente ya no incluyen «Inicio» y muestran solo las dos primeras letras del nombre (EU, AM, AS, AF, OC…). Cache sw: plaza-mayor-v176.
+
+v9.31: Explorar (móvil): la barra deslizable de continentes se sustituye por los mismos botones del ordenador, solo con color e icono (sin nombre), repartidos por todo el ancho de la fila. Cache sw: plaza-mayor-v177.
