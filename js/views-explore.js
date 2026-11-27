@@ -624,14 +624,10 @@ function jukeMetrics() {
   return { L, P, Hp, D };
 }
 function jukeDotsLayout(n) {
-  const m = jukeMetrics(), W = m.L, H = m.D, g = 8;
-  let best = null;
-  for (let rows = 1; rows <= 3; rows++) {
-    const cols = Math.ceil(n / rows), s = Math.floor(Math.min(40, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows));
-    if (!best || s > best.s + 3) best = { s, cols, rows };   // se prefiere menos filas salvo que las bolitas ganen bastante
-    if (s >= 20) { best = { s, cols, rows }; break; }   // se llena toda la fila hasta el margen izquierdo antes de pasar a dos filas
-  }
-  return best;
+  // v9.33: regla fija: hasta 6 bolitas en una fila; de 7 a 12, dos filas de 6; más de 12 (hasta 24), filas de 8. El tamaño sale de las columnas, así que es el mismo para todos los países con el mismo tramo
+  const m = jukeMetrics(), g = 8, cols = n > 12 ? 8 : 6, rows = Math.ceil(n / cols);
+  const s = Math.floor(Math.min(40, (m.L - (cols - 1) * g) / cols, (m.D - (rows - 1) * g) / rows));
+  return { s: Math.max(10, s), cols, rows };
 }
 
 function jukeCardHtml(c, zone, i) {

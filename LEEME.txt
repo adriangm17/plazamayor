@@ -241,3 +241,5 @@ v9.30: Explorar (ordenador): los botones de continente ya no incluyen «Inicio»
 v9.31: Explorar (móvil): la barra deslizable de continentes se sustituye por los mismos botones del ordenador, solo con color e icono (sin nombre), repartidos por todo el ancho de la fila. Cache sw: plaza-mayor-v177.
 
 v9.32: Explorar (móvil): el botón de «Sin clasificar» ya no sale en la fila de continentes (en ordenador sigue). Cache sw: plaza-mayor-v178.
+
+v9.33: Explorar: bolitas de épocas con regla fija: hasta 6 en una fila, de 7 a 12 dos filas de 6 y más de 12 filas de 8 (tamaño igual para todos los países del mismo tramo). Cache sw: plaza-mayor-v179.
